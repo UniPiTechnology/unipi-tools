@@ -1,0 +1,12 @@
+/backup
+*~
+*.swp
+*.o
+*.la
+*.lo
+*.log
+*.trs
+.deps
+.libs
+neuronspi
+neuron_tcp_server

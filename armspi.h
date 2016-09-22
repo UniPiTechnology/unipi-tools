@@ -58,20 +58,35 @@ typedef struct {
     uint8_t buffer[MAX_LOCAL_QUEUE_LEN];
     int remain;
     int overflow;
+    int masterpty;
 } uart_queue;
+
 
 typedef struct {
     int fd;
+    int fdint;
+    int index;
     arm_comm_header_crc tx1;
     arm_comm_header_crc rx1;
     uint8_t tx2[SNIPLEN2 + CRC_SIZE + 40];
     uint8_t rx2[SNIPLEN2 + CRC_SIZE + 40];
-    struct spi_ioc_transfer tr[5];     // Transaction structure for 5 chunks 
+    struct spi_ioc_transfer tr[7];     // Transaction structure for 5 chunks
+    uint8_t sw_version;
+    uint8_t sw_subver;
+    uint8_t hw_version;
+    uint8_t hw_subver;
+    uint8_t di_count;
+    uint8_t do_count;
+    uint8_t ai_count;
+    uint8_t ao_count;
+    uint8_t uart_count;
+    uint8_t uled_count;
+    uint16_t int_mask_register;
     uart_queue uart_q[4];              // local queue for uarts on arm
 }  arm_handle;
 
 
-int arm_init(arm_handle* arm, char* device, uint32_t speed);
+int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, const char* gpio);
 int idle_op(arm_handle* arm);
 int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);

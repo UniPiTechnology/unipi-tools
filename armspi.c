@@ -39,7 +39,9 @@
 
 
 // on RPI 2 doesn't work transfer longer then 94 bytes. Must be divided into chunks
-#define _MAX_SPI_RX  94
+//#define _MAX_SPI_RX  94
+#define _MAX_SPI_RX  64
+//#define _MAX_SPI_RX  256
 
 
 #define ac_header(buf) ((arm_comm_header*)buf)
@@ -52,9 +54,11 @@
 // vyzkouset jestli neni problem v firmware
 #define SPI_STR_MAX 240
 
+static int be_quiet = 0;
 
 static void pabort(const char *s)
 {
+    if (be_quiet) return;
     perror(s);
     //abort();
 }
@@ -174,11 +178,24 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         arm->tr[2].len = _MAX_SPI_RX;
         arm->tr[3].len = total - _MAX_SPI_RX;
         ret = ioctl(arm->fd, SPI_IOC_MESSAGE(4), arm->tr);
-    } else {
+    } else if (total <= (3*_MAX_SPI_RX)) {
         arm->tr[2].len = _MAX_SPI_RX;
         arm->tr[3].len = _MAX_SPI_RX;
         arm->tr[4].len = total - (2*_MAX_SPI_RX);
         ret = ioctl(arm->fd, SPI_IOC_MESSAGE(5), arm->tr);
+    } else if (total <= (4*_MAX_SPI_RX)) {
+        arm->tr[2].len = _MAX_SPI_RX;
+        arm->tr[3].len = _MAX_SPI_RX;
+        arm->tr[4].len = _MAX_SPI_RX;
+        arm->tr[5].len = total - (3*_MAX_SPI_RX);
+        ret = ioctl(arm->fd, SPI_IOC_MESSAGE(6), arm->tr);
+    } else {
+        arm->tr[2].len = _MAX_SPI_RX;
+        arm->tr[3].len = _MAX_SPI_RX;
+        arm->tr[4].len = _MAX_SPI_RX;
+        arm->tr[5].len = _MAX_SPI_RX;
+        arm->tr[6].len = total - (4*_MAX_SPI_RX);
+        ret = ioctl(arm->fd, SPI_IOC_MESSAGE(7), arm->tr);
     }
 
     //printf("ret2=%d\n", ret);
@@ -187,6 +204,8 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         return ret;
     }
 
+    //return -1; // ---------------- smazat 
+    
     //printf("rx1=%x\n", *((uint32_t*)&arm->rx1));
     crc = SpiCrcString((uint8_t*)&arm->rx1, SIZEOF_HEADER, 0);
     if (crc != arm->rx1.crc) {
@@ -198,7 +217,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
         // we received character from UART
-        // doplnit adreaci uartu!
+        // doplnit adresaci uartu!
         queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
         if (((uint16_t*)arm->rx2)[tr_len2>>1] != crc) {
             pabort("Bad 2.crc in two phase operation");
@@ -219,7 +238,10 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
 int idle_op(arm_handle* arm)
 {
-    return one_phase_op(arm, ARM_OP_IDLE, 0x0e55, 0);
+    be_quiet = 1;
+    int n = one_phase_op(arm, ARM_OP_IDLE, 0x0e55, 0);
+    be_quiet = 0;
+    return n;
 }
 
 int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result)
@@ -368,6 +390,7 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
 
     int ret =  two_phase_op(arm, ARM_OP_READ_STR, uart, len2);
     if (ret < 0) {
+        printf("Error read str %d %d\n", cnt, len2);
         return ret;
     }
 
@@ -384,15 +407,15 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
         memmove(str, queue->buffer, n);
         if (n < queue->index) {  // str is too short for import local queue
             memmove(queue->buffer, queue->buffer + n, queue->index - n);
-            queue->index = queue->index + rcnt;
+            queue->index -= n;
             if (queue->index + rcnt > MAX_LOCAL_QUEUE_LEN) 
                 rcnt = MAX_LOCAL_QUEUE_LEN - queue->index;
             memmove(queue->buffer+queue->index, arm->rx2 + SIZEOF_HEADER, rcnt);
-            queue->index = queue->index + rcnt;
+            queue->index += rcnt;
             return n;
         }
         queue->index = 0;
-        cnt = cnt - n;
+        cnt -= n;
     }
     int n2 = rcnt < cnt ? rcnt : cnt;
     memmove(str+n, arm->rx2 + SIZEOF_HEADER, n2);
@@ -404,8 +427,77 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
     return n+n2;
 }
 
+int read_qstring(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
+{
+    if (uart > 0) {
+        pabort("Bad parameter uart");
+        return -1;
+    }
+    uart_queue* queue = &arm->uart_q[uart];
+    
+    // join uart_queue and rcnt chars
+    int n = queue->index < cnt ? queue->index : cnt;
+    if (n > 0) {
+        memmove(str, queue->buffer, n);
+        if (n < queue->index) {  // str is too short for import local queue
+            memmove(queue->buffer, queue->buffer + n, queue->index - n);
+            queue->index -= n;
+            return n;
+        }
+        queue->index = 0;
+        return n;
+    }
+    return 0;
+}
 
-int arm_init(arm_handle* arm, char* device, uint32_t speed)
+
+const char* hwnames[] = {
+    "B-1000-1",
+    "E-8Di8Ro-1",
+    "E-14Ro-1",
+    "E-16Di-1",
+    "E-8Di8Ro-1_P-11DiMb485",
+};
+
+int arm_version(arm_handle* arm)
+{
+    uint16_t configregs[10];
+    int n = read_regs(arm, 1000, 5, configregs);
+    if (n < 0) return n;
+    if (n != 5) return -1; // unknown error, all Neuron boards has more than 5 config registers
+    arm->sw_version = configregs[0] >> 8;
+    arm->di_count   = (configregs[1]       ) >> 8;
+    arm->do_count   = (configregs[1] & 0xff);
+    arm->ai_count   = (configregs[2]       ) >> 8;
+    arm->ao_count   = (configregs[2] & 0xff) >> 4;
+    arm->uart_count = (configregs[2] & 0x0f);
+    printf ("uart=%d\n", arm->uart_count);
+    arm->uled_count = 0;
+    if (arm->sw_version < 4) {
+        arm->sw_subver = 0;
+        arm->hw_version = (configregs[0] & 0xff) >> 4;
+        arm->hw_subver  = (configregs[0] & 0xf);
+        arm->int_mask_register = 1003;
+    } else {
+        arm->sw_subver = (configregs[0] & 0xff);
+        arm->hw_version = (configregs[3]) >> 8;
+        arm->hw_subver  = (configregs[3] & 0xff);
+        if (arm->hw_subver < 3) {
+           arm->int_mask_register = 1004;
+        } else {
+           arm->int_mask_register = 1007;
+        }
+        if (arm->hw_version == 0) {
+            if (configregs[0] != 0x0400)
+                arm->uled_count = 4;
+        }
+    }
+}
+
+
+//const char* GPIO_INT[] = { "27", "23", "22" };
+
+int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, const char* gpio)
 {
     arm->fd = open(device, O_RDWR);
 
@@ -415,9 +507,11 @@ int arm_init(arm_handle* arm, char* device, uint32_t speed)
     }
     //set_spi_mode(fd,0);
     set_spi_speed(arm->fd, speed);
+    arm->index = index;
 
     int i;
     for (i=0; i< 4; i++) {
+       arm->uart_q[i].masterpty = -1;
        arm->uart_q[i].remain = 0;
        arm->uart_q[i].index = 0;
     }
@@ -433,7 +527,43 @@ int arm_init(arm_handle* arm, char* device, uint32_t speed)
     arm->tr[3].rx_buf = (unsigned long) arm->rx2 + _MAX_SPI_RX;
     arm->tr[4].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*2);
     arm->tr[4].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*2);
+    arm->tr[5].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*3);
+    arm->tr[5].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*3);
+    arm->tr[6].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*4);
+    arm->tr[6].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*4);
+    /* Load firmware and hardware versions */
+    be_quiet = 1;
+    arm_version(arm);
+    be_quiet = 0;
+    if (arm->sw_version) {
+        const char* s = "UNKNOWN BOARD";
+        if (arm->hw_version < sizeof(hwnames)) {
+            s = hwnames[arm->hw_version];
+        }
+        printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s)\n", device,
+                arm->sw_version, arm->sw_subver, arm->hw_version, arm->hw_subver, s);
+    }
+
+    /* Open fdint for interrupt catcher */
+    arm->fdint = -1;
+
+    if ((gpio == NULL)||(strlen(gpio) == 0)) return 0;
+
+    int fdx = open("/sys/class/gpio/export", O_WRONLY);
+    if (fdx < 0) return 0;
+    write(fdx, gpio, strlen(gpio));
+    close(fdx);
+
+    char gpiobuf[256];
+    sprintf(gpiobuf, "/sys/class/gpio/gpio%s/edge", gpio);
+    fdx = open(gpiobuf, O_WRONLY);
+    if (fdx < 0) return 0;
+    write(fdx, "rising", 6);
+    close(fdx);
+
+    sprintf(gpiobuf, "/sys/class/gpio/gpio%s/value", gpio);
+    arm->fdint = open(gpiobuf, O_RDONLY);
+    if (arm->fdint < 0) return 0;
+
     return 0;
 }
-
-

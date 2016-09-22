@@ -17,7 +17,7 @@
 ##############################################################################################
 # Start of default section
 #
-CC   = $(CCPREFIX)gcc
+CC   = $(CCPREFIX)gcc -g
 CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
  
@@ -35,11 +35,13 @@ CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 #list of src files to include in build process
 
 #SRC =  neuronmb.c
-SRC = armspi.c
-SRC += spicrc.c
+SPISRC = armspi.c
+SPISRC += spicrc.c
+SRC = $(SPISRC) nb_modbus.c armpty.c
 
 # List all directories here
-INCDIRS = libmodbus-master/src
+INCDIRS = libmodbus-master/src\
+          libmodbus-master
 #          $(CORELIBDIR) \
 #          $(STMSPINCDDIR) \
 
@@ -47,7 +49,7 @@ INCDIRS = libmodbus-master/src
 LIBDIRS += $(LIBSDIRS)
  
 # List all user libraries here
-LIBS = modbus
+LIBS = modbus util
  
 # Define optimisation level here
 #OPT = -Ofast
@@ -63,6 +65,7 @@ LIB     = $(patsubst %,-l%, $(LIBS))
 #DEFS    = $(DDEFS) -DRUN_FROM_FLASH=1 -DHSE_VALUE=12000000
 
 OBJS  = $(SRC:.c=.o)
+SPIOBJS  = $(SPISRC:.c=.o)
 
 #CPFLAGS = $(MCFLAGS) $(OPT) -g -gdwarf-3 -mthumb   -fomit-frame-pointer -Wall -Wstrict-prototypes -fverbose-asm -Wa,-ahlms=$(<:.c=.lst) $(DEFS)
 #LDFLAGS = $(MCFLAGS) -g -gdwarf-3 -mthumb -nostartfiles -T$(LINKER_SCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR) $(LIB)
@@ -72,7 +75,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuronspi
+all: $(OBJS) $(PROJECT) neuronspi bandwidth-client
 
 %.o: %.c
 	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@
@@ -80,11 +83,14 @@ all: $(OBJS) $(PROJECT) neuronspi
 $(PROJECT): $(PROJECT).o $(OBJS)
 	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
 
-neuronspi: neuronspi.o $(OBJS)
-	$(CC) neuronspi.o $(OBJS) -o $@
+neuronspi: neuronspi.o $(SPIOBJS)
+	$(CC) neuronspi.o $(SPIOBJS) -o $@
+
+bandwidth-client: bandwidth-client.o $(OBJS)
+	$(CC) bandwidth-client.o $(OBJS) $(LDFLAGS) -o $@
 
 clean:
-	-rm -rf $(OBJS)
+	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex

@@ -33,27 +33,45 @@
 
 int armpty_open(arm_handle* arm, uint8_t uart)
 {
+    static extcomm_counter = 0;
     int masterfd;
     int slavefd;
     uint8_t circuit = arm->index;
     char slavename[256];
     const char dirname[] = "/dev/extcomm";
     char tmp[265];
-    
+
     arm->uart_q[uart].masterpty = -1;
     int n = openpty(&masterfd, &slavefd, slavename, NULL, NULL);
     if (n < 0) {
-        printf("Error opening pty\n");
+        if (arm_verbose) printf("Error opening pty\n");
         return n;
     }
-    printf("Board%d PTY%d %s\n", arm->index, uart, slavename);
-    
+    if (arm_verbose) printf("Board%d PTY%d %s\n", arm->index, uart, slavename);
+
     if ((mkdir(dirname, 0750) < 0) && (errno != EEXIST)) {
         perror("Error creating dir /dev/extcomm");
         close(masterfd);
         return -1; 
     }
-    
+    if (extcomm_counter == 0) {
+        system("rm -rf /dev/extcomm/0");
+        sprintf(tmp, "%s/0", dirname);
+        if ((mkdir(tmp, 0750) < 0)&& (errno != EEXIST)) {
+            perror("Error creating dir /dev/extcomm/0");
+            close(masterfd);
+            return -1;
+        }
+    }
+    sprintf(tmp, "%s/0/%d", dirname, extcomm_counter);
+    n = symlink(slavename, tmp);
+    if (n < 0) {
+        perror("Error creating symlink /dev/extcomm/x/x");
+        close(masterfd);
+        return -1;
+    }
+    extcomm_counter++;
+
     sprintf(tmp, "%s/%d", dirname, circuit+1);
     if ((mkdir(tmp, 0750) < 0)&& (errno != EEXIST)) {
         perror("Error creating dir /dev/extcomm/x");
@@ -67,7 +85,7 @@ int armpty_open(arm_handle* arm, uint8_t uart)
         perror("Error creating symlink /dev/extcomm/x/x");
         close(masterfd);
         return -1;
-    }    
+    }
     // set packet mode
     //int dta[2] = {1,0};
     int dta = 1;
@@ -76,31 +94,31 @@ int armpty_open(arm_handle* arm, uint8_t uart)
         perror("Error termios ");
         close(masterfd);
         return -1;
-    }    
+    }
     struct termios tc;
     n = tcgetattr(masterfd, &tc);
     if (n < 0) {
         perror("Error tcgetattr ");
         close(masterfd);
         return -1;
-    }    
+    }
     //raw mode for data processing 
     cfmakeraw(&tc);
     tc.c_lflag |= IEXTPROC;
-    
+
     n = tcsetattr(masterfd, TCSANOW, &tc);
     if (n < 0) {
         perror("Error tcsetattr ");
         close(masterfd);
         return -1;
-    }    
-    
+    }
+
     int flags = fcntl(masterfd, F_GETFL);
     if (flags == -1) {
         perror("Error fcntl_get ");
         close(masterfd);
         return -1;
-    }    
+    }
     n = fcntl(masterfd, F_SETFL, flags | O_NONBLOCK);
     if (n == -1) {
         perror("Error fcntl_set  NONBLOCK");
@@ -121,12 +139,11 @@ void dpr(uint8_t* buffer, int len, const char* msg)
     for (i = 0; i < len; i++) {
         printf(" %02x", buffer[i]);
     }
-    
+
     printf("\n");
 }
 
 
-static int XXX=0;
 
 int armpty_setuart(int masterfd, arm_handle* arm, uint8_t uart)
 {
@@ -151,9 +168,7 @@ int armpty_setuart(int masterfd, arm_handle* arm, uint8_t uart)
         //    return -1;
         //}
         //write_regs(arm, 1018, 1, conf);
-        //if (conf[0] != XXX) {
             write_regs(arm, 100+2*uart, 1 /*2*/, conf);
-        //    XXX = conf[0];
         //}
         //write_regs(arm, 101+2*uart, 1, &rtu);
     }
@@ -170,7 +185,7 @@ int armpty_readpty(int masterfd, arm_handle* arm, uint8_t uart)
     int rd = read(masterfd, buffer, sizeof(buffer));
     //if (rd >1)
     //    dpr(buffer+1, rd-1, "WR: ");
-    
+
     if (rd > 2) {
         write_string(arm, uart, buffer + 1, rd - 1);
     } else if (rd > 1) {
@@ -186,7 +201,7 @@ int armpty_readuart(arm_handle* arm, int do_idle)
     int n;
     int wanted = sizeof(buffer);
     int nr = 0;
-    
+
     if (do_idle) idle_op(arm);
     while ((n = arm->uart_q[uart].remain) > 0) {
         if (n > wanted) n = wanted;
@@ -199,7 +214,7 @@ int armpty_readuart(arm_handle* arm, int do_idle)
                 //dpr(buffer, nr, "RD: ");
                 int nw = write(arm->uart_q[uart].masterpty, buffer, nr);
                 if (nr != nw ) 
-                    { printf("1 wr: nr=%d nw=%d\n", nr,nw); }
+                    { if (arm_verbose) printf("1 wr: nr=%d nw=%d\n", nr,nw); }
             }
             nr = 0;
             wanted = sizeof(buffer);
@@ -212,7 +227,7 @@ int armpty_readuart(arm_handle* arm, int do_idle)
             //dpr(buffer, nr, "RD: ");
             int nw = write(arm->uart_q[uart].masterpty, buffer, nr);
             if (nr != nw )
-                { printf("2 wr: nr=%d nw=%d\n", nr,nw); }
+                { if (arm_verbose) printf("2 wr: nr=%d nw=%d\n", nr,nw); }
         }
         nr = 0;
     }
@@ -222,7 +237,7 @@ int armpty_readuart(arm_handle* arm, int do_idle)
             //dpr(buffer, nr, "RD: ");
             int nw = write(arm->uart_q[uart].masterpty, buffer, nr);
             if (nr != nw )
-                { printf("3 wr: nr=%d nw=%d\n", nr,nw); }
+                { if (arm_verbose) printf("3 wr: nr=%d nw=%d\n", nr,nw); }
         }
     }
 }

@@ -29,8 +29,8 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 PROJECT        = neuron_tcp_server
  
 # List C source files here
-LIBSDIRS    = libmodbus-master/src/.libs
-CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
+#LIBSDIRS    = libmodbus-master/src/.libs
+#CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
 #list of src files to include in build process
 
@@ -40,8 +40,9 @@ SPISRC += spicrc.c
 SRC = $(SPISRC) nb_modbus.c armpty.c
 
 # List all directories here
-INCDIRS = libmodbus-master/src\
-          libmodbus-master
+#INCDIRS = /usr/local/include/modbus
+#INCDIRS = libmodbus-master/src\
+#          libmodbus-master
 #          $(CORELIBDIR) \
 #          $(STMSPINCDDIR) \
 

@@ -54,12 +54,11 @@
 // vyzkouset jestli neni problem v firmware
 #define SPI_STR_MAX 240
 
-static int be_quiet = 0;
-
+//static int be_quiet = 0;
+int arm_verbose = 0;
 static void pabort(const char *s)
 {
-    if (be_quiet) return;
-    perror(s);
+    if (arm_verbose > 0) perror(s);
     //abort();
 }
 
@@ -238,9 +237,10 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
 int idle_op(arm_handle* arm)
 {
-    be_quiet = 1;
+    int backup = arm_verbose;
+    arm_verbose = 0;
     int n = one_phase_op(arm, ARM_OP_IDLE, 0x0e55, 0);
-    be_quiet = 0;
+    arm_verbose = backup;;
     return n;
 }
 
@@ -390,7 +390,7 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
 
     int ret =  two_phase_op(arm, ARM_OP_READ_STR, uart, len2);
     if (ret < 0) {
-        printf("Error read str %d %d\n", cnt, len2);
+        if (arm_verbose) printf("Error read str %d %d\n", cnt, len2);
         return ret;
     }
 
@@ -459,7 +459,7 @@ const char* hwnames[] = {
     "E-8Di8Ro-1_P-11DiMb485",
     "E-14Ro-1_P-11DiR485-1",
     "E-16Di-1_P-11DiR485-1",
-    "E-14Ro-1_U-14Ro-1"',
+    "E-14Ro-1_U-14Ro-1",
     "E-16Di-1_U-14Ro-1",
     "E-14Ro-1_U-14Di-1",
     "E-16Di-1_U_14Di-1",
@@ -477,7 +477,7 @@ int arm_version(arm_handle* arm)
     arm->ai_count   = (configregs[2]       ) >> 8;
     arm->ao_count   = (configregs[2] & 0xff) >> 4;
     arm->uart_count = (configregs[2] & 0x0f);
-    printf ("uart=%d\n", arm->uart_count);
+    //printf ("uart=%d\n", arm->uart_count);
     arm->uled_count = 0;
     if (arm->sw_version < 4) {
         arm->sw_subver = 0;
@@ -498,6 +498,17 @@ int arm_version(arm_handle* arm)
                 arm->uled_count = 4;
         }
     }
+}
+
+
+const char* arm_name(arm_handle* arm)
+{
+    if (arm->sw_version) {
+        if (arm->hw_version < sizeof(hwnames)) {
+            return hwnames[arm->hw_version];
+        }
+    }
+    return "UNKNOWN BOARD";
 }
 
 
@@ -538,16 +549,13 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     arm->tr[6].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*4);
     arm->tr[6].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*4);
     /* Load firmware and hardware versions */
-    be_quiet = 1;
+    int backup = arm_verbose;
+    arm_verbose = 0;
     arm_version(arm);
-    be_quiet = 0;
+    arm_verbose = backup;
     if (arm->sw_version) {
-        const char* s = "UNKNOWN BOARD";
-        if (arm->hw_version < sizeof(hwnames)) {
-            s = hwnames[arm->hw_version];
-        }
-        printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s)\n", device,
-                arm->sw_version, arm->sw_subver, arm->hw_version, arm->hw_subver, s);
+        if (arm_verbose) printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s)\n", device,
+                arm->sw_version, arm->sw_subver, arm->hw_version, arm->hw_subver, arm_name(arm));
     }
 
     /* Open fdint for interrupt catcher */
@@ -572,4 +580,104 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     if (arm->fdint < 0) return 0;
 
     return 0;
+}
+
+/***************************************************************************************/
+
+int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr)
+{
+    tx->crc = SpiCrcString((uint8_t*)tx, sizeof(arm_comm_firmware) - sizeof(tx->crc), 0);
+    int ret = ioctl(arm->fd, SPI_IOC_MESSAGE(tr_len), tr);
+    if (ret < 1) {
+        pabort("Can't send firmware-op spi message");
+        return -1;
+    }
+    uint16_t crc = SpiCrcString((uint8_t*)rx, sizeof(arm_comm_firmware) - sizeof(rx->crc),0);
+    //printf("a=%0x d=%x crc=%x\n", rx->address, rx->data[0], rx->crc);
+    if (crc != rx->crc) {
+        pabort("Bad crc in firmware operation");
+        return -1;
+    }
+}
+
+int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
+{
+    /* Alloc Tx Rx buffers */
+    arm_comm_firmware* tx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (tx == NULL) return -1;
+    arm_comm_firmware* rx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (rx == NULL) { 
+        free(tx); 
+        return -1; 
+    }
+    /* Transaction array */
+    int i;
+    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+    struct spi_ioc_transfer* tr = calloc(tr_len, sizeof(struct spi_ioc_transfer));  // Alloc transaction array
+    if (tr == NULL) {
+        free(rx); 
+        free(tx); 
+        return -1; 
+    } 
+    tr[0].delay_usecs = 5;                                                          // first transaction has no data
+    for (i=0; i < tr_len-1; i++) {
+        tr[i+1].len = _MAX_SPI_RX;
+        tr[i+1].tx_buf = (unsigned long) tx + (_MAX_SPI_RX*i);
+        tr[i+1].rx_buf = (unsigned long) rx + (_MAX_SPI_RX*i);
+    }
+    tr[tr_len-1].len = ((sizeof(arm_comm_firmware) - 1) % _MAX_SPI_RX) + 1;       // last transaction is shorter
+
+    int prog_bit = 1004;
+    if ((arm->sw_version < 4)||((arm->sw_version == 4)&&(arm->sw_subver == 0))) prog_bit = 104;
+    write_bit(arm, prog_bit, 1);                                                   // start programming in ARM
+    usleep(100000);
+
+    int prev_addr = -1;
+    int len = datalen;
+    uint32_t address = start_address;
+
+    while (len >= 0) {
+        tx->address = address;
+        if (len >= ARM_PAGE_SIZE) {
+            memcpy(tx->data, data + (address-start_address), ARM_PAGE_SIZE);  // read page from file
+            len = len - ARM_PAGE_SIZE;
+        } else if (len != 0) {
+            memcpy(tx->data, data + (address-start_address), len);            // read  page (part) from file
+            memset(tx->data+len, 0xff, ARM_PAGE_SIZE-len);  
+            len = 0;
+        } else {
+            address = 0x400;   // read-only page; operation is performed only for last page confirmation
+            len = -1;
+        }
+        firmware_op(arm, tx, rx, tr_len, tr);
+        if (rx->address != ARM_FIRMWARE_KEY) {
+            if ((address == prev_addr)||(prev_addr == -1)) { 
+                // double error or start error
+                usleep(100000);
+                break;
+            }
+            address = prev_addr;
+            len = datalen - (address-start_address);
+            usleep(100000);
+            continue;
+        }
+        if (prev_addr != -1) if (arm_verbose) printf("%04x OK\n", prev_addr);
+        usleep(100000);
+        prev_addr = address;
+        address = address + ARM_PAGE_SIZE;
+    } 
+
+    tx->address = ARM_FIRMWARE_KEY;  // finish transfer
+    firmware_op(arm, tx, rx, tr_len, tr);
+    if (rx->address != ARM_FIRMWARE_KEY) {
+        if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
+    } else {
+        if (arm_verbose) printf("REBOOTING...\n");
+    }
+
+    // dealloc
+    free(tr); 
+    free(rx); 
+    free(tx);
+    usleep(100000);
 }

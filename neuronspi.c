@@ -19,12 +19,17 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 #include <string.h>
+#include <sys/mman.h>
+
 #include "armspi.h"
 
 
+//#define FILEMODE S_IRWXU | S_IRGRP | S_IROTH
 
 int main(int argc, char *argv[])
 {
+    const char* fwdir = "/opt/fw/";
+
     arm_handle* arm = malloc(sizeof(arm_handle));
 
     arm_init(arm, "/dev/spidev0.1", 12000000, 0, NULL);
@@ -53,11 +58,47 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
+    int n2000 = read_regs(arm, 2000, 30, buffer);
+    printf("n2000=%d\n", n2000);
+    for (i=0; i < n2000; i++) {
+       printf("%5d,",buffer[i]);
+    }
+    printf("\n");
+
     
+    /* Firmware programming */
+    /*
+    int fd, ret;
+    const char* armname = arm_name(arm);
+    char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(".bin") + 1);
+    strcpy(fwname, fwdir);
+    strcat(fwname, armname);
+    strcat(fwname, ".bin");
+    
+    if((fd = open(fwname, O_RDONLY)) >= 0) {
+        struct stat st;
+        if((ret=fstat(fd,&st)) >= 0) {
+            size_t len_file = st.st_size;
+            printf("Sending firware file %s length=%d\n", fwname, len_file);
+            void * data;
+            if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
+                send_firmware(arm, (uint8_t*) data, len_file, 0);
+                munmap(data, len_file);
+            } else {
+                printf("Error mapping firmware file %s to memory\n", fwname);
+            }
+        }
+        close(fd);
+    } else {
+        printf("Error opening firmware file %s\n", fwname);
+    }
+    free(fwname);
+    */
+    /*
     //for (i=0; i<10000; i++) {
     //    if (read_regs(arm, 0, 20, buffer) <= 0 ) { printf("ERR reg 0 iter=%d\n",i); }
-        /*if (read_regs(arm, 0, 50, buffer) <= 0 ) { printf("ERR reg 0 iter=%d\n",i); }
-    //    if (read_regs(arm, 1000, 35, buffer) <= 0 ) { printf("ERR reg 1000 iter=%d\n",i); }*/
+          //if (read_regs(arm, 0, 50, buffer) <= 0 ) { printf("ERR reg 0 iter=%d\n",i); }
+    //    if (read_regs(arm, 1000, 35, buffer) <= 0 ) { printf("ERR reg 1000 iter=%d\n",i); }
     //} 
     
     
@@ -79,24 +120,7 @@ int main(int argc, char *argv[])
 
     //n = read_bits(arm, 0, 16, (uint8_t*)buffer);
     //printf("cnt =%d  %5x \n",n, buffer[0]);
-
-#if 0
-/*  Test of pn_513 */
-    buffer[0] = 0x1002;
-    n = write_regs(arm, 100, 1, buffer);
-    
-    char s[256] = "\x00UU\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x03\xfd\xd4\x14\x01\x17\x00";
-    uint8_t r[256]; 
-    n = write_string(arm,0,s,26);
-    printf("write %d\n",n);
-    usleep(100000);
-    n = read_string(arm,0, r, sizeof(r));
-    printf("read %d\n",n);
-    for (i=0; i<n; i++) {
-       printf("%02x ",r[i]);
-    }
-    printf("\n");
-#endif
+    */
 
     close(arm->fd);
     return 0;

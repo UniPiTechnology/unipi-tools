@@ -29,7 +29,7 @@
 #include <signal.h>
 #include <getopt.h>
 
-#include <modbus.h>
+//#include <modbus.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -43,7 +43,7 @@
 #include "nb_modbus.h"
 
 
-int verbose = 0;
+//int verbose = 0;
 //char spi_devices[3][100] = {"/dev/spidev0.1","/dev/spidev0.3","/dev/spidev0.2"};
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
@@ -51,7 +51,8 @@ int verbose = 0;
 char* spi_devices[MAX_ARMS] = {"/dev/spidev0.1","/dev/spidev0.3","/dev/spidev0.2"};
 int spi_speed[MAX_ARMS] = {12000000,12000000,12000000};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
-
+char* firmwaredir = "/opt/fw";
+int do_check_fw = 0;
 
 #define MAXEVENTS 64
 
@@ -90,9 +91,6 @@ typedef struct {
         };    
         arm_handle* arm;
     };
-//    mb_buffer_t* rd_buffer;
-//    mb_buffer_t* wr_buffer;
-//    arm_handle* arm;
     
 } mb_event_data_t;
 
@@ -193,11 +191,6 @@ int nb_send(int fd, mb_buffer_t* buffer)
 }
 
 
-//int nb_modbus_reply(modbus_t* ctx, mb_buffer_t* buffer)
-//{
-
-//}
-
 
 void debpr(uint8_t* data, int len)
 {
@@ -214,7 +207,7 @@ int parse_buffer(mb_event_data_t* event_data)
 {
     /* There can be more than one request in buffer */
     int result = 0;
-    
+
     while (1) {
         mb_buffer_t* buffer = event_data->rd_buffer;
         if (buffer == NULL) return 0;
@@ -287,12 +280,14 @@ static struct option long_options[] = {
   {"spidev", required_argument, 0, 's'},
   {"interrupts",required_argument, 0, 'i'},
   {"bauds",required_argument, 0, 'b'},
+  {"fwdir", required_argument, 0, 'f'},
+  {"check-firmware", no_argument,0, 'c'},
   {0, 0, 0, 0}
 };
 
 static void print_usage(const char *progname)
 {
-  printf("usage: %s [-v[v]] [-d] [-l listen_address] [-s dev1[,dev2[,dev3]]] [-i gpio1[,gpio2[,gpio3]]] [-b [baud1,..]\n", progname);
+  printf("usage: %s [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-i gpio1[,gpio2[,gpio3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
@@ -370,7 +365,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdl:p:s:i", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:s:i:f", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s]n", argv[optind]);
@@ -415,6 +410,12 @@ int main(int argc, char *argv[])
                exit(EXIT_FAILURE);
            }
            break;
+       case 'f':
+           firmwaredir = strdup(optarg);
+           break;
+       case 'c':
+           do_check_fw = 1;
+           break;
        default:
            print_usage(argv[0]);
            exit(EXIT_FAILURE);
@@ -422,8 +423,9 @@ int main(int argc, char *argv[])
        }
     }
 
-    nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
 
+    nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
+    nb_ctx->fwdir = firmwaredir;
     server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
     if (server_socket == -1) {
         perror ("modbus_tcp_listen");
@@ -443,6 +445,8 @@ int main(int argc, char *argv[])
             if (!(speed > 0)) speed = spi_speed[0];
             if (!(speed > 0)) speed = 12000000;
             add_arm(nb_ctx, ai, dev, speed, gpio_int[ai]);
+            if (nb_ctx->arm[ai] && do_check_fw)
+                arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);
         }
     }
 
@@ -476,7 +480,7 @@ int main(int argc, char *argv[])
             event_data->arm = arm;
             event.events = EPOLLPRI;// | EPOLLET;
             event.data.ptr = event_data;
-            s = epoll_ctl (efd, EPOLL_CTL_ADD, fdint, &event);
+            s = epoll_ctl(efd, EPOLL_CTL_ADD, fdint, &event);
         }
         /* ----- ToDo more Uarts */
         int pi, pty;
@@ -519,11 +523,16 @@ int main(int argc, char *argv[])
         dup (0);                     /* stderror */
     }
 
-    printf("Starting loop\n");
+    if (verbose) printf("Starting loop\n");
     /* The event loop */
     while (1) {
-        int n, i;
 
+        if (deferred_op == DFR_OP_FIRMWARE) {
+            deferred_op = DFR_NONE;
+            arm_firmware(deferred_arm, firmwaredir, FALSE);
+        }
+
+        int n, i;
         n = epoll_wait (efd, events, MAXEVENTS, -1);
         for (i = 0; i < n; i++) {
             event_data = events[i].data.ptr;

@@ -18,16 +18,18 @@
 #include <limits.h>
 #include <time.h>
 #include <unistd.h>
-
-#include <config.h>
-
-#include "modbus.h"
-#include "modbus-private.h"
-#include "modbus-tcp-private.h"
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "nb_modbus.h"
 #include "armspi.h"
 
+int verbose = 0;
+int deferred_op = DFR_NONE;
+arm_handle*  deferred_arm;
+
+#define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
+#define vvprintf( ... ) if (verbose > 1) printf( __VA_ARGS__ )
 
 /* Internal use */
 #define MSG_LENGTH_UNDEFINED -1
@@ -50,23 +52,17 @@ static int nb_response_exception(modbus_t *ctx, int exception_code, uint8_t *rsp
                               const char* template, ...)
 {
     int rsp_length;
-    
+
     /* Print debug message */
-    if (ctx->debug) {
+    if (verbose > 1) {
         va_list ap;
 
         va_start(ap, template);
         vfprintf(stderr, template, ap);
         va_end(ap);
     }
-
-    /* Flush if required */
-    //if (to_flush) {
-    //    _sleep_response_timeout(ctx);
-    //    modbus_flush(ctx);
-    //}
-
-    int offset = ctx->backend->header_length;
+    //int offset = ctx->backend->header_length;
+    int offset = _MODBUS_TCP_HEADER_LENGTH;
     /* Build exception response */
     rsp[offset] = rsp[offset] + 0x80;
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;
@@ -103,7 +99,8 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
         return -1;
     }
 
-    offset = nb_ctx->ctx->backend->header_length;
+    //offset = nb_ctx->ctx->backend->header_length;
+    offset = _MODBUS_TCP_HEADER_LENGTH;
     slave = req[offset - 1];
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
@@ -119,15 +116,15 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
             slave = (address-2000) / 100 + 1;
             address = (address-2000) % 100;
         }
-    }    
+    }
     if (slave < MAX_ARMS) {
         arm = nb_ctx->arm[slave-1];
     } else {
         return nb_response_exception(
-            nb_ctx->ctx, MODBUS_EXCEPTION_GATEWAY_TARGET, rsp, 
+            nb_ctx->ctx, MODBUS_EXCEPTION_GATEWAY_TARGET, rsp,
                     "Illegal slave address 0x%0X\n", slave);
     }
-    
+
     switch (function) {
     case MODBUS_FC_READ_COILS:
     case MODBUS_FC_READ_DISCRETE_INPUTS: {
@@ -185,7 +182,14 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, FALSE,
                 "Illegal data value 0x%0X in write_bit request at address %0X\n", data, address);
         } else {
-            int n = write_bit(arm, address, data ? 1 : 0);
+            int n;
+            if (address == 1004) { // exception for firmware
+                //arm_firmware(arm, nb_ctx->fwdir, data ? 1 : 0);
+                deferred_op = DFR_OP_FIRMWARE;
+                deferred_arm = arm;
+                n = 1;
+            } else
+                n = write_bit(arm, address, data ? 1 : 0);
             if (n == 1) {
                 rsp_length += 4; // = req_length;
             } else {
@@ -264,12 +268,12 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
 
         /* Skip byte count for now */
         byte_count_pos = rsp_length++;
-        rsp[rsp_length++] = _REPORT_SLAVE_ID;
+        rsp[rsp_length++] = _REPORT_MB_SLAVE_ID;
         /* Run indicator status to ON */
         rsp[rsp_length++] = 0xFF;
         /* LMB + length of LIBMODBUS_VERSION_STRING */
         str_len = 3 + strlen(LIBMODBUS_VERSION_STRING);
-        memcpy(rsp + rsp_length, "LMB" LIBMODBUS_VERSION_STRING, str_len);
+        memcpy(rsp + rsp_length, "SPI" LIBMODBUS_VERSION_STRING, str_len);
         rsp_length += str_len;
         rsp[byte_count_pos] = rsp_length - byte_count_pos - 1;
     }
@@ -296,7 +300,7 @@ nb_modbus_t*  nb_modbus_new_tcp(const char *ip_address, int port)
 {
     modbus_t* ctx = modbus_new_tcp(ip_address, port);
     if (ctx == NULL) return NULL;
-    
+
     nb_modbus_t* nb_ctx = calloc(1, sizeof(nb_modbus_t));
     if (nb_ctx == NULL) {
         modbus_free(ctx);
@@ -329,6 +333,7 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
     if (index >= MAX_ARMS) 
         return -1;
 
+    arm_verbose = verbose;
     arm_handle* arm = calloc(1, sizeof(arm_handle));
 
     if (arm == NULL) 
@@ -336,4 +341,114 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
 
     arm_init(arm, device, speed, index, gpio);
     nb_ctx->arm[index] = arm;
+}
+
+
+char* firmware_name(arm_handle* arm, const char* fwdir, const char* ext)
+{
+    const char* armname = arm_name(arm);
+    char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2);
+    strcpy(fwname, fwdir);
+    if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
+    strcat(fwname, armname);
+    strcat(fwname, ext);
+    return fwname;
+}
+
+
+int arm_flash_file(arm_handle* arm, const char* fwname)
+{
+    /* Firmware programming */
+    int fd, ret;
+    void * data;
+    int min_len = 1024;
+
+    if((fd = open(fwname, O_RDONLY)) >= 0) {
+        struct stat st;
+        if((ret=fstat(fd,&st)) >= 0) {
+            size_t len_file = st.st_size;
+            vprintf("Sending firmware file %s length=%d\n", fwname, len_file);
+            if (len_file > min_len) { 
+                if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
+                    send_firmware(arm, (uint8_t*) data, len_file, 0);
+                    munmap(data, len_file);
+                } else {
+                    vprintf("Error mapping firmware file %s to memory\n", fwname);
+                }
+            } else {
+                vprintf("Damaged firmware file %s\n", fwname);
+            }
+        }
+        close(fd);
+    } else {
+        vprintf("Error opening firmware file %s\n", fwname);
+    }
+}
+
+int arm_flash_rw_file(arm_handle* arm, const char* fwname, int overwrite)
+{
+    /* Nvram programming */
+    int fd, ret;
+    void * data;
+    int min_len = 6;
+    uint16_t buffer[128];
+
+    if((fd = open(fwname, O_RDONLY)) >= 0) {
+        struct stat st;
+        if((ret=fstat(fd,&st)) >= 0) {
+            size_t len_file = st.st_size;
+            vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
+            if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) { 
+                int n2000 = read_regs(arm, 2000, len_file/2 ,buffer);
+                if ((n2000 > 0)|| overwrite) {
+                    if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
+                        if (overwrite) {
+                            send_firmware(arm, (uint8_t*) data, len_file,0xe000);
+                        } else {
+                            memcpy(buffer+n2000-1, ((uint8_t*) data) + 2*(n2000-1), len_file - 2*(n2000-1));
+                            send_firmware(arm, (uint8_t*) buffer, len_file,0xe000);
+                        }
+                        munmap(data, len_file);
+                    } else {
+                        vprintf("Error mapping nvram file %s to memory\n", fwname);
+                    }
+                } else {
+                    vprintf("Can't read original nvram\n");
+                }
+            } else {
+                vprintf("Damaged nvram file %s\n", fwname);
+            }
+        }
+        close(fd);
+    } else {
+        vprintf("Error opening nvram file %s\n", fwname);
+    }
+}
+
+
+int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
+{
+    /* Check version */
+    char* fwname = firmware_name(arm, fwdir, ".rw");
+    int fd;
+    uint32_t fwver = 0;
+
+    if((fd = open(fwname, O_RDONLY)) >= 0) {
+        if (lseek(fd, - 4, SEEK_END) >= 0) {
+            if (read(fd, &fwver, 4) == 4) {
+                if (fwver & 0xff) fwver = fwver >> 16;
+            } else fwver = 0; 
+        }
+        close(fd);
+    }
+    free(fwname);
+    if (fwver > ((arm->sw_version << 8) | arm->sw_subver)) {
+        fwname = firmware_name(arm, fwdir, ".rw");
+        arm_flash_rw_file(arm, fwname, overwrite);
+        free(fwname);
+        fwname = firmware_name(arm, fwdir, ".bin");
+        arm_flash_file(arm, fwname);
+        free(fwname);
+        arm_version(arm);
+    }
 }

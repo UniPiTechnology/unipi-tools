@@ -111,10 +111,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
             address = address % 100;
         } else if (address < 2000) {
             slave = (address-1000) / 100 + 1;
-            address = (address-1000) % 100;
+            address = (address-1000) % 100 + 1000;
         } else if (address < 3000) {
             slave = (address-2000) / 100 + 1;
-            address = (address-2000) % 100;
+            address = (address-2000) % 100 + 2000;
         }
     }
     if (slave < MAX_ARMS) {

@@ -78,7 +78,7 @@ int armpty_open(arm_handle* arm, uint8_t uart)
         close(masterfd);
         return -1;
     }
-    sprintf(tmp, "%s/%d/%d", dirname, circuit+1, uart+1);
+    sprintf(tmp, "%s/%d/%d", dirname, circuit+1, uart);
     unlink(tmp);
     n = symlink(slavename, tmp);
     if (n < 0) {

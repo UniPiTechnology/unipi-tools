@@ -115,11 +115,16 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
         } else if (address < 3000) {
             slave = (address-2000) / 100 + 1;
             address = (address-2000) % 100 + 2000;
+        } else {
+            slave = 1;
         }
     }
-    if (slave < MAX_ARMS) {
+    if (slave <= MAX_ARMS) {
         arm = nb_ctx->arm[slave-1];
     } else {
+        arm = NULL;
+    }
+    if (arm == NULL) {
         return nb_response_exception(
             nb_ctx->ctx, MODBUS_EXCEPTION_GATEWAY_TARGET, rsp,
                     "Illegal slave address 0x%0X\n", slave);
@@ -339,8 +344,12 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
     if (arm == NULL) 
         return -1;
 
-    arm_init(arm, device, speed, index, gpio);
-    nb_ctx->arm[index] = arm;
+    if (arm_init(arm, device, speed, index, gpio) == 0) {
+        nb_ctx->arm[index] = arm;
+    } else {
+        free(arm);
+        return -1;
+    }
 }
 
 
@@ -436,7 +445,7 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
     if((fd = open(fwname, O_RDONLY)) >= 0) {
         if (lseek(fd, - 4, SEEK_END) >= 0) {
             if (read(fd, &fwver, 4) == 4) {
-                if (fwver & 0xff) fwver = fwver >> 16;
+                if (fwver & 0xff000000) fwver = fwver >> 16;
             } else fwver = 0; 
         }
         close(fd);

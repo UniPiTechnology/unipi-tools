@@ -365,10 +365,10 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:s:i:f", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:s:i:f:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
-               printf ("non-option ARGV-element: %s]n", argv[optind]);
+               printf ("non-option ARGV-element: %s\n", argv[optind]);
                exit(EXIT_FAILURE);
             }
             break;
@@ -439,6 +439,7 @@ int main(int argc, char *argv[])
     /* Create arm handles */
     int ai;
     for (ai=0; ai<MAX_ARMS; ai++) {
+        nb_ctx->arm[ai] = NULL;
         char* dev=spi_devices[ai];
         if ((dev != NULL) && (strlen(dev)>0)) {
             int speed = spi_speed[ai];

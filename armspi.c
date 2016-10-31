@@ -462,7 +462,7 @@ const char* hwnames[] = {
     "E-14Ro-1_U-14Ro-1",
     "E-16Di-1_U-14Ro-1",
     "E-14Ro-1_U-14Di-1",
-    "E-16Di-1_U_14Di-1",
+    "E-16Di-1_U-14Di-1",
 };
 
 int arm_version(arm_handle* arm)
@@ -556,6 +556,9 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     if (arm->sw_version) {
         if (arm_verbose) printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s)\n", device,
                 arm->sw_version, arm->sw_subver, arm->hw_version, arm->hw_subver, arm_name(arm));
+    } else {
+        close(arm->fd);
+        return -1;
     }
 
     /* Open fdint for interrupt catcher */

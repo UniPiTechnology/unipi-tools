@@ -38,7 +38,7 @@
 #define ARM_OP_IDLE        0xfa
 
 
-// on RPI 2 doesn't work transfer longer then 94 bytes. Must be divided into chunks
+// !!!! on RPI 2,3 doesn't work transfer longer then 94 bytes. Must be divided into chunks
 //#define _MAX_SPI_RX  94
 #define _MAX_SPI_RX  64
 //#define _MAX_SPI_RX  256
@@ -155,9 +155,13 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     arm->tx1.op = op;
     arm->tx1.reg = reg;
     arm->tx1.len = len2 & 0xff;        //set len in chunk1 to length of chunk2 (without crc)
+    arm->tr[1].delay_usecs = 25;              // set delay after first phase
     if (op != ARM_OP_WRITE_STR) {
-       ac_header(arm->tx2)->op  = op;  // op and reg in chunk2 is the same
-       ac_header(arm->tx2)->reg = reg;
+        ac_header(arm->tx2)->op  = op;  // op and reg in chunk2 is the same
+        ac_header(arm->tx2)->reg = reg;
+        if (len2 > 60) {
+            arm->tr[1].delay_usecs += (len2-60)/2;  // add more delay
+        }
     }
     tr_len2 = (len2 & 1) ? len2+1 : len2;         //transaction length must be even
     crc = SpiCrcString((uint8_t*)&arm->tx1, SIZEOF_HEADER, 0);
@@ -166,8 +170,6 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     ((uint16_t*)arm->tx2)[tr_len2>>1] = crc;
 
     ac_header(arm->rx2)->op  = op;                // 'destroy' content of receiving buffer
-    arm->tr[1].delay_usecs = 25;                  // set delay after first phase
-
     uint32_t total = tr_len2 + CRC_SIZE;
 
     if (total <= _MAX_SPI_RX) {
@@ -450,8 +452,8 @@ int read_qstring(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
     return 0;
 }
 
-
-const char* hwnames[] = {
+#define HW_COUNT 13
+const char* hwnames[HW_COUNT] = {
     "B-1000-1",
     "E-8Di8Ro-1",
     "E-14Ro-1",
@@ -463,6 +465,8 @@ const char* hwnames[] = {
     "E-16Di-1_U-14Ro-1",
     "E-14Ro-1_U-14Di-1",
     "E-16Di-1_U-14Di-1",
+    "E-4Ai4Ao-1",
+    "E-4Ai4Ao-1_P-6Di5Ro-1",
 };
 
 int arm_version(arm_handle* arm)
@@ -504,7 +508,7 @@ int arm_version(arm_handle* arm)
 const char* arm_name(arm_handle* arm)
 {
     if (arm->sw_version) {
-        if (arm->hw_version < sizeof(hwnames)) {
+        if (arm->hw_version < HW_COUNT) {
             return hwnames[arm->hw_version];
         }
     }

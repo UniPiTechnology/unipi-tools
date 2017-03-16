@@ -486,7 +486,7 @@ int main(int argc, char *argv[])
         /* ----- ToDo more Uarts */
         int pi, pty;
         //printf ("uarts = %d\n", arm->uart_count);
-        for (pi=0; pi < arm->uart_count; pi++) {
+        for (pi=0; pi < arm->bv.uart_count; pi++) {
             pty = armpty_open(arm, pi);
             if (pty >= 0) {
                 event_data = calloc(1, sizeof(mb_event_data_t));

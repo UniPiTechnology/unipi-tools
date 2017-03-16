@@ -32,11 +32,16 @@ PROJECT        = neuron_tcp_server
 #LIBSDIRS    = libmodbus-master/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
+LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a
+DFLAGS2  = -Ilibmodbus-master/src
+
+
 #list of src files to include in build process
 
 #SRC =  neuronmb.c
 SPISRC = armspi.c
 SPISRC += spicrc.c
+SPISRC += armutil.c
 SRC = $(SPISRC) nb_modbus.c armpty.c
 
 # List all directories here
@@ -83,6 +88,17 @@ all: $(OBJS) $(PROJECT) neuronspi bandwidth-client
 
 $(PROJECT): $(PROJECT).o $(OBJS)
 	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
+
+fwspi:  fwspi.o $(SPIOBJS)
+	$(CC) fwspi.o $(SPIOBJS) -o $@
+
+fwserial.o: fwserial.c
+	$(CC) -c $(DFLAGS2)  $< -o $@
+
+fwserial: fwserial.o armutil.o
+	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
+	chmod +x fwserial
+
 
 neuronspi: neuronspi.o $(SPIOBJS)
 	$(CC) neuronspi.o $(SPIOBJS) -o $@

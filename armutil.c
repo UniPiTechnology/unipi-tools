@@ -69,7 +69,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 14
+#define HW_COUNT 15
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -85,6 +85,7 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {11, 11,0, "E-4Ai4Ao"},
     {12, 11,4, "E-4Ai4Ao_P-6Di5Ro",},         //"E-4Ai4Ao_P-6Di5Ro"},
     {13, 0,13, "B-485"},
+    {14, 14,0, "E-4Dali"},
 };
 
 Tcompatibility_map* get_map(int board)

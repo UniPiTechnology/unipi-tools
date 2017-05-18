@@ -49,7 +49,7 @@
 //char gpio_int[3][5] = { "27", "23", "22" };
 
 char* spi_devices[MAX_ARMS] = {"/dev/spidev0.1","/dev/spidev0.3","/dev/spidev0.2"};
-int spi_speed[MAX_ARMS] = {12000000,12000000,12000000};
+int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/fw";
 int do_check_fw = 0;
@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
         if ((dev != NULL) && (strlen(dev)>0)) {
             int speed = spi_speed[ai];
             if (!(speed > 0)) speed = spi_speed[0];
-            if (!(speed > 0)) speed = 12000000;
+            //if (!(speed > 0)) speed = 12000000;
             add_arm(nb_ctx, ai, dev, speed, gpio_int[ai]);
             if (nb_ctx->arm[ai] && do_check_fw)
                 arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);

@@ -519,7 +519,7 @@ int arm_version(arm_handle* arm)
 */
 
 //const char* GPIO_INT[] = { "27", "23", "22" };
-
+#define START_SPI_SPEED 5000000
 int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, const char* gpio)
 {
     arm->fd = open(device, O_RDWR);
@@ -529,7 +529,11 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
         return -1;
     }
     //set_spi_mode(fd,0);
-    set_spi_speed(arm->fd, speed);
+    if (speed==0) {
+        set_spi_speed(arm->fd, START_SPI_SPEED);
+    } else {
+        set_spi_speed(arm->fd, speed);
+    }
     arm->index = index;
 
     int i;
@@ -561,12 +565,20 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     if (read_regs(arm, 1000, 5, configregs) == 5)
         parse_version(&arm->bv, configregs);
     //arm_version(arm);
+    if (speed == 0) {
+        speed = get_board_speed(&arm->bv);
+        set_spi_speed(arm->fd, speed);
+        if (read_regs(arm, 1000, 5, configregs) != 5) {
+            set_spi_speed(arm->fd, START_SPI_SPEED);
+            speed = START_SPI_SPEED;
+        }
+    }
     arm_verbose = backup;
     if (arm->bv.sw_version) {
-        if (arm_verbose) printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s)\n", device,
+        if (arm_verbose) printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s) (spi %dMHz)\n", device,
                 SW_MAJOR(arm->bv.sw_version), SW_MINOR(arm->bv.sw_version),
                 HW_BOARD(arm->bv.hw_version), HW_MAJOR(arm->bv.hw_version),
-                arm_name(arm->bv.hw_version));
+                arm_name(arm->bv.hw_version), speed / 1000000);
     } else {
         close(arm->fd);
         return -1;

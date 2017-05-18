@@ -31,7 +31,7 @@ typedef struct {
   uint8_t board;
   uint8_t baseboard;
   uint8_t upboard;
-  const char*   name; 
+  const char*   name;
 } Tcompatibility_map;
 
 typedef struct {
@@ -48,13 +48,14 @@ typedef struct {
     {11,"E-4Ai4Ao"},
 };*/
 
-#define UP_COUNT 6
+#define UP_COUNT 7
 Tboards_map up_boards[] = {
     {0, 0, ""}, 
     {1, 16, "P-11DiR485"},
     {2, 16, "U-14Ro"},
     {3, 16, "U-14Di"},
     {4, 16, "P-6Di5Ro"},
+    {5, 16, "U-6Di5Ro"},
     {13,16, "B-485"},
 };
 
@@ -69,7 +70,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 15
+#define HW_COUNT 16
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -86,6 +87,7 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {12, 11,4, "E-4Ai4Ao_P-6Di5Ro",},         //"E-4Ai4Ao_P-6Di5Ro"},
     {13, 0,13, "B-485"},
     {14, 14,0, "E-4Dali"},
+    {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
 };
 
 Tcompatibility_map* get_map(int board)
@@ -160,6 +162,14 @@ int check_compatibility(int hw_base, int upboard)
         }
     }
     return 0;
+}
+
+int get_board_speed(Tboard_version* bv)
+{
+    // E-4Ai4Ao* - used Digital Isolator on SPI - speed max 8MHz
+    if (HW_BOARD(bv->base_hw_version) == 11) return 8000000;
+    // Default speed 12MHz
+    return 12000000;
 }
 
 void print_upboards(int filter)

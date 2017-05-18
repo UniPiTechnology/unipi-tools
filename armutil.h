@@ -33,5 +33,6 @@ char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* 
 void print_upboards(int filter);
 int upboard_exists(int board);
 int check_compatibility(int hw_base, int upboard);
+int get_board_speed(Tboard_version* bv);
 
 #endif

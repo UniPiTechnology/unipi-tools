@@ -81,17 +81,6 @@ typedef struct {
     uint8_t rx2[SNIPLEN2 + CRC_SIZE + 40];
     struct spi_ioc_transfer tr[7];     // Transaction structure for 5 chunks
     Tboard_version bv;
-/*    uint8_t sw_version;
-    uint8_t sw_subver;
-    uint8_t hw_version;
-    uint8_t hw_subver;
-    uint8_t di_count;
-    uint8_t do_count;
-    uint8_t ai_count;
-    uint8_t ao_count;
-    uint8_t uart_count;*/
-    uint8_t uled_count;
-    uint16_t int_mask_register;
     uart_queue uart_q[4];              // local queue for uarts on arm
 }  arm_handle;
 

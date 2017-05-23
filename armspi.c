@@ -453,70 +453,6 @@ int read_qstring(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
     return 0;
 }
 
-/*#define HW_COUNT 13
-const char* hwnames[HW_COUNT] = {
-    "B-1000-1",
-    "E-8Di8Ro-1",
-    "E-14Ro-1",
-    "E-16Di-1",
-    "E-8Di8Ro-1_P-11DiMb485",
-    "E-14Ro-1_P-11DiR485-1",
-    "E-16Di-1_P-11DiR485-1",
-    "E-14Ro-1_U-14Ro-1",
-    "E-16Di-1_U-14Ro-1",
-    "E-14Ro-1_U-14Di-1",
-    "E-16Di-1_U-14Di-1",
-    "E-4Ai4Ao-1",
-    "E-4Ai4Ao-1_P-6Di5Ro-1",
-};
-*/
-/*
-int arm_version(arm_handle* arm)
-{
-    uint16_t configregs[10];
-    int n = read_regs(arm, 1000, 5, configregs);
-    if (n < 0) return n;
-    if (n != 5) return -1; // unknown error, all Neuron boards has more than 5 config registers
-    arm->sw_version = configregs[0] >> 8;
-    arm->di_count   = (configregs[1]       ) >> 8;
-    arm->do_count   = (configregs[1] & 0xff);
-    arm->ai_count   = (configregs[2]       ) >> 8;
-    arm->ao_count   = (configregs[2] & 0xff) >> 4;
-    arm->uart_count = (configregs[2] & 0x0f);
-    //printf ("uart=%d\n", arm->uart_count);
-    arm->uled_count = 0;
-    if (arm->sw_version < 4) {
-        arm->sw_subver = 0;
-        arm->hw_version = (configregs[0] & 0xff) >> 4;
-        arm->hw_subver  = (configregs[0] & 0xf);
-        arm->int_mask_register = 1003;
-    } else {
-        arm->sw_subver = (configregs[0] & 0xff);
-        arm->hw_version = (configregs[3]) >> 8;
-        arm->hw_subver  = (configregs[3] & 0xff);
-        if (arm->hw_subver < 3) {
-           arm->int_mask_register = 1004;
-        } else {
-           arm->int_mask_register = 1007;
-        }
-        if (arm->hw_version == 0) {
-            if (configregs[0] != 0x0400)
-                arm->uled_count = 4;
-        }
-    }
-}
-*/
-
-/*const char* arm_name(arm_handle* arm)
-{
-    if (arm->sw_version) {
-        if (arm->hw_version < HW_COUNT) {
-            return hwnames[arm->hw_version];
-        }
-    }
-    return "UNKNOWN BOARD";
-}
-*/
 
 //const char* GPIO_INT[] = { "27", "23", "22" };
 #define START_SPI_SPEED 5000000
@@ -575,7 +511,8 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     }
     arm_verbose = backup;
     if (arm->bv.sw_version) {
-        if (arm_verbose) printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s) (spi %dMHz)\n", device,
+        if (arm_verbose) 
+            printf("Board on %s firmware=%d.%d  hardware=%d.%d (%s) (spi %dMHz)\n", device,
                 SW_MAJOR(arm->bv.sw_version), SW_MINOR(arm->bv.sw_version),
                 HW_BOARD(arm->bv.hw_version), HW_MAJOR(arm->bv.hw_version),
                 arm_name(arm->bv.hw_version), speed / 1000000);

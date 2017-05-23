@@ -128,7 +128,8 @@ int armpty_open(arm_handle* arm, uint8_t uart)
     arm->uart_q[uart].masterpty = masterfd;
     uint16_t interrupt_mask = 5;
     if (arm->bv.sw_version)
-        write_regs(arm, arm->int_mask_register, 1, &interrupt_mask);
+        write_regs(arm, arm->bv.int_mask_register, 1, &interrupt_mask);
+        //printf("int mask : reg=%d mask=%x\n" , arm->bv.int_mask_register, interrupt_mask);
     return masterfd;
 }
 

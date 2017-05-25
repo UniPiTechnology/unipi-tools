@@ -539,7 +539,7 @@ int main(int argc, char *argv[])
             event_data = events[i].data.ptr;
             /* ..  Check Interrupts .. */
             if (event_data->type == ED_INTERRUPT) {
-                //printf("INT on arm%d\n", event_data->arm->index);
+                if (verbose>1) printf("INT on arm%d\n", event_data->arm->index);
                 if ((events[i].events & EPOLLPRI) && (event_data->arm != NULL)) {
                     uint16_t intval;
                     fdint = event_data->fd;

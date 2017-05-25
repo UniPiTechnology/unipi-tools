@@ -213,4 +213,5 @@ int parse_version(Tboard_version* bv, uint16_t *r1000)
                 bv->uled_count = 4;
         }
     }
+    if (bv->base_hw_version == 0x0b10) bv->int_mask_register = 0;   // 4Ai4Ao has not interrupt
 }

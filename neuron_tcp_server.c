@@ -60,6 +60,7 @@ int do_check_fw = 0;
 
 #define MAX_MB_BUFFER_LEN   MODBUS_TCP_MAX_ADU_LENGTH
 #define MB_BUFFER_COUNT  128;
+#define DEFAULT_POLL_TIMEOUT 20             // milisec
 
 nb_modbus_t *nb_ctx = NULL;
 int server_socket;
@@ -353,6 +354,7 @@ int main(int argc, char *argv[])
     int tcp_port = 502;
     char listen_address[100] = "0.0.0.0";
 
+    int poll_timeout = -1;
     int daemon = 0;
     int server_socket;
     int s;
@@ -482,6 +484,8 @@ int main(int argc, char *argv[])
             event.events = EPOLLPRI;// | EPOLLET;
             event.data.ptr = event_data;
             s = epoll_ctl(efd, EPOLL_CTL_ADD, fdint, &event);
+        } else {
+            poll_timeout = DEFAULT_POLL_TIMEOUT;
         }
         /* ----- ToDo more Uarts */
         int pi, pty;
@@ -501,6 +505,7 @@ int main(int argc, char *argv[])
     }
 
 
+    if (verbose) printf ("poll timeout = %d[ms]\n", poll_timeout);
     /* Prepare buffer pool */
     pool_allocate();
 
@@ -534,7 +539,7 @@ int main(int argc, char *argv[])
         }
 
         int n, i;
-        n = epoll_wait (efd, events, MAXEVENTS, -1);
+        n = epoll_wait (efd, events, MAXEVENTS, poll_timeout);
         for (i = 0; i < n; i++) {
             event_data = events[i].data.ptr;
             /* ..  Check Interrupts .. */
@@ -700,12 +705,17 @@ int main(int argc, char *argv[])
                     if (count < wanted) break; //?? je to spravne ??
                 } /* while */
             } /* if EPOLLIN */
-            /*for (ai=0; ai < MAX_ARMS; ai++) {
-                arm_handle* arm = nb_ctx->arm[ai];
-                if (arm->uart_count>0)
-                    armpty_readuart(arm, 0);
-            }*/
             /* End of one event */
+        }
+        if (poll_timeout > 0) {
+          for (ai=0; ai < MAX_ARMS; ai++) {
+            arm_handle* arm = nb_ctx->arm[ai];
+            if (arm == NULL) continue;
+            if ((arm->bv.int_mask_register <= 0) && (arm->bv.uart_count>0)) {
+                if (verbose > 2) printf("readpty..\n");
+                armpty_readuart(arm, 1);
+            }
+          }
         }
     }
 }

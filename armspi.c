@@ -524,7 +524,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     /* Open fdint for interrupt catcher */
     arm->fdint = -1;
 
-    if ((gpio == NULL)||(strlen(gpio) == 0)) return 0;
+    if ((gpio == NULL)||(strlen(gpio) == 0)||(arm->bv.int_mask_register<=0)) return 0;
 
     int fdx = open("/sys/class/gpio/export", O_WRONLY);
     if (fdx < 0) return 0;

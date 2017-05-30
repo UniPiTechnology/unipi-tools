@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:s:b:i:f:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:t:s:b:i:f:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);

@@ -278,6 +278,7 @@ static struct option long_options[] = {
   {"daemon",  no_argument,       0, 'd'},
   {"listen",  required_argument, 0, 'l'},
   {"port",    required_argument, 0, 'p'},
+  {"timeout", required_argument, 0, 't'},
   {"spidev", required_argument, 0, 's'},
   {"interrupts",required_argument, 0, 'i'},
   {"bauds",required_argument, 0, 'b'},
@@ -354,7 +355,7 @@ int main(int argc, char *argv[])
     int tcp_port = 502;
     char listen_address[100] = "0.0.0.0";
 
-    int poll_timeout = -1;
+    int poll_timeout = 0;
     int daemon = 0;
     int server_socket;
     int s;
@@ -367,7 +368,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:s:i:f:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:s:b:i:f:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -390,6 +391,13 @@ int main(int argc, char *argv[])
        case 'p':
            tcp_port = atoi(optarg);
            if (tcp_port==0) {
+               printf("Port must be non-zero integer (given %s)\n", optarg);
+               exit(EXIT_FAILURE);
+           }
+           break;
+       case 't':
+           poll_timeout = atoi(optarg);
+           if (poll_timeout==0) {
                printf("Port must be non-zero integer (given %s)\n", optarg);
                exit(EXIT_FAILURE);
            }
@@ -485,7 +493,9 @@ int main(int argc, char *argv[])
             event.data.ptr = event_data;
             s = epoll_ctl(efd, EPOLL_CTL_ADD, fdint, &event);
         } else {
-            poll_timeout = DEFAULT_POLL_TIMEOUT;
+            if (poll_timeout == 0) {
+                poll_timeout = DEFAULT_POLL_TIMEOUT;
+            }
         }
         /* ----- ToDo more Uarts */
         int pi, pty;
@@ -504,7 +514,7 @@ int main(int argc, char *argv[])
         }
     }
 
-
+    if (poll_timeout == 0) poll_timeout = -1; 
     if (verbose) printf ("poll timeout = %d[ms]\n", poll_timeout);
     /* Prepare buffer pool */
     pool_allocate();

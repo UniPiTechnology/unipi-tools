@@ -202,12 +202,17 @@ int armpty_readuart(arm_handle* arm, int do_idle)
     int n;
     int wanted = sizeof(buffer);
     int nr = 0;
+    int tries = 3;
 
     if (do_idle) idle_op(arm);
     while ((n = arm->uart_q[uart].remain) > 0) {
         if (n > wanted) n = wanted;
         n = read_string(arm, uart, buffer + nr, n);
-        if (n < 0) break;
+        if (n < 0) {
+            if (--tries) continue;
+            break;
+        }
+        tries = 3;
         wanted -= n; 
         nr += n;
         if (wanted == 0) {

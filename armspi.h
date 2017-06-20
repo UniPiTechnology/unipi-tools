@@ -104,5 +104,6 @@ void finish_firmware(void*  ctx);
 
 //int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
 extern int arm_verbose;
+extern int nss_pause;
 
 #endif

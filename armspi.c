@@ -54,9 +54,11 @@
 //    255 - sizeof(arm_comm_header) = 251 -> 250(sude cislo) znaku 
 // vyzkouset jestli neni problem v firmware
 #define SPI_STR_MAX 240
+#define NSS_PAUSE_DEFAULT  10
 
 //static int be_quiet = 0;
 int arm_verbose = 0;
+int nss_pause = NSS_PAUSE_DEFAULT;
 static void pabort(const char *s)
 {
     if (arm_verbose > 0) perror(s);
@@ -147,6 +149,7 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value)
     return -1;
 }
 
+char errmsg[256];
 int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 {
     int ret;
@@ -234,7 +237,9 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     if ((*((uint32_t*)&arm->rx1) & 0xffff00ff) == IDLE_PATTERN) {
         return 0;
     }
-    pabort("Unexpcted reply in two phase operation");
+    sprintf(errmsg,"Unexpcted reply in two phase operation %02x %02x %04x %04x", 
+            arm->rx1.op, arm->rx1.len, arm->rx1.reg, arm->rx1.crc);
+    pabort(errmsg);
     return -1;
 }
 
@@ -480,7 +485,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     }
     // Prepare transactional structure
     memset(arm->tr, 0, sizeof(arm->tr));
-    arm->tr[0].delay_usecs = 5;    // starting pause between NSS and SCLK
+    arm->tr[0].delay_usecs = nss_pause;    // starting pause between NSS and SCLK
     arm->tr[1].tx_buf = (unsigned long) &arm->tx1;
     arm->tr[1].rx_buf = (unsigned long) &arm->rx1;
     arm->tr[1].len = SNIPLEN1;

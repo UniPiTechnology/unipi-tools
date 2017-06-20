@@ -279,6 +279,7 @@ static struct option long_options[] = {
   {"listen",  required_argument, 0, 'l'},
   {"port",    required_argument, 0, 'p'},
   {"timeout", required_argument, 0, 't'},
+  {"nsspause", required_argument, 0, 'n'},
   {"spidev", required_argument, 0, 's'},
   {"interrupts",required_argument, 0, 'i'},
   {"bauds",required_argument, 0, 'b'},
@@ -358,7 +359,7 @@ int main(int argc, char *argv[])
     int poll_timeout = 0;
     int daemon = 0;
     int server_socket;
-    int s;
+    int s, nss;
     int efd;
     struct epoll_event event;
     struct epoll_event *events;
@@ -368,7 +369,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:t:s:b:i:f:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:t:s:b:i:f:n:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -398,8 +399,17 @@ int main(int argc, char *argv[])
        case 't':
            poll_timeout = atoi(optarg);
            if (poll_timeout==0) {
-               printf("Port must be non-zero integer (given %s)\n", optarg);
+               printf("Timeout must be non-zero integer (given %s)\n", optarg);
                exit(EXIT_FAILURE);
+           }
+           break;
+       case 'n':
+           nss = atoi(optarg);
+           if (nss <= 0) {
+               printf("Nss pause must be non-zero integer (given %s)\n", optarg);
+               exit(EXIT_FAILURE);
+           } else {
+               nss_pause = nss;
            }
            break;
        case 's':

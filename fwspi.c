@@ -292,6 +292,7 @@ int main(int argc, char **argv)
         if (verbose) printf("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
         int rwred = RW_START_PAGE;
+        int rwlen = 0;
         free(fwname);
         if (red <= 0) {
             if (red == 0) {
@@ -310,7 +311,7 @@ int main(int argc, char **argv)
             rw_data = malloc(MAX_RW_SIZE);
             char* rwname = firmware_name( bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
             if (verbose) printf("Opening RW settings file: %s\n", rwname);
-            int rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
+            rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
             free(rwname);
             // calc page count of firmware file
             rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
@@ -329,7 +330,7 @@ int main(int argc, char **argv)
             void * fwctx = start_firmware(ctx);
             if (fwctx != NULL) {
                 send_firmware(fwctx, prog_data, red, 0);
-                if (do_resetrw) send_firmware(fwctx, rw_data, rwred, 0xe000);
+                if (do_resetrw) send_firmware(fwctx, rw_data, rwlen, 0xe000);
                 finish_firmware(fwctx);
             }
             //flashit(ctx,prog_data, rw_data, red, rwred);

@@ -13,6 +13,7 @@
 #define __nb_modbus_h
 
 #include <modbus.h>
+#include <modbus-tcp.h>
 
 #include "armspi.h"
 

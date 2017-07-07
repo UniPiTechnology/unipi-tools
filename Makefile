@@ -64,14 +64,13 @@ LIBDIRS += $(LIBSDIRS)
  
 # List all user libraries here
 LIBS = modbus util
- 
 # Define optimisation level here
 #OPT = -Ofast
 #OPT = -Os
  
 
 INCDIR  = $(patsubst %,-I%, $(INCDIRS))
-# LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
+LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
 LIB     = $(patsubst %,-l%, $(LIBS))
 ##reference only flags for run from ram...not used here
 ##DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
@@ -112,6 +111,7 @@ fwserial: fwserial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
 	chmod +x fwserial
 
+# SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
 win32_serial.o: win32_serial.c
 	$(CC) -Wno-deprecated-declarations -c $(DFLAGS2) $(DFLAGS3)  $< -o $@
@@ -120,8 +120,8 @@ fwserial-win: win32_serial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(LDFLAGS3) $(DFLAGS2) $(DFLAGS3) -o neuron_fw_utility -lgtk-3-0 -lglib-2.0-0 -lgobject-2.0-0
 endif
 
-neuronspi: neuronspi.o $(SPIOBJS)
-	$(CC) neuronspi.o $(SPIOBJS) -o $@
+neuronspi:
+	$(shell cp neuronspi.c /root/kernel/neuron-spi) 
 
 bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@

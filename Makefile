@@ -32,14 +32,14 @@ PROJECT        = neuron_tcp_server
 
 
 # List C source files here
-#LIBSDIRS    = libmodbus-master/src/.libs
+LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a 
+LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.a 
 ifdef SYSTEMROOT
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.dll.a
+LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
 endif
-DFLAGS2  = -Ilibmodbus-master/src
+DFLAGS2  = -Ilibmodbus-3.1.4/src
 
 LDFLAGS3 = -L c:\MinGW\bin
 DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/include -Igtk/include/pango-1.0 -Igtk/include/cairo -Igtk/include/gdk-pixbuf-2.0 -Igtk/include/atk-1.0
@@ -54,10 +54,10 @@ SRC = $(SPISRC) nb_modbus.c armpty.c
 
 # List all directories here
 #INCDIRS = /usr/local/include/modbus
-#INCDIRS = libmodbus-master/src\
-#          libmodbus-master
-#          $(CORELIBDIR) \
-#          $(STMSPINCDDIR) \
+INCDIRS = libmodbus-3.1.4/src\
+          libmodbus-3.1.4
+          $(CORELIBDIR) \
+          $(STMSPINCDDIR) 
 
 # List the user directory to look for the libraries here
 LIBDIRS += $(LIBSDIRS)

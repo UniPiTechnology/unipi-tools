@@ -466,8 +466,9 @@ int main(int argc, char *argv[])
             if (!(speed > 0)) speed = spi_speed[0];
             //if (!(speed > 0)) speed = 12000000;
             add_arm(nb_ctx, ai, dev, speed, gpio_int[ai]);
-            if (nb_ctx->arm[ai] && do_check_fw)
+            if (nb_ctx->arm[ai] && do_check_fw) {
                 arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);
+            }
         }
     }
 

@@ -23,7 +23,7 @@
 #include <sys/time.h>
 #include <errno.h>
 
-#include <modbus/modbus.h>
+#include <modbus.h>
 
 #define G_MSEC_PER_SEC 1000
 

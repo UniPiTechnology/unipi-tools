@@ -12,7 +12,7 @@
 #ifndef __nb_modbus_h
 #define __nb_modbus_h
 
-#include <modbus/modbus.h>
+#include <modbus.h>
 
 #include "armspi.h"
 

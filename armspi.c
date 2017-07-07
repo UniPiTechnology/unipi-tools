@@ -51,7 +51,7 @@
 
 #define IDLE_PATTERN 0x0e5500fa
 // hodnota 240 znaku by pravdepodobne mela byt spise 
-//    255 - sizeof(arm_comm_header) = 251 -> 250(sude cislo) znaku 
+//    255 - sizeof(arm_comm_header) = 251 -> 250(even number) characters
 // vyzkouset jestli neni problem v firmware
 #define SPI_STR_MAX 240
 #define NSS_PAUSE_DEFAULT  10
@@ -108,7 +108,7 @@ void set_spi_speed(int fd, uint32_t speed)
 
 void queue_uart(uart_queue* queue, uint8_t chr1, uint8_t len)
 {
-    queue->remain = (len==0) ? 255 : len - 1;  // len==0 means 256 byte in remote queue
+    queue->remain = (len==0) ? 255 : len - 1;  // len==0 means 256 bytes in remote queue
     if (queue->index < MAX_LOCAL_QUEUE_LEN) {
         queue->buffer[queue->index++] = chr1;
     } else {
@@ -145,7 +145,7 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value)
         queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
         return 0;
     }
-    pabort("Unexpcted reply in one-phase operation");
+    pabort("Unexpected reply in one-phase operation");
     return -1;
 }
 
@@ -155,6 +155,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     int ret;
     uint16_t tr_len2;
     uint16_t crc;
+
     // Prepare chunk1
     arm->tx1.op = op;
     arm->tx1.reg = reg;
@@ -173,9 +174,17 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     crc = SpiCrcString(arm->tx2, tr_len2, crc);   // crc of second phase
     ((uint16_t*)arm->tx2)[tr_len2>>1] = crc;
 
+
     ac_header(arm->rx2)->op  = op;                // 'destroy' content of receiving buffer
     uint32_t total = tr_len2 + CRC_SIZE;
-
+    uint8_t char_package[total + 10];
+    memset(char_package, 0, sizeof(char_package));
+    memmove(char_package+8,&arm->tx2,total);
+    char_package[0] = (uint8_t)arm->index;
+    *((uint16_t *)&char_package[1]) = reg;
+    int fd = open("/dev/neuronspi", O_RDWR);
+    write(fd, char_package, total);
+    close(fd);
     if (total <= _MAX_SPI_RX) {
         arm->tr[2].len = total;
         ret = ioctl(arm->fd, SPI_IOC_MESSAGE(3), arm->tr);
@@ -208,8 +217,6 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         pabort("can't send two-phase spi message");
         return ret;
     }
-
-    //return -1; // ---------------- smazat 
     
     //printf("rx1=%x\n", *((uint32_t*)&arm->rx1));
     crc = SpiCrcString((uint8_t*)&arm->rx1, SIZEOF_HEADER, 0);
@@ -289,7 +296,7 @@ int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
     }
 
     if (ac_header(arm->rx2)->op != ARM_OP_WRITE_REG) {
-        pabort("Unexpcted reply in WRITE_REG");
+        pabort("Unexpected reply in WRITE_REG");
         return -1;
     }
     cnt =  ac_header(arm->rx2)->len;
@@ -310,7 +317,7 @@ int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result)
 
     if ((ac_header(arm->rx2)->op != ARM_OP_READ_BIT) || 
         (ac_header(arm->rx2)->reg != reg)) {
-            pabort("Unexpcted reply in READ_BIT");
+            pabort("Unexpected reply in READ_BIT");
             return -1;
     }
     cnt = ac_header(arm->rx2)->len;
@@ -344,7 +351,7 @@ int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values)
     }
 
     if (ac_header(arm->rx2)->op != ARM_OP_WRITE_BITS) {
-        pabort("Unexpcted reply in WRITE_REG");
+        pabort("Unexpected reply in WRITE_REG");
         return -1;
     }
     if (cnt > ac_header(arm->rx2)->len)
@@ -561,6 +568,7 @@ typedef struct {
 
 int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr)
 {
+	printf ("Bytes 54:%x, 55:%x, 56: %x, 57: %x, 58: %x, 59: %x, 60: %x, 61: %x, 62: %x, 63: %x\n", tx->data[54], tx->data[55], tx->data[56], tx->data[57], tx->data[58], tx->data[59], tx->data[60], tx->data[61], tx->data[62], tx->data[63]);
     tx->crc = SpiCrcString((uint8_t*)tx, sizeof(arm_comm_firmware) - sizeof(tx->crc), 0);
     int ret = ioctl(arm->fd, SPI_IOC_MESSAGE(tr_len), tr);
     if (ret < 1) {
@@ -573,6 +581,7 @@ int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, i
         pabort("Bad crc in firmware operation");
         return -1;
     }
+    return 0;
 }
 
 void* start_firmware(arm_handle* arm)
@@ -653,8 +662,9 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
             memcpy(fwctx->tx->data, data + (address-start_address), ARM_PAGE_SIZE);  // read page from file
             len = len - ARM_PAGE_SIZE;
         } else if (len != 0) {
+        	memset(fwctx->tx->data+len, 0xff, ARM_PAGE_SIZE-len);
             memcpy(fwctx->tx->data, data + (address-start_address), len);            // read  page (part) from file
-            memset(fwctx->tx->data+len, 0xff, ARM_PAGE_SIZE-len);  
+            printf("MEMCPY LEN: %d", len);
             len = 0;
         } else {
             address = 0xF400;   // read-only page; operation is performed only for last page confirmation
@@ -677,6 +687,7 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
         prev_addr = address;
         address = address + ARM_PAGE_SIZE;
     } 
+    return 0;
 }
 
 int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
@@ -759,4 +770,5 @@ int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t star
     free(rx); 
     free(tx);
     usleep(100000);
+    return 0;
 }

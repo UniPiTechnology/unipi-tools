@@ -60,6 +60,7 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     red = fread(prog_data, 1, MAX_FW_SIZE, fd);
+    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
     fclose(fd);
     return red;
 }
@@ -92,6 +93,7 @@ int arm_flash_file(void* fwctx, const char* fwname)
     } else {
         vprintf("Error opening firmware file %s\n", fwname);
     }
+    return 0;
 }
 
 int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int overwrite)
@@ -132,6 +134,7 @@ int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int over
     } else {
         vprintf("Error opening nvram file %s\n", fwname);
     }
+    return 0;
 }
 
 
@@ -296,7 +299,7 @@ int main(int argc, char **argv)
         if (verbose) printf("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
         int rwred = RW_START_PAGE;
-		int rwlen = 0;
+        int rwlen = 0;
         free(fwname);
         if (red <= 0) {
             if (red == 0) {

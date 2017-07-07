@@ -345,13 +345,13 @@ int main(int argc, char **argv)
         }
         red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
         if (verbose) printf("Program pages: %d\n", red);
-
+        int rwlen = 0;
         if (do_resetrw) {
             // load rw consts file
             rw_data = malloc(MAX_RW_SIZE);
             char* rwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
             if (verbose) printf("Opening RW settings file: %s\n", rwname);
-            int rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
+            rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
             free(rwname);
             // calc page count of firmware file
             rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);

@@ -247,3 +247,4 @@ int armpty_readuart(arm_handle* arm, int do_idle)
         }
     }
 }
+

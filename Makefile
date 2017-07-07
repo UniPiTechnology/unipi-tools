@@ -32,7 +32,7 @@ PROJECT        = neuron_tcp_server
 
 
 # List C source files here
-#LIBSDIRS    = libmodbus-master/src/.libs
+LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
 LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a 
@@ -54,10 +54,10 @@ SRC = $(SPISRC) nb_modbus.c armpty.c
 
 # List all directories here
 #INCDIRS = /usr/local/include/modbus
-#INCDIRS = libmodbus-master/src\
-#          libmodbus-master
-#          $(CORELIBDIR) \
-#          $(STMSPINCDDIR) \
+INCDIRS = libmodbus-3.1.4/src\
+          libmodbus-3.1.4
+          $(CORELIBDIR) \
+          $(STMSPINCDDIR) \
 
 # List the user directory to look for the libraries here
 LIBDIRS += $(LIBSDIRS)
@@ -71,7 +71,7 @@ LIBS = modbus util
  
 
 INCDIR  = $(patsubst %,-I%, $(INCDIRS))
-LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
+# LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
 LIB     = $(patsubst %,-l%, $(LIBS))
 ##reference only flags for run from ram...not used here
 ##DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
@@ -124,7 +124,7 @@ neuronspi: neuronspi.o $(SPIOBJS)
 	$(CC) neuronspi.o $(SPIOBJS) -o $@
 
 bandwidth-client: bandwidth-client.o $(OBJS)
-	$(CC) bandwidth-client.o $(OBJS) $(LDFLAGS) -o $@
+	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@
 
 clean:
 	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o win32_serial.o

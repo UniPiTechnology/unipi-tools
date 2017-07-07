@@ -26,7 +26,6 @@ const char* hwnames[HW_COUNT] = {
 };
 */
 
-
 typedef struct {
   uint8_t board;
   uint8_t baseboard;
@@ -34,11 +33,27 @@ typedef struct {
   const char*   name;
 } Tcompatibility_map;
 
-typedef struct {
-  uint8_t board;
-  uint8_t subver;
-  const char*  name; 
-} Tboards_map;
+#define UP_COUNT 7
+Tboards_map up_boards[] = {
+    {0, 0, ""},
+    {1, 16, "P-11DiR485"},
+    {2, 16, "U-14Ro"},
+    {3, 16, "U-14Di"},
+    {4, 16, "P-6Di5Ro"},
+    {5, 16, "U-6Di5Ro"},
+    {13,16, "B-485"},
+};
+
+Textension_map extension_boards[] = {
+	{1, 4, "xS10-CAL"},
+	{2, 5, "xS40-CAL"},
+	{3, 6, "xS30-CAL"},
+	{4, 4, "xS10"},
+	{5, 5, "xS40"},
+	{6, 6, "xS30"},
+	{11, 12, "xS50-CAL"},
+	{12, 12, "xS50"}
+};
 
 /*char* base_boards[] {
     {0, "B-1000"},
@@ -48,16 +63,15 @@ typedef struct {
     {11,"E-4Ai4Ao"},
 };*/
 
-#define UP_COUNT 7
-Tboards_map up_boards[] = {
-    {0, 0, ""}, 
-    {1, 16, "P-11DiR485"},
-    {2, 16, "U-14Ro"},
-    {3, 16, "U-14Di"},
-    {4, 16, "P-6Di5Ro"},
-    {5, 16, "U-6Di5Ro"},
-    {13,16, "B-485"},
-};
+Textension_map* get_extension_map(int board) {
+    int i;
+    for (i=0; i<EXTENSION_COUNT; i++) {
+            if (extension_boards[i].board == board) {
+                return extension_boards + i;
+            }
+    }
+    return NULL;
+}
 
 Tboards_map* get_umap(int board)
 {

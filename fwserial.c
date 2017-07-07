@@ -13,9 +13,12 @@
 #include <getopt.h>
 #include <errno.h>
 #include <modbus.h>
+#include <unistd.h>
 
 #include "armutil.h"
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 /* Hardware constants */
 #define PAGE_SIZE   1024            
@@ -29,7 +32,11 @@
 char* PORT = NULL;
 int   BAUD = 19200;
 int   DEVICE_ID = 15;
+#ifdef OS_WIN32
+char* firmwaredir = "./fw";
+#else
 char* firmwaredir = "/opt/fw";
+#endif
 int upboard;
 int verbose = 0;
 int do_verify = 0;
@@ -42,17 +49,27 @@ int do_final= 0;
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
     FILE* fd;
-    int red, i;
+    int read_n, i;
     fd = fopen(path, "rb");
+    struct stat finfo;
+    fstat(fd->_file, &finfo);
+    off_t filesize = finfo.st_size;
     if (!fd) {
         printf("error opening firmware file \"%s\"\n", path);
         return -1;
     }
     memset(prog_data, 0xff, len);
 
-    red = fread(prog_data, 1, MAX_FW_SIZE, fd);
+    read_n = fread(prog_data, 1, MAX_FW_SIZE, fd);
+    if (!read_n) {
+    	for (int i = 0; i < filesize; i++) {
+    		prog_data[i] = fgetc(fd);
+    	}
+    	read_n = filesize;
+    }
+    printf("READ: %d %x %d\n", read_n, prog_data[0], filesize);
     fclose(fd);
-    return red;
+    return read_n;
 }
 
 
@@ -112,16 +129,20 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
                 }
                 if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in Neuron
                     for (chunk=0; chunk < 8; chunk++) {
-                        if (modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd) == -1) // send chunk of data (64*2 B)
+                    	int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
+                        if (retval == -1) { // send chunk of data (64*2 B)
                             errors++;
+                        }
+                        fprintf(stderr, "Finished programming chunk %d, ret: %d err: %d\n", chunk, retval, errors);
                         pd += REG_SIZE;
                     }
                     if (modbus_write_register(ctx, 0x7707, 1) == 1) {  // write page to flash
-                        printf(" OK.\n");
+                        printf("Page written OK.\n\n");
                         page++;
                         if (page == last_prog_page) {
                             page = RW_START_PAGE;
                         }
+                        //sleep(1);
                     } else {
                         errors++;
                         printf(" Trying again.\n");
@@ -254,6 +275,7 @@ int main(int argc, char **argv)
 
     // Open port
     ctx = modbus_new_rtu(PORT , BAUD, 'N', 8, 1);
+
     if (ctx == NULL) {
         fprintf(stderr, "Unable to create the libmodbus context\n");
         return -1;
@@ -286,7 +308,7 @@ int main(int argc, char **argv)
         modbus_free(ctx);
         return -1;
     }
-
+    modbus_set_response_timeout(ctx, 0, 800000);
     if (do_prog || do_verify) {
         // FW manipulation
         if (do_calibrate) {

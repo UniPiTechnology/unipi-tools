@@ -395,12 +395,13 @@ int arm_flash_file(void* fwctx, const char* fwname)
     }
 }
 
-int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000, uint16_t* buffer)
+int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int overwrite)
 {
     /* Nvram programming */
     int fd, ret;
     void * data;
     int min_len = 6;
+    uint16_t buffer[128];
 
     if((fd = open(fwname, O_RDONLY)) >= 0) {
         struct stat st;
@@ -408,6 +409,7 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
             size_t len_file = st.st_size;
             vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
             if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) { 
+                int n2000 = read_regs(arm, 2000, len_file/2 ,buffer);
                 if ((n2000 > 0)|| overwrite) {
                     if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
                         if (overwrite) {
@@ -420,6 +422,8 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
                     } else {
                         vprintf("Error mapping nvram file %s to memory\n", fwname);
                     }
+                } else {
+                    vprintf("Can't read original nvram\n");
                 }
             } else {
                 vprintf("Damaged nvram file %s\n", fwname);
@@ -435,16 +439,10 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
 int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
 {
     /* Check version */
-    //char* fwname = _firmware_name(arm, fwdir, ".rw");
-    char* fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, 
-                                 fwdir, ".rw");
+    char* fwname = _firmware_name(arm, fwdir, ".rw");
     int fd;
     uint32_t fwver = 0;
-    uint16_t buffer[64];
-    int n2000 = read_regs(arm, 2000, 64, buffer);
 
-    vprintf("N2000 = %d\n", n2000);
-    vprintf("Checking firmware file: %s\n", fwname);
     if((fd = open(fwname, O_RDONLY)) >= 0) {
         if (lseek(fd, - 4, SEEK_END) >= 0) {
             if (read(fd, &fwver, 4) == 4) {
@@ -454,20 +452,15 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
         close(fd);
     }
     free(fwname);
-    vprintf("SW ver: %04x\n", fwver);
     if (fwver > arm->bv.sw_version) {
         void * fwctx = start_firmware(arm);
         if (fwctx == NULL) 
             return -1; 
-        //fwname = _firmware_name(arm, fwdir, ".rw");
-        fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, 
-                               fwdir, ".rw");
-        arm_flash_rw_file(fwctx, fwname, overwrite, n2000, buffer);
+        fwname = _firmware_name(arm, fwdir, ".rw");
+        arm_flash_rw_file(arm, fwctx, fwname, overwrite);
         free(fwname);
-        //fwname = _firmware_name(fwctx, fwdir, ".bin");
-        fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, 
-                               fwdir, ".bin");
-        arm_flash_file(fwctx, fwname);
+        fwname = _firmware_name(fwctx, fwdir, ".bin");
+        arm_flash_file(arm, fwname);
         finish_firmware(fwctx);
         free(fwname);
         // Reload version

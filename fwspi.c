@@ -31,7 +31,11 @@
 /* Default parameters */
 char* PORT = NULL;
 int   BAUD = 10000000;
+#ifdef OS_WIN32
+char* firmwaredir = "./fw"
+#else
 char* firmwaredir = "/opt/fw";
+#endif
 int upboard;
 int verbose = 0;
 int do_verify = 0;
@@ -292,7 +296,7 @@ int main(int argc, char **argv)
         if (verbose) printf("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
         int rwred = RW_START_PAGE;
-        int rwlen = 0;
+		int rwlen = 0;
         free(fwname);
         if (red <= 0) {
             if (red == 0) {
@@ -305,7 +309,6 @@ int main(int argc, char **argv)
         }
         //red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
         if (verbose) printf("Program size: %d\n", red);
-
         if (do_resetrw) {
             // load rw consts file
             rw_data = malloc(MAX_RW_SIZE);

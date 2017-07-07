@@ -27,14 +27,22 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 #
 # Define project name and Ram/Flash mode here
 PROJECT        = neuron_tcp_server
- 
+
+
+
+
 # List C source files here
 #LIBSDIRS    = libmodbus-master/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a
+LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a 
+ifdef SYSTEMROOT
+LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.dll.a
+endif
 DFLAGS2  = -Ilibmodbus-master/src
 
+LDFLAGS3 = -L c:\MinGW\bin
+DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/include -Igtk/include/pango-1.0 -Igtk/include/cairo -Igtk/include/gdk-pixbuf-2.0 -Igtk/include/atk-1.0
 
 #list of src files to include in build process
 
@@ -77,6 +85,11 @@ SPIOBJS  = $(SPISRC:.c=.o)
 #LDFLAGS = $(MCFLAGS) -g -gdwarf-3 -mthumb -nostartfiles -T$(LINKER_SCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR) $(LIB)
 LDFLAGS = $(LIBDIR) $(LIB)
 
+# SYSTEMROOT should be defined on windows, so we use it to detect the OS
+ifdef SYSTEMROOT
+   CC += -D OS_WIN32
+endif
+
 #
 # makefile rules
 #
@@ -99,6 +112,13 @@ fwserial: fwserial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
 	chmod +x fwserial
 
+ifdef SYSTEMROOT
+win32_serial.o: win32_serial.c
+	$(CC) -Wno-deprecated-declarations -c $(DFLAGS2) $(DFLAGS3)  $< -o $@
+	
+fwserial-win: win32_serial.o armutil.o
+	$(CC) $+ $(LDFLAGS2) $(LDFLAGS3) $(DFLAGS2) $(DFLAGS3) -o neuron_fw_utility -lgtk-3-0 -lglib-2.0-0 -lgobject-2.0-0
+endif
 
 neuronspi: neuronspi.o $(SPIOBJS)
 	$(CC) neuronspi.o $(SPIOBJS) -o $@
@@ -107,7 +127,7 @@ bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(LDFLAGS) -o $@
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o
+	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o win32_serial.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex
@@ -115,4 +135,8 @@ clean:
 	-rm -rf $(PROJECT).rw
 	-rm -rf $(SRC:.c=.lst)
 	-rm -rf $(ASRC:.s=.lst)
+
+install:
+	mkdir -p $(DESTDIR)/opt/neurontcp
+	install -m 0755 neuron_tcp_server $(DESTDIR)/opt/neurontcp
 # *** EOF ***

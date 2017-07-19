@@ -48,7 +48,7 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-char* spi_devices[MAX_ARMS] = {"/dev/spidev0.1","/dev/spidev0.3","/dev/spidev0.2"};
+char* spi_devices[MAX_ARMS] = {"/dev/neuronspi","/dev/neuronspi","/dev/neuronspi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/fw";
@@ -447,6 +447,7 @@ int main(int argc, char *argv[])
     nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
     nb_ctx->fwdir = firmwaredir;
     server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
+    printf("Neuron TCP Listen Connection Established RET:%d\n", server_socket);
     if (server_socket == -1) {
         perror ("modbus_tcp_listen");
         abort ();
@@ -510,7 +511,7 @@ int main(int argc, char *argv[])
         }
         /* ----- ToDo more Uarts */
         int pi, pty;
-        //printf ("uarts = %d\n", arm->uart_count);
+        printf ("UART: uarts = %d\n", arm->bv.uart_count);
         for (pi=0; pi < arm->bv.uart_count; pi++) {
             pty = armpty_open(arm, pi);
             if (pty >= 0) {

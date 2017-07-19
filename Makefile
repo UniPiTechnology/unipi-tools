@@ -35,11 +35,11 @@ PROJECT        = neuron_tcp_server
 LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a 
+LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.so
 ifdef SYSTEMROOT
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.dll.a
+LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
 endif
-DFLAGS2  = -Ilibmodbus-master/src
+DFLAGS2  = -Ilibmodbus-3.1.4/src
 
 LDFLAGS3 = -L c:\MinGW\bin
 DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/include -Igtk/include/pango-1.0 -Igtk/include/cairo -Igtk/include/gdk-pixbuf-2.0 -Igtk/include/atk-1.0
@@ -76,6 +76,8 @@ LIB     = $(patsubst %,-l%, $(LIBS))
 ##DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
 
 #DEFS    = $(DDEFS) -DRUN_FROM_FLASH=1 -DHSE_VALUE=12000000
+
+.PHONY += neuronspi
 
 OBJS  = $(SRC:.c=.o)
 SPIOBJS  = $(SPISRC:.c=.o)
@@ -121,13 +123,13 @@ fwserial-win: win32_serial.o armutil.o
 endif
 
 neuronspi:
-	$(shell cp neuronspi.c /root/kernel/neuron-spi) 
+	$(shell cp neuronspi.c /root/kernel/neuron_spi/) 
 
 bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o win32_serial.o
+	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o armspi.o armutil.o neuronspi.o bandwidth-client.o win32_serial.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex

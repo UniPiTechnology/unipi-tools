@@ -125,11 +125,11 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
     } else {
         arm = NULL;
     }
-    if (arm == NULL) {
+    /*if (arm == NULL) {
         return nb_response_exception(
             nb_ctx->ctx, MODBUS_EXCEPTION_GATEWAY_TARGET, rsp,
                     "Illegal slave address 0x%0X\n", slave);
-    }
+    }*/
 
     switch (function) {
     case MODBUS_FC_READ_COILS:
@@ -195,7 +195,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
                 deferred_arm = arm;
                 n = 1;
             } else
-                n = write_bit(arm, address, data ? 1 : 0);
+                n = write_bit(arm, address, data ? 1 : 0, 0);
             if (n == 1) {
                 rsp_length += 4; // = req_length;
             } else {
@@ -313,6 +313,7 @@ nb_modbus_t*  nb_modbus_new_tcp(const char *ip_address, int port)
         return NULL;
     }
     nb_ctx->ctx = ctx;
+    return nb_ctx;
 }
 
 
@@ -336,13 +337,13 @@ void nb_modbus_free(nb_modbus_t*  nb_ctx)
 
 int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, const char* gpio)
 {
-    if (index >= MAX_ARMS) 
+    if (index >= MAX_ARMS) 		// Too many devices
         return -1;
 
     arm_verbose = verbose;
-    arm_handle* arm = calloc(1, sizeof(arm_handle));
+    arm_handle* arm = calloc(1, sizeof(arm_handle));	// Allocate and zero-init the arm_handle struct
 
-    if (arm == NULL) 
+    if (arm == NULL) // Allocation failed
         return -1;
 
     if (arm_init(arm, device, speed, index, gpio) == 0) {

@@ -295,8 +295,11 @@ int main(int argc, char **argv)
 
     // get FW & HW version
     uint16_t r1000[5];
+    uint16_t r1022[128];
     Tboard_version bv;
     //int hw_version, sw_version, base_version;
+
+    modbus_read_registers(ctx, 1000, 22, r1022);
     if (modbus_read_registers(ctx, 1000, 5, r1000) == 5) {
         parse_version(&bv, r1000);
         printf("Boardset:   %3d %-30s (v%d.%d%s)\n",
@@ -313,6 +316,7 @@ int main(int argc, char **argv)
         return -1;
     }
     //modbus_set_response_timeout(ctx, 0, 800000);
+
     printf("Modbus timeout set\n");
     if (do_prog || do_verify) {
         // FW manipulation

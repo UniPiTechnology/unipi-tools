@@ -144,7 +144,6 @@ mb_buffer_t* get_from_pool(void)
 static int make_socket_non_blocking (int sfd)
 {
     int flags, s;
-
     flags = fcntl (sfd, F_GETFL, 0);
     if (flags == -1) {
         perror ("fcntl");
@@ -473,7 +472,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Prepare epoll structure, insert server_socket to epoll */
     efd = epoll_create1 (0);
     if (efd == -1) {
         perror ("epoll_create");
@@ -489,9 +487,9 @@ int main(int argc, char *argv[])
         perror ("epoll_ctl");
         abort ();
     }
-
-    /* Insert board interrupt sockets to epoll */
+    // Insert board interrupt sockets to epoll
     int fdint;
+
     for (ai=0; ai < MAX_ARMS; ai++) {
         arm_handle* arm = nb_ctx->arm[ai];
         if (arm == NULL) continue;
@@ -509,7 +507,11 @@ int main(int argc, char *argv[])
                 poll_timeout = DEFAULT_POLL_TIMEOUT;
             }
         }
-        /* ----- ToDo more Uarts */
+    }
+        /*
+        uint16_t int_reg = 0x0005;
+
+        write_regs(arm, 1007, 1, &int_reg);
         int pi, pty;
         printf ("UART: uarts = %d\n", arm->bv.uart_count);
         for (pi=0; pi < arm->bv.uart_count; pi++) {
@@ -524,8 +526,9 @@ int main(int argc, char *argv[])
                 s = epoll_ctl (efd, EPOLL_CTL_ADD, pty, &event);
             }
         }
-    }
 
+    }
+    */
     if (poll_timeout == 0) poll_timeout = -1; 
     if (verbose) printf ("poll timeout = %d[ms]\n", poll_timeout);
     /* Prepare buffer pool */
@@ -581,10 +584,12 @@ int main(int argc, char *argv[])
             if (event_data->type == ED_PTY) {
                 if (event_data->arm == NULL) continue;
                 if ((events[i].events & EPOLLPRI)) {
+                	printf("!!!!!!!! - EPOLL PRI\n");
                     armpty_setuart(event_data->fd, event_data->arm, 0/*event_data->uart*/);
                     //continue;
                 }
                 if ((events[i].events & EPOLLIN)) {
+                	printf("!!!!!!!! - EPOLLIN\n");
                     armpty_readpty(event_data->fd, event_data->arm, 0/*event_data->uart*/);
                     //continue;
                 }
@@ -729,6 +734,7 @@ int main(int argc, char *argv[])
             } /* if EPOLLIN */
             /* End of one event */
         }
+        /*
         if (poll_timeout > 0) {
           for (ai=0; ai < MAX_ARMS; ai++) {
             arm_handle* arm = nb_ctx->arm[ai];
@@ -739,5 +745,6 @@ int main(int argc, char *argv[])
             }
           }
         }
+        */
     }
 }

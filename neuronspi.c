@@ -310,7 +310,8 @@ static void neuronspi_uart_handle_tx(struct neuronspi_port *port);
 static void neuronspi_uart_handle_rx(struct neuronspi_port *port, unsigned int rxlen, unsigned int iir);
 static void neuronspi_uart_handle_irq(struct neuronspi_uart_data *uart_data, int portno);
 
-
+static struct spinlock* neuronspi_spi_w_spinlock;
+static uint8_t neuronspi_spi_w_flag = 1;
 static struct spi_device* neuronspi_s_dev[NEURONSPI_MAX_DEVS];
 static struct neuronspi_char_driver neuronspi_cdrv =
 {
@@ -508,6 +509,9 @@ static ssize_t neuronspi_write (struct file *file_p, const char *buffer, size_t 
     memcpy(private_data->send_buf, buffer, len);
     memset(private_data->recv_buf, 0, NEURONSPI_BUFFER_MAX );
     private_data->message_len = transmit_len;
+    spin_lock(neuronspi_spi_w_spinlock);
+    neuronspi_spi_w_flag = 1;
+    spin_unlock(neuronspi_spi_w_spinlock);
     neuronspi_spi_send_message(spi_driver_data, &private_data->send_buf[NEURONSPI_HEADER_LENGTH], private_data->recv_buf, transmit_len, frequency, delay, send_header);
     mutex_unlock(&private_data->lock);
     return len;
@@ -656,6 +660,23 @@ void neuronspi_spi_uart_set_cflag(struct spi_device* spi_dev, uint8_t port, uint
 	neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
 	kfree(message_buf);
 	kfree(recv_buf);
+}
+
+static int neuronspi_spi_watchdog(void *data)
+{
+	int *cycle = (int *) data;
+	while (!kthread_should_stop()) {
+		msleep(*cycle);
+		spin_lock(neuronspi_spi_w_spinlock);
+		if (neuronspi_spi_w_flag == 0) {
+			panic_timeout = -1;
+			panic("SPI Watchdog Failure\n");
+		} else {
+			neuronspi_spi_w_flag = 0;
+		}
+		spin_unlock(neuronspi_spi_w_spinlock);
+	}
+	return 0;
 }
 
 uint32_t neuronspi_spi_uart_get_cflag(struct spi_device* spi_dev, uint8_t port)
@@ -1480,6 +1501,8 @@ MODULE_ALIAS("spi:neuronspi");
 static int __init neuronspi_init(void)
 {
 	int ret = 0;
+	neuronspi_spi_w_spinlock = kzalloc(sizeof(struct spinlock), GFP_KERNEL);
+	spin_lock_init(neuronspi_spi_w_spinlock);
 	mutex_init(&neuronspi_master_mutex);
 	ret = spi_register_driver(&neuronspi_spi_driver);
 	if (ret < 0) {
@@ -1506,6 +1529,7 @@ static void __exit neuronspi_exit(void)
 	mutex_lock(&neuronspi_master_mutex);
 	spi_unregister_driver(&neuronspi_spi_driver);
 	mutex_unlock(&neuronspi_master_mutex);
+	kfree(neuronspi_spi_w_spinlock);
 	printk(KERN_INFO "NEURONSPI: SPI Driver Unregistered\n");
 }
 module_exit(neuronspi_exit);

@@ -584,17 +584,17 @@ int main(int argc, char *argv[])
             if (event_data->type == ED_PTY) {
                 if (event_data->arm == NULL) continue;
                 if ((events[i].events & EPOLLPRI)) {
-                	printf("!!!!!!!! - EPOLL PRI\n");
+                	if (arm_verbose) printf("!!!!!!!! - EPOLL PRI\n");
                     armpty_setuart(event_data->fd, event_data->arm, 0/*event_data->uart*/);
                     //continue;
                 }
                 if ((events[i].events & EPOLLIN)) {
-                	printf("!!!!!!!! - EPOLLIN\n");
+                	if (arm_verbose) printf("!!!!!!!! - EPOLLIN\n");
                     armpty_readpty(event_data->fd, event_data->arm, 0/*event_data->uart*/);
                     //continue;
                 }
                 if ((events[i].events & EPOLLHUP)) {
-                    printf("HUP on PTY arm%d : %c\n", event_data->arm->index);
+                	if (arm_verbose) printf("HUP on PTY arm%d : %c\n", event_data->arm->index);
                 }
                 continue;
             }

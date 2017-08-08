@@ -119,7 +119,7 @@ void queue_uart(uart_queue* queue, uint8_t chr1, uint8_t len)
 int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8_t do_lock)
 {
     int ret;
-    printf("Neuron TCP Server: One Phase Op\n");
+    if (arm_verbose) printf("Neuron TCP Server: One Phase Op\n");
     arm->tx1.op = op;
     arm->tx1.len = value;
     arm->tx1.reg = reg;
@@ -143,14 +143,14 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
         return -1;
     }
     uint16_t crc = SpiCrcString(char_package, SIZEOF_HEADER, 0);
-    printf("One Phase Op: %x %x\n", crc, arm->rx1.crc);
+    if (arm_verbose) printf("One Phase Op: %x %x\n", crc, arm->rx1.crc);
     if (crc != arm->rx1.crc) {
         pabort("Bad crc in one-phase operation");
         return -1;
     }
 
     if ((*((uint32_t*)&arm->rx1) & 0xffff00ff) == IDLE_PATTERN) {
-    	printf("One Phase Op successful!\n");
+    	if (arm_verbose) printf("One Phase Op successful!\n");
         return 0;
     }
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
@@ -160,7 +160,7 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
         return 0;
     }
     if (ret == total) {
-    	printf("One Phase Op successful!\n");
+    	if (arm_verbose) printf("One Phase Op successful!\n");
     	return 0;
     }
     pabort("Unexpected reply in one-phase operation");
@@ -173,17 +173,17 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     int ret;
     uint16_t tr_len2;
     uint16_t crc;
-    printf("Neuron TCP Server: Two Phase Op\n");
+    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op\n");
     // Prepare chunk1
     if (arm == NULL) {
-    	printf("Invalid Arm Device\n");
+    	if (arm_verbose) printf("Invalid Arm Device\n");
     	return -1;
     }
     arm->tx1.op = op;
     arm->tx1.reg = reg;
     arm->tx1.len = len2 & 0xff;        //set len in chunk1 to length of chunk2 (without crc)
     arm->tr[1].delay_usecs = 25;              // set delay after first phase
-    printf("Neuron TCP Server: Two Phase Op1-b\n");
+    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op1-b\n");
     if (op != ARM_OP_WRITE_STR) {
         ac_header(arm->tx2)->op  = op;  // op and reg in chunk2 is the same
         ac_header(arm->tx2)->reg = reg;
@@ -194,7 +194,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
     tr_len2 = (len2 & 1) ? len2+1 : len2;         //transaction length must be even
 
-    printf("Neuron TCP Server: Two Phase Op 2\n");
+    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op 2\n");
     ac_header(arm->rx2)->op  = op;                // 'destroy' content of receiving buffer
     uint32_t total = SIZEOF_HEADER + CRC_SIZE + tr_len2 + CRC_SIZE;
     uint8_t char_package[total + 10];
@@ -211,31 +211,31 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     char_package[3] = 1;
     *((uint16_t *)&char_package[1]) = reg;
     ret = write(arm->fd, char_package, total+10);
-    printf("WRITE RET:%d TOT:%d\n", ret, total);
+    if (arm_verbose) printf("WRITE RET:%d TOT:%d\n", ret, total);
     if (ret == total+10) ret = read(arm->fd, char_package, total+10);
 
     if (ret < 1) {
         pabort("Can't send two-phase spi message\n");
         return ret;
     }
-    printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
+    if (arm_verbose) printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
 
     crc = SpiCrcString(char_package, SIZEOF_HEADER, 0);
     memcpy(&arm->rx1, char_package, SNIPLEN1);
 
     if (crc != arm->rx1.crc) {
-    	printf("Bad 1.crc in two phase operation %x %x\n", crc, arm->rx1.crc);
+    	if (arm_verbose) printf("Bad 1.crc in two phase operation %x %x\n", crc, arm->rx1.crc);
         pabort("Bad 1.crc in two phase operation\n");
         return -1;
     }
-    printf("Read phase 1 finished: %x %x\n", crc, arm->rx1.crc);
+    if (arm_verbose) printf("Read phase 1 finished: %x %x\n", crc, arm->rx1.crc);
     crc = SpiCrcString(&(char_package[SNIPLEN1]), tr_len2, crc);
     memcpy(arm->rx2,&(char_package[SNIPLEN1]), tr_len2);
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
         // we received a character from UART
         queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
         if (((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1] != crc) {
-        	printf("Bad 2.crc in two phase operation %x %x\n", crc, ((uint16_t*)arm->rx2)[tr_len2>>1]);
+        	if (arm_verbose) printf("Bad 2.crc in two phase operation %x %x\n", crc, ((uint16_t*)arm->rx2)[tr_len2>>1]);
             pabort("Bad 2.crc in two phase operation\n");
             return -2;
         }
@@ -245,15 +245,15 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         pabort("Bad 2.crc in two phase operation\n");
         return -3;
     }
-    printf("Read phase 2 finished: %x %x\n", crc, ((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1]);
+    if (arm_verbose) printf("Read phase 2 finished: %x %x\n", crc, ((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1]);
 
     if ((*((uint32_t*)&arm->rx1) & 0xffff00ff) == IDLE_PATTERN) {
-        printf("Read successful!\n");
+    	if (arm_verbose) printf("Read successful!\n");
         return 0;
     }
 
     if (ret == total) {
-        printf("Read successful!\n");
+    	if (arm_verbose) printf("Read successful!\n");
     	return 0;
     }
 
@@ -289,7 +289,7 @@ int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result)
     cnt =  ac_header(arm->rx2)->len;
     */
     memmove(result, arm->rx2+SIZEOF_HEADER, cnt * sizeof(uint16_t));
-    printf("CNT: %d %d %x %x %x %x %x\n", cnt, ret, result[0], result[1], result[2], result[3], result[4]);
+    if (arm_verbose) printf("CNT: %d %d %x %x %x %x %x\n", cnt, ret, result[0], result[1], result[2], result[3], result[4]);
     return cnt;
 }
 
@@ -533,7 +533,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
         memset(&buf[0], 0, 1024*2);
         outp_l = read_regs(arm, 0, 50, buf);
     }
-    printf("Config-regs: %x %x %x %x %x\n", configregs[0], configregs[1], configregs[2], configregs[3], configregs[4]);
+    if (arm_verbose) printf("Config-regs: %x %x %x %x %x\n", configregs[0], configregs[1], configregs[2], configregs[3], configregs[4]);
     //arm_version(arm);
     if (speed == 0) {
         speed = get_board_speed(&arm->bv);
@@ -558,7 +558,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
 
     /* Open fdint for interrupt catcher */
     arm->fdint = -1;
-    printf("ARM Init finished!\n");
+    if (arm_verbose) printf("ARM Init finished!\n");
 
     if ((gpio == NULL)||(strlen(gpio) == 0)||(arm->bv.int_mask_register<=0)) return 0;
 

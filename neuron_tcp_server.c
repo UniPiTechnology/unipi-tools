@@ -445,16 +445,6 @@ int main(int argc, char *argv[])
 
     nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
     nb_ctx->fwdir = firmwaredir;
-    server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
-    printf("Neuron TCP Listen Connection Established RET:%d\n", server_socket);
-    if (server_socket == -1) {
-        perror ("modbus_tcp_listen");
-        abort ();
-    }
-
-    signal(SIGINT, close_sigint);
-    s = make_socket_non_blocking (server_socket);
-    if (s == -1)  abort ();
 
     /* Create arm handles */
     int ai;
@@ -471,6 +461,17 @@ int main(int argc, char *argv[])
             }
         }
     }
+
+    server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
+    printf("Neuron TCP Listen Connection Established RET:%d\n", server_socket);
+    if (server_socket == -1) {
+        perror ("modbus_tcp_listen");
+        abort ();
+    }
+
+    signal(SIGINT, close_sigint);
+    s = make_socket_non_blocking (server_socket);
+    if (s == -1)  abort ();
 
     efd = epoll_create1 (0);
     if (efd == -1) {

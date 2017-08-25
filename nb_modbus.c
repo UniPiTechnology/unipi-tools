@@ -435,16 +435,36 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
     }
 }
 
+int load_fw(char *path, uint8_t* prog_data, const size_t len)
+{
+    FILE* fd;
+    int red, i;
+    fd = fopen(path, "rb");
+    if (!fd) {
+        printf("error opening firmware file \"%s\"\n", path);
+        return -1;
+    }
+    memset(prog_data, 0xff, len);
+
+    red = fread(prog_data, 1, MAX_FW_SIZE, fd);
+    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
+    fclose(fd);
+    return red;
+}
 
 int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
 {
     /* Check version */
-    //char* fwname = _firmware_name(arm, fwdir, ".rw");
+    uint8_t *prog_data;   // buffer containing firmware
+    uint8_t* rw_data;     // buffer containing firmware rw data
     char* fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
                                  fwdir, ".rw");
-    int fd;
+
+    int fd, ret;
+    int min_len = 6;
     uint32_t fwver = 0;
     uint16_t buffer[64];
+    void * data;
     int n2000 = read_regs(arm, 2000, 64, buffer);
 
     vprintf("N2000 = %d\n", n2000);
@@ -460,24 +480,61 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
     free(fwname);
     vprintf("SW ver: %04x\n", fwver);
     if (fwver > arm->bv.sw_version) {
-        void * fwctx = start_firmware(arm);
-        if (fwctx == NULL) 
-            return -1; 
-        //fwname = _firmware_name(arm, fwdir, ".rw");
-        fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
+    	char* fwname_rw = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
                                fwdir, ".rw");
-        arm_flash_rw_file(fwctx, fwname, overwrite, n2000, buffer);
-        free(fwname);
-        //fwname = _firmware_name(fwctx, fwdir, ".bin");
-        fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
+    	char* fwname_bin = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
                                fwdir, ".bin");
-        arm_flash_file(fwctx, fwname);
+        prog_data = malloc(MAX_FW_SIZE);
+        rw_data = malloc(MAX_FW_SIZE);
+
+
+
+
+        int red = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
+        int rwlen = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
+
+
+        void * fwctx = start_firmware(arm);
+        if (fwctx == NULL)
+            return -1;
+
+        send_firmware(fwctx, prog_data, red, 0);
+        if((fd = open(fwname_rw, O_RDONLY)) >= 0) {
+            struct stat st;
+            if((ret=fstat(fd,&st)) >= 0) {
+                size_t len_file = st.st_size;
+                vprintf("Sending nvram file %s length=%d\n", fwname_rw, len_file);
+                if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) {
+                    if ((n2000 > 0)|| overwrite) {
+                        if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
+                            if (overwrite) {
+                                send_firmware(fwctx, (uint8_t*) data, len_file,0xe000);
+                            } else {
+                                memcpy(buffer+n2000-1, ((uint8_t*) data) + 2*(n2000-1), len_file - 2*(n2000-1));
+                                send_firmware(fwctx, (uint8_t*) buffer, len_file,0xe000);
+                            }
+                            munmap(data, len_file);
+                        } else {
+                            vprintf("Error mapping nvram file %s to memory\n", fwname_rw);
+                        }
+                    } else {
+                        vprintf("Can't read original nvram\n");
+                    }
+                } else {
+                    vprintf("Damaged nvram file %s\n", fwname_rw);
+                }
+            }
+            close(fd);
+        } else {
+            vprintf("Error opening nvram file %s\n", fwname_rw);
+        }
+
         finish_firmware(fwctx);
-        free(fwname);
+        free(prog_data);
+        free(rw_data);
         // Reload version
         uint16_t configregs[5];
         if (read_regs(arm, 1000, 5, configregs) == 5)
             parse_version(&arm->bv, configregs);
-        //arm_version(arm);
     }
 }

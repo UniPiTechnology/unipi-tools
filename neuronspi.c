@@ -33,6 +33,9 @@
 
 #include <asm/termbits.h>
 
+/***************
+ * Definitions *
+ ***************/
 
 #define NEURONSPI_MAX_DEVS				3
 #define NEURONSPI_MAX_UART				128
@@ -47,7 +50,7 @@
 #define NEURONSPI_MAX_TX				64
 #define NEURONSPI_MAX_BAUD				19200
 #define NEURONSPI_FIFO_SIZE				(256)
-#define NEURONSPI_DETAILED_DEBUG		0
+#define NEURONSPI_DETAILED_DEBUG		3
 
 #define NEURONSPI_NAME "neuronspi"
 #define NEURON_DEVICE_NAME "neuron"
@@ -56,6 +59,7 @@
 #define MODBUS_TCP_HEADER_LENGTH 7
 #define PORT_NEURONSPI	184
 
+#define STRICT_RESERVING
 
 #define NEURONSPI_NO_INTERRUPT_MODELS_LEN 3
 const uint16_t NEURONSPI_NO_INTERRUPT_MODELS[NEURONSPI_NO_INTERRUPT_MODELS_LEN] = {
@@ -173,6 +177,11 @@ MODULE_DEVICE_TABLE(of, neuronspi_id_match);
 #define MODBUS_MAX_WR_WRITE_REGISTERS      121
 #define MODBUS_MAX_WR_READ_REGISTERS       125
 
+
+/*******************
+ * Data structures *
+ *******************/
+
 struct neuronspi_devtype
 {
 	char	name[10];
@@ -259,6 +268,15 @@ struct neuronspi_direct_acc
 	u32			size;
 };
 
+static struct neuronspi_char_driver neuronspi_cdrv =
+{
+	.dev = NULL
+};
+
+/*************
+ * Functions *
+ *************/
+
 static int neuronspi_open (struct inode *, struct file *);
 static int neuronspi_release (struct inode *, struct file *);
 static ssize_t neuronspi_read (struct file *, char *, size_t, loff_t *);
@@ -313,10 +331,10 @@ static void neuronspi_uart_handle_irq(struct neuronspi_uart_data *uart_data, int
 static struct spinlock* neuronspi_spi_w_spinlock;
 static uint8_t neuronspi_spi_w_flag = 1;
 static struct spi_device* neuronspi_s_dev[NEURONSPI_MAX_DEVS];
-static struct neuronspi_char_driver neuronspi_cdrv =
-{
-	.dev = NULL
-};
+
+/***********************
+ * Function structures *
+ ***********************/
 
 // Host driver struct
 static struct spi_driver neuronspi_spi_driver =
@@ -358,9 +376,14 @@ static const struct uart_ops neuronspi_uart_ops =
 	.pm				= neuronspi_uart_pm,
 };
 
+// These defines need to be at the end
 #define to_neuronspi_uart_data(p,e)  ((container_of((p), struct neuronspi_uart_data, e)))
 #define to_neuronspi_port(p,e)	((container_of((p), struct neuronspi_port, e)))
 #define to_uart_port(p,e)	((container_of((p), struct uart_port, e)))
+
+/***********************
+ * End of Data section *
+ ***********************/
 
 static int neuronspi_open (struct inode *inode_p, struct file *file_p)
 {
@@ -498,12 +521,21 @@ static ssize_t neuronspi_write (struct file *file_p, const char *buffer, size_t 
     	} else if (!driver_data->reserved_device) {
     		driver_data->reserved_device = buffer[7];	// Reserve the device
     	}
-    } else if (device_index == (driver_data->reserved_device - 1)) {
+#ifdef STRICT_RESERVING
+    } else if (driver_data->reserved_device) {
     	return -5;			// Device reserved
     }
     if (driver_data->slower_model) {
     	frequency = NEURONSPI_SLOWER_FREQ;
     }
+#else
+	} else if (device_index == (driver_data->reserved_device - 1)) {
+		return -5;			// Device reserved
+	}
+	if (driver_data->slower_model) {
+		frequency = NEURONSPI_SLOWER_FREQ;
+	}
+#endif
     mutex_lock(&(private_data->lock));
     memset(private_data->send_buf, 0, NEURONSPI_BUFFER_MAX );
     memcpy(private_data->send_buf, buffer, len);
@@ -567,7 +599,9 @@ static int neuronspi_spi_uart_write(struct spi_device *spi, uint8_t *send_buf, u
 	if (d_data->slower_model) {
 		frequency = NEURONSPI_SLOWER_FREQ;
 	}
-	neuronspi_spi_send_message(spi, message_buf, recv_buf, transmit_len, frequency, 65, 1);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi, message_buf, recv_buf, transmit_len, frequency, 65, 1);
+	}
 	kfree(message_buf);
 	kfree(recv_buf);
 	return 0;
@@ -608,7 +642,9 @@ void neuronspi_spi_uart_read(struct spi_device* spi, uint8_t *send_buf, uint8_t 
 		printk(KERN_INFO "NEURONSPI: UART Device Read len:%d %100ph\n", transmit_len, send_buf);
 #endif
 	}
-	neuronspi_spi_send_message(spi, send_buf, recv_buf, transmit_len, frequency, 65, 1);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi, send_buf, recv_buf, transmit_len, frequency, 65, 1);
+	}
 }
 
 void neuronspi_spi_set_irqs(struct spi_device* spi_dev, uint16_t to)
@@ -631,7 +667,9 @@ void neuronspi_spi_set_irqs(struct spi_device* spi_dev, uint16_t to)
 	memcpy(&message_buf[4], &crc1, 2);
 	crc2 = neuronspi_spi_crc(&message_buf[6], NEURONSPI_SPI_IRQ_SET_MESSAGE_LEN - 8, crc1);
 	memcpy(&message_buf[NEURONSPI_SPI_IRQ_SET_MESSAGE_LEN - 2], &crc2, 2);
-	neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_IRQ_SET_MESSAGE_LEN, frequency, 65, 1);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_IRQ_SET_MESSAGE_LEN, frequency, 65, 1);
+	}
 	kfree(message_buf);
 	kfree(recv_buf);
 }
@@ -657,7 +695,9 @@ void neuronspi_spi_uart_set_cflag(struct spi_device* spi_dev, uint8_t port, uint
 	memcpy(&message_buf[10], &to, 4);
 	crc2 = neuronspi_spi_crc(&message_buf[6], NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN - 8, crc1);
 	memcpy(&message_buf[NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN - 2], &crc2, 2);
-	neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
+	}
 	kfree(message_buf);
 	kfree(recv_buf);
 }
@@ -696,7 +736,9 @@ uint32_t neuronspi_spi_uart_get_cflag(struct spi_device* spi_dev, uint8_t port)
 	memcpy(&message_buf[4], &crc1, 2);
 	crc2 = neuronspi_spi_crc(&message_buf[6], NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN - 8, crc1);
 	memcpy(&message_buf[NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN - 2], &crc2, 2);
-	neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
+	}
 	ret = ((uint32_t*)recv_buf)[5];
 #if NEURONSPI_DETAILED_DEBUG > 0
 	printk(KERN_INFO "NEURONSPI: SPI TERMIOS Get, Dev-CS:%d, val:%x\n", spi_dev->chip_select, ret);
@@ -780,7 +822,7 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, uint8_t *send_buf, u
 #if NEURONSPI_DETAILED_DEBUG > 0
 					printk(KERN_INFO "NEURONSPI: UART Buffer:%d, UART Local Port Count:%d, UART Global Port Count:%d\n", d_data->uart_read, d_data->uart_count,  d_data->uart_data->p_count);
 #endif
-					if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1) {
+					if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1 && !d_data->reserved_device) {
 						kthread_queue_work(&d_data->uart_data->kworker, &d_data->uart_data->p[i].rx_work);
 					}
 				}
@@ -1495,6 +1537,10 @@ static int char_unregister_driver(void)
 	printk(KERN_INFO "NEURONSPI: Device unloaded successfully\n");
 	return 0;
 }
+
+/*********************
+ * Final definitions *
+ *********************/
 
 MODULE_ALIAS("spi:neuronspi");
 

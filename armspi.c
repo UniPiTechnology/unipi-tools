@@ -208,7 +208,9 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     ((uint16_t*)arm->tx2)[tr_len2>>1] = crc;
     memcpy(char_package+16, &arm->tx2, tr_len2 + CRC_SIZE);
     char_package[0] = (uint8_t)arm->index;
+
     char_package[3] = 1;
+    char_package[6] = arm->tr[1].delay_usecs;
     *((uint16_t *)&char_package[1]) = reg;
     ret = write(arm->fd, char_package, total+10);
     if (arm_verbose) printf("WRITE RET:%d TOT:%d\n", ret, total);

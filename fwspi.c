@@ -319,7 +319,6 @@ int main(int argc, char **argv)
             free(ctx);
             return -1;
         }
-        //red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
         if (verbose) printf("Program size: %d\n", red);
         if (do_resetrw) {
             // load rw consts file
@@ -332,15 +331,7 @@ int main(int argc, char **argv)
             rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
             if (verbose) printf("Final page: %d\n", rwred);
         }
-        
-        // init FW programmer
-        //if (write_bit(ctx, 1006, 1) != 1) {
-        //    fprintf(stderr, "Program mode setting failed\n");
-        //    close(ctx->fd);
-        //    free(ctx);
-        //    return -1;
-        //}
-        
+
         if (do_prog || do_calibrate) {
             void * fwctx = start_firmware(ctx);
             if (fwctx != NULL) {
@@ -348,9 +339,7 @@ int main(int argc, char **argv)
                 if (do_resetrw) send_firmware(fwctx, rw_data, rwlen, 0xe000);
                 finish_firmware(fwctx);
             }
-            //flashit(ctx,prog_data, rw_data, red, rwred);
         }
-        //free(prog_data);
     }
     close(ctx->fd);
     //free(ctx);

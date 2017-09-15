@@ -50,7 +50,7 @@
 #define NEURONSPI_MAX_TX				64
 #define NEURONSPI_MAX_BAUD				19200
 #define NEURONSPI_FIFO_SIZE				(256)
-#define NEURONSPI_DETAILED_DEBUG		3
+#define NEURONSPI_DETAILED_DEBUG		0
 
 #define NEURONSPI_NAME "neuronspi"
 #define NEURON_DEVICE_NAME "neuron"
@@ -752,6 +752,9 @@ uint32_t neuronspi_spi_uart_get_cflag(struct spi_device* spi_dev, uint8_t port)
 void neuronspi_spi_send_message(struct spi_device* spi_dev, uint8_t *send_buf, uint8_t *recv_buf, int len, int freq, int delay, int send_header)
 {
 	int i = 0;
+	uint16_t recv_crc1 = 0;
+	uint16_t recv_crc2 = 0;
+	uint16_t packet_crc = 0;
 	int trans_count = (len / NEURONSPI_MAX_TX) + 3;	// number of transmissions
 	struct spi_message s_msg;
 	struct neuronspi_driver_data *d_data;
@@ -803,31 +806,57 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, uint8_t *send_buf, u
 #if NEURONSPI_DETAILED_DEBUG > 1
     printk(KERN_INFO "NEURONSPI: SPI Master Read - %d:\n\t%100ph\n\t%100ph\n\t%100ph\n\t%100ph\n", len,recv_buf, &recv_buf[64], &recv_buf[128], &recv_buf[192]);
 #endif
-	// Signal the UART to issue character reads
-    if (recv_buf[0] == 0x41) {
-    	if (spi_get_drvdata(spi_dev) != NULL) {
-#if NEURONSPI_DETAILED_DEBUG > 0
-        	printk(KERN_INFO "NEURONSPI: Reading UART data for device %d\n", spi_dev->chip_select - 1);
+    recv_crc1 = neuronspi_spi_crc(recv_buf, 4, 0);
+    memcpy(&packet_crc, &recv_buf[4], 2);
+#if NEURONSPI_DETAILED_DEBUG > 1
+	printk(KERN_INFO "NEURONSPI: SPI CRC1: %x\t COMPUTED CRC1:%x\n", packet_crc, recv_crc1);
 #endif
-			d_data = spi_get_drvdata(spi_dev);
-			d_data->uart_buf[0] = recv_buf[3];
-			for (i = 0; i < d_data->uart_data->p_count; i++) {
-				if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1) {
-					neuronspi_uart_handle_rx(&d_data->uart_data->p[i], 1, 1);
-				}
-			}
-			if (!(d_data->uart_read) && (d_data->uart_count)) {
-				d_data->uart_read = recv_buf[2];
+    if (recv_crc1 == packet_crc) {
+	// Signal the UART to issue character reads
+#if NEURONSPI_DETAILED_DEBUG > 1
+	printk(KERN_INFO "NEURONSPI: SPI CRC1 Correct");
+#endif
+		if (recv_buf[0] == 0x41) {
+			if (spi_get_drvdata(spi_dev) != NULL) {
+#if NEURONSPI_DETAILED_DEBUG > 0
+			printk(KERN_INFO "NEURONSPI: Reading UART data for device %d\n", spi_dev->chip_select - 1);
+#endif
+				d_data = spi_get_drvdata(spi_dev);
+				d_data->uart_buf[0] = recv_buf[3];
 				for (i = 0; i < d_data->uart_data->p_count; i++) {
+					if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1) {
+						neuronspi_uart_handle_rx(&d_data->uart_data->p[i], 1, 1);
+					}
+				}
+				if (!(d_data->uart_read) && (d_data->uart_count)) {
+					d_data->uart_read = recv_buf[2];
+					for (i = 0; i < d_data->uart_data->p_count; i++) {
 #if NEURONSPI_DETAILED_DEBUG > 0
 					printk(KERN_INFO "NEURONSPI: UART Buffer:%d, UART Local Port Count:%d, UART Global Port Count:%d\n", d_data->uart_read, d_data->uart_count,  d_data->uart_data->p_count);
 #endif
-					if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1 && !d_data->reserved_device) {
-						kthread_queue_work(&d_data->uart_data->kworker, &d_data->uart_data->p[i].rx_work);
+						if (d_data->uart_data->p[i].dev_index == spi_dev->chip_select - 1 && !d_data->reserved_device) {
+							kthread_queue_work(&d_data->uart_data->kworker, &d_data->uart_data->p[i].rx_work);
+						}
 					}
 				}
 			}
-    	}
+		}
+    }
+#if NEURONSPI_DETAILED_DEBUG > 0
+    else {
+		printk(KERN_INFO "NEURONSPI: SPI CRC1 Not Correct");
+    }
+#endif
+    recv_crc2 = neuronspi_spi_crc(&recv_buf[6], len - 8, recv_crc1);
+    memcpy(&packet_crc, &recv_buf[len - 2], 2);
+#if NEURONSPI_DETAILED_DEBUG > 1
+	printk(KERN_INFO "NEURONSPI: SPI CRC2: %x\t COMPUTED CRC2:%x\n", packet_crc, recv_crc2);
+#endif
+    if (recv_crc2 != packet_crc) {
+#if NEURONSPI_DETAILED_DEBUG > 0
+		printk(KERN_INFO "NEURONSPI: SPI CRC2 Not Correct");
+#endif
+    	recv_buf[0] = 0;
     }
     mutex_unlock(&neuronspi_master_mutex);
     kfree(s_trans);
@@ -1381,6 +1410,11 @@ static int neuronspi_spi_probe(struct spi_device *spi)
 	if (n_spi->first_probe_reply[0] != 0) {
 		uart_count = n_spi->first_probe_reply[14] & 0x0f;
 		printk(KERN_INFO "NEURONSPI: Probe detected Neuron v%d.%d on CS %d, Uart count: %d - reg1000: %x, reg1001: %x, reg1002: %x, reg1003: %x, reg1004: %x\n", n_spi->first_probe_reply[11],  n_spi->first_probe_reply[10], spi->chip_select, uart_count, n_spi->first_probe_reply[11] << 8 | n_spi->first_probe_reply[10], n_spi->first_probe_reply[13] << 8 | n_spi->first_probe_reply[12], n_spi->first_probe_reply[15] << 8 | n_spi->first_probe_reply[14], n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16], n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18]);
+	} else {
+		ret = -5;
+		kfree(n_spi);
+		printk(KERN_INFO "NEURONSPI: Probe did not detect a valid Neuron device on CS %d\n", spi->chip_select);
+		return ret;
 	}
 	for (i = 0; i < NEURONSPI_SLOWER_MODELS_LEN; i++) {
 		if (NEURONSPI_SLOWER_MODELS[i] == (n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16])) {

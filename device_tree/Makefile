@@ -1,5 +1,5 @@
 
-CC = dtc -O dtb
+CC = dtc -O dtb -@
 
 .PHONY = clean
 .PHONY += all

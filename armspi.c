@@ -811,12 +811,13 @@ int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t star
     } 
 
     tx->address = ARM_FIRMWARE_KEY;  // finish transfer
-    firmware_op(arm, tx, rx, tr_len, tr, 255);
+    firmware_op(arm, tx, rx, tr_len, tr, (arm->index) + 1);
     if (rx->address != ARM_FIRMWARE_KEY) {
         if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
     } else {
         if (arm_verbose) printf("REBOOTING...\n");
     }
+    firmware_op(arm, tx, rx, tr_len, tr, 255);
 
     // dealloc
     free(tr); 

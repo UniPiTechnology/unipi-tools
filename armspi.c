@@ -621,7 +621,7 @@ int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, i
     }
     uint16_t crc = SpiCrcString((uint8_t*)rx, sizeof(arm_comm_firmware) - sizeof(rx->crc),0);
     //printf("a=%0x d=%x crc=%x\n", rx->address, rx->data[0], rx->crc);
-    if (crc != rx->crc) {
+    if (crc != rx->crc && do_lock != 255) {
     	printf("Bad crc in firmware operation RET:%d CRC:%x RX-CRC:%x\n", ret, crc, rx->crc);
         pabort("Bad crc in firmware operation");
         return -3;
@@ -676,14 +676,16 @@ void finish_firmware(void*  ctx)
 {
     Tfirmware_context* fwctx = (Tfirmware_context*) ctx;
     int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+    int idle_resp = 0;
 
     fwctx->tx->address = ARM_FIRMWARE_KEY;  // finish transfer
-    firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr, 255);
+    firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr, (fwctx->arm->index) + 1);
     if (fwctx->rx->address != ARM_FIRMWARE_KEY) {
         printf("UNKNOWN ERROR\nREBOOTING...\n");
     } else {
         printf("REBOOTING...\n");
     }
+    firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr, 255);
 
     // dealloc
     //free(fwctx->tr);

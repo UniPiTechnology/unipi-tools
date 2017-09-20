@@ -95,7 +95,7 @@ endif
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuronspi bandwidth-client
+all: $(OBJS) $(PROJECT) neuronspi fwspi fwserial
 
 %.o: %.c
 	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@

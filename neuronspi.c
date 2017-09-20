@@ -54,7 +54,7 @@
 #define NEURONSPI_MAX_TX				64
 #define NEURONSPI_MAX_BAUD				115200
 #define NEURONSPI_FIFO_SIZE				(256)
-#define NEURONSPI_DETAILED_DEBUG		0
+#define NEURONSPI_DETAILED_DEBUG		2
 
 #define NEURONSPI_NAME "neuronspi"
 #define NEURON_DEVICE_NAME "neuron"
@@ -253,6 +253,7 @@ struct neuronspi_driver_data
 	u8 *uart_buf;
 	u8 spi_index;
 	u8 slower_model;
+	u8 no_irq;
 	int32_t neuron_index;
 };
 
@@ -814,19 +815,19 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
 #if NEURONSPI_DETAILED_DEBUG > 1
     printk(KERN_INFO "NEURONSPI: SPI Master Read - %d:\n\t%100ph\n\t%100ph\n\t%100ph\n\t%100ph\n", len,recv_buf, &recv_buf[64], &recv_buf[128], &recv_buf[192]);
 #endif
-    recv_crc1 = neuronspi_spi_crc(recv_buf, 4, 0);
-    memcpy(&packet_crc, &recv_buf[4], 2);
+    d_data = spi_get_drvdata(spi_dev);
+    if (d_data != NULL && !d_data->reserved_device) {
+		recv_crc1 = neuronspi_spi_crc(recv_buf, 4, 0);
+		memcpy(&packet_crc, &recv_buf[4], 2);
 #if NEURONSPI_DETAILED_DEBUG > 1
-	printk(KERN_INFO "NEURONSPI: SPI CRC1: %x\t COMPUTED CRC1:%x\n", packet_crc, recv_crc1);
+		printk(KERN_INFO "NEURONSPI: SPI CRC1: %x\t COMPUTED CRC1:%x\n", packet_crc, recv_crc1);
 #endif
-    if (recv_crc1 == packet_crc) {
-	// Signal the UART to issue character reads
+		if (recv_crc1 == packet_crc) {
+		// Signal the UART to issue character reads
 #if NEURONSPI_DETAILED_DEBUG > 1
-	printk(KERN_INFO "NEURONSPI: SPI CRC1 Correct");
+		printk(KERN_INFO "NEURONSPI: SPI CRC1 Correct");
 #endif
-		if (recv_buf[0] == 0x41) {
-			if (spi_get_drvdata(spi_dev) != NULL) {
-				d_data = spi_get_drvdata(spi_dev);
+			if (recv_buf[0] == 0x41) {
 				d_data->uart_buf[0] = recv_buf[3];
 #if NEURONSPI_DETAILED_DEBUG > 0
 				printk(KERN_INFO "NEURONSPI: Reading UART data for device %d\n", d_data->neuron_index);
@@ -849,22 +850,24 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
 				}
 			}
 		}
-    }
 #if NEURONSPI_DETAILED_DEBUG > 0
-    else {
-		printk(KERN_INFO "NEURONSPI: SPI CRC1 Not Correct");
-    }
+		else {
+			printk(KERN_INFO "NEURONSPI: SPI CRC1 Not Correct");
+		}
 #endif
-    recv_crc2 = neuronspi_spi_crc(&recv_buf[6], len - 8, recv_crc1);
-    memcpy(&packet_crc, &recv_buf[len - 2], 2);
+		recv_crc2 = neuronspi_spi_crc(&recv_buf[6], len - 8, recv_crc1);
+		memcpy(&packet_crc, &recv_buf[len - 2], 2);
 #if NEURONSPI_DETAILED_DEBUG > 1
-	printk(KERN_INFO "NEURONSPI: SPI CRC2: %x\t COMPUTED CRC2:%x\n", packet_crc, recv_crc2);
+		printk(KERN_INFO "NEURONSPI: SPI CRC2: %x\t COMPUTED CRC2:%x\n", packet_crc, recv_crc2);
 #endif
-    if (recv_crc2 != packet_crc) {
+		if (recv_crc2 != packet_crc) {
 #if NEURONSPI_DETAILED_DEBUG > 0
-		printk(KERN_INFO "NEURONSPI: SPI CRC2 Not Correct");
+			printk(KERN_INFO "NEURONSPI: SPI CRC2 Not Correct");
 #endif
-    	recv_buf[0] = 0;
+			recv_buf[0] = 0;
+		}
+    } else {
+
     }
     mutex_unlock(&neuronspi_master_mutex);
     kfree(s_trans);
@@ -1175,6 +1178,8 @@ static int32_t neuronspi_uart_startup(struct uart_port *port)
 	neuronspi_spi_set_irqs(spi, 0x5);
 	if (d_data->poll_thread != NULL) {
 		wake_up_process(d_data->poll_thread);
+	} else if (d_data->no_irq) {
+		d_data->poll_thread = kthread_create(neuronspi_uart_poll, (void *)d_data, "UART_poll_thread");
 	}
 	neuronspi_uart_power(port, 1);
 
@@ -1382,6 +1387,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	spi->max_speed_hz	= spi->max_speed_hz ? : 12000000;
 	ret = spi_setup(spi);
 	n_spi->neuron_index = spi->chip_select - 1;
+	n_spi->reserved_device = 0;
 	if (ret)
 		return ret;
 #if NEURONSPI_DETAILED_DEBUG > 0
@@ -1503,13 +1509,15 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 			no_irq = 1;
 		}
 	}
+	n_spi->poll_thread = NULL;
 	if (!no_irq) {
+		n_spi->no_irq = 0;
 		ret = devm_request_irq(&(spi->dev), spi->irq, neuronspi_spi_irq, 0x81, dev_name(&(spi->dev)), spi);
 #if NEURONSPI_DETAILED_DEBUG > 0
 		printk(KERN_DEBUG "NEURONSPI: IRQ registration, ret:%d\n", ret);
 #endif
 	} else {
-		n_spi->poll_thread = kthread_create(neuronspi_uart_poll, (void *)n_spi, "UART_poll_thread");
+		n_spi->no_irq = 1;
 #if NEURONSPI_DETAILED_DEBUG > 0
 		printk(KERN_DEBUG "NEURONSPI: NO IRQ ON THIS MODEL !!\n");
 #endif

@@ -103,6 +103,9 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
     //offset = nb_ctx->ctx->backend->header_length;
     offset = _MODBUS_TCP_HEADER_LENGTH;
     slave = req[offset - 1];
+    if (slave == 255) {
+    	slave = 0;
+    }
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;

@@ -301,9 +301,11 @@ int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
         pabort("Too many registers in WRITE_REG");
         return -1;
     }
-
     uint16_t len2 = SIZEOF_HEADER + sizeof(uint16_t) * cnt;
-
+    if (arm == NULL) {
+    	if (arm_verbose) printf("Invalid Arm Device\n");
+    	return -1;
+    }
     ac_header(arm->tx2)->len = cnt;
     memmove(arm->tx2 + SIZEOF_HEADER, values, cnt * sizeof(uint16_t));
 

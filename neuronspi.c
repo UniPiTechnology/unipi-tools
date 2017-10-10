@@ -1363,8 +1363,6 @@ static int32_t neuronspi_uart_remove(struct neuronspi_uart_data *u_data)
 	return 0;
 }
 
-MODULE_DEVICE_TABLE(of, neuronspi_id_match);
-
 static int32_t neuronspi_spi_probe(struct spi_device *spi)
 {
 	const struct neuronspi_devtype *devtype;

@@ -26,7 +26,7 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 # -Dhw_v_0_4
 #
 # Define project name and Ram/Flash mode here
-PROJECT        = neuron_tcp_server
+PROJECT = neuron_tcp_server
 
 
 
@@ -35,7 +35,7 @@ PROJECT        = neuron_tcp_server
 LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
-LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.so
+LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
 ifdef SYSTEMROOT
 LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
 endif
@@ -50,7 +50,7 @@ DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/includ
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
-SRC = $(SPISRC) nb_modbus.c armpty.c
+SRC = $(SPISRC) nb_modbus.c #armpty.c
 
 # List all directories here
 #INCDIRS = /usr/local/include/modbus
@@ -63,7 +63,7 @@ INCDIRS = libmodbus-3.1.4/src\
 LIBDIRS += $(LIBSDIRS)
  
 # List all user libraries here
-LIBS = modbus util
+LIBS = util modbus
 # Define optimisation level here
 #OPT = -Ofast
 #OPT = -Os
@@ -98,10 +98,11 @@ endif
 all: $(OBJS) $(PROJECT) neuronspi fwspi fwserial
 
 %.o: %.c
-	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@
+	$(CC) -c $(DFLAGS2) -I . $(INCDIR) $< -o $@
 
 $(PROJECT): $(PROJECT).o $(OBJS)
 	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
+	chmod +x $(PROJECT)
 
 fwspi:  fwspi.o $(SPIOBJS)
 	$(CC) fwspi.o $(SPIOBJS) -o $@

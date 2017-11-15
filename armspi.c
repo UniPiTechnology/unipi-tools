@@ -543,7 +543,6 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
         speed = get_board_speed(&arm->bv);
         set_spi_speed(arm->fd, speed);
         if (read_regs(arm, 1000, 5, configregs) != 5) {
-            set_spi_speed(arm->fd, START_SPI_SPEED);
             speed = START_SPI_SPEED;
         }
     }
@@ -563,24 +562,6 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     /* Open fdint for interrupt catcher */
     arm->fdint = -1;
     if (arm_verbose) printf("ARM Init finished!\n");
-
-    if ((gpio == NULL)||(strlen(gpio) == 0)||(arm->bv.int_mask_register<=0)) return 0;
-
-    int fdx = open("/sys/class/gpio/export", O_WRONLY);
-    if (fdx < 0) return 0;
-    write(fdx, gpio, strlen(gpio));
-    close(fdx);
-
-    char gpiobuf[256];
-    sprintf(gpiobuf, "/sys/class/gpio/gpio%s/edge", gpio);
-    fdx = open(gpiobuf, O_WRONLY);
-    if (fdx < 0) return 0;
-    write(fdx, "rising", 6);
-    close(fdx);
-
-    sprintf(gpiobuf, "/sys/class/gpio/gpio%s/value", gpio);
-    arm->fdint = open(gpiobuf, O_RDONLY);
-    if (arm->fdint < 0) return 0;
 
     return 0;
 }

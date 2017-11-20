@@ -11,6 +11,5 @@
 .deps
 .libs
 neuronspi
-neuron_tcp_server
 libmodbus-master/tests/
 libmodbus-master/m4/

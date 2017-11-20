@@ -48,7 +48,7 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-char* spi_devices[MAX_ARMS] = {"/dev/spidev0.1","/dev/spidev0.3","/dev/spidev0.2"};
+char* spi_devices[MAX_ARMS] = {"/dev/neuronspi","/dev/neuronspi","/dev/neuronspi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/fw";
@@ -144,7 +144,6 @@ mb_buffer_t* get_from_pool(void)
 static int make_socket_non_blocking (int sfd)
 {
     int flags, s;
-
     flags = fcntl (sfd, F_GETFL, 0);
     if (flags == -1) {
         perror ("fcntl");
@@ -281,7 +280,6 @@ static struct option long_options[] = {
   {"timeout", required_argument, 0, 't'},
   {"nsspause", required_argument, 0, 'n'},
   {"spidev", required_argument, 0, 's'},
-  {"interrupts",required_argument, 0, 'i'},
   {"bauds",required_argument, 0, 'b'},
   {"fwdir", required_argument, 0, 'f'},
   {"check-firmware", no_argument,0, 'c'},
@@ -290,7 +288,7 @@ static struct option long_options[] = {
 
 static void print_usage(const char *progname)
 {
-  printf("usage: %s [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-i gpio1[,gpio2[,gpio3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
+  printf("usage: %s [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
@@ -354,7 +352,7 @@ int parse_ilist(char * option, int* results)
 int main(int argc, char *argv[])
 {
     int tcp_port = 502;
-    char listen_address[100] = "0.0.0.0";
+    char listen_address[100] = "127.0.0.1";
 
     int poll_timeout = 0;
     int daemon = 0;
@@ -369,7 +367,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:t:s:b:i:f:n:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:t:s:b:f:n:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -418,12 +416,6 @@ int main(int argc, char *argv[])
                exit(EXIT_FAILURE);
            }
            break;
-       case 'i':
-           if (parse_slist(optarg, gpio_int) == 0) {
-               printf("Bad interrupts count(1-3) (%s))\n", optarg);
-               exit(EXIT_FAILURE);
-           }
-           break;
        case 'b':
            if (parse_ilist(optarg, spi_speed) == 0) {
                printf("Bad bauds count(1-3) (%s))\n", optarg);
@@ -446,15 +438,6 @@ int main(int argc, char *argv[])
 
     nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
     nb_ctx->fwdir = firmwaredir;
-    server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
-    if (server_socket == -1) {
-        perror ("modbus_tcp_listen");
-        abort ();
-    }
-
-    signal(SIGINT, close_sigint);
-    s = make_socket_non_blocking (server_socket);
-    if (s == -1)  abort ();
 
     /* Create arm handles */
     int ai;
@@ -464,7 +447,6 @@ int main(int argc, char *argv[])
         if ((dev != NULL) && (strlen(dev)>0)) {
             int speed = spi_speed[ai];
             if (!(speed > 0)) speed = spi_speed[0];
-            //if (!(speed > 0)) speed = 12000000;
             add_arm(nb_ctx, ai, dev, speed, gpio_int[ai]);
             if (nb_ctx->arm[ai] && do_check_fw) {
                 arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);
@@ -472,7 +454,17 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Prepare epoll structure, insert server_socket to epoll */
+    server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
+    printf("Neuron TCP Listen Connection Established RET:%d\n", server_socket);
+    if (server_socket == -1) {
+        perror ("modbus_tcp_listen");
+        abort ();
+    }
+
+    signal(SIGINT, close_sigint);
+    s = make_socket_non_blocking (server_socket);
+    if (s == -1)  abort ();
+
     efd = epoll_create1 (0);
     if (efd == -1) {
         perror ("epoll_create");
@@ -489,43 +481,7 @@ int main(int argc, char *argv[])
         abort ();
     }
 
-    /* Insert board interrupt sockets to epoll */
-    int fdint;
-    for (ai=0; ai < MAX_ARMS; ai++) {
-        arm_handle* arm = nb_ctx->arm[ai];
-        if (arm == NULL) continue;
-        fdint = arm->fdint;
-        if (fdint >= 0) {
-            event_data = calloc(1, sizeof(mb_event_data_t));
-            event_data->fd = fdint;
-            event_data->type = ED_INTERRUPT;
-            event_data->arm = arm;
-            event.events = EPOLLPRI;// | EPOLLET;
-            event.data.ptr = event_data;
-            s = epoll_ctl(efd, EPOLL_CTL_ADD, fdint, &event);
-        } else {
-            if (poll_timeout == 0) {
-                poll_timeout = DEFAULT_POLL_TIMEOUT;
-            }
-        }
-        /* ----- ToDo more Uarts */
-        int pi, pty;
-        //printf ("uarts = %d\n", arm->uart_count);
-        for (pi=0; pi < arm->bv.uart_count; pi++) {
-            pty = armpty_open(arm, pi);
-            if (pty >= 0) {
-                event_data = calloc(1, sizeof(mb_event_data_t));
-                event_data->fd = pty;
-                event_data->type = ED_PTY;
-                event_data->arm = arm;
-                event.events =  EPOLLPRI | EPOLLIN | EPOLLHUP;// | EPOLLET;
-                event.data.ptr = event_data;
-                s = epoll_ctl (efd, EPOLL_CTL_ADD, pty, &event);
-            }
-        }
-    }
-
-    if (poll_timeout == 0) poll_timeout = -1; 
+    poll_timeout = -1;
     if (verbose) printf ("poll timeout = %d[ms]\n", poll_timeout);
     /* Prepare buffer pool */
     pool_allocate();
@@ -550,7 +506,7 @@ int main(int argc, char *argv[])
         dup (0);                     /* stderror */
     }
 
-    if (verbose) printf("Starting loop\n");
+    if (verbose) printf("Starting primary loop\n");
     /* The event loop */
     while (1) {
 
@@ -563,53 +519,11 @@ int main(int argc, char *argv[])
         n = epoll_wait (efd, events, MAXEVENTS, poll_timeout);
         for (i = 0; i < n; i++) {
             event_data = events[i].data.ptr;
-            /* ..  Check Interrupts .. */
-            if (event_data->type == ED_INTERRUPT) {
-                if (verbose>1) printf("INT on arm%d\n", event_data->arm->index);
-                if ((events[i].events & EPOLLPRI) && (event_data->arm != NULL)) {
-                    uint16_t intval;
-                    fdint = event_data->fd;
-                    pread(fdint, &intval, 2, 0); // read 2 bytes value of gpio - should be 1
-                    //printf("INT on arm%d : %04x\n", event_data->arm->index, intval);
-                    //if ((intval & 0xff) == 0x31)
-                    armpty_readuart(event_data->arm, 1);
-                }
-                continue;
-            }
 
-            if (event_data->type == ED_PTY) {
-                if (event_data->arm == NULL) continue;
-                if ((events[i].events & EPOLLPRI)) {
-                    armpty_setuart(event_data->fd, event_data->arm, 0/*event_data->uart*/);
-                    //continue;
-                }
-                if ((events[i].events & EPOLLIN)) {
-                    armpty_readpty(event_data->fd, event_data->arm, 0/*event_data->uart*/);
-                    //continue;
-                }
-                if ((events[i].events & EPOLLHUP)) {
-                    printf("HUP on PTY arm%d : %c\n", event_data->arm->index);
-                }
-                continue;
-            }
-
-            if ((events[i].events & EPOLLERR) ||
-                (events[i].events & EPOLLHUP) ||
-                (!(events[i].events & EPOLLIN))) {
-                /* An error has occured on this fd, or the socket is not
-                   ready for reading (why were we notified then?) */
-                if (events[i].events & EPOLLERR) fprintf (stderr, "epoll ERR error\n");
-                if (events[i].events & EPOLLHUP) fprintf (stderr, "epoll HUP error\n");
-                if (events[i].events & EPOLLOUT) fprintf (stderr, "epoll OUT error\n");
-                fprintf (stderr, "epoll error\n");
-                close_event(event_data);
-                continue;
-            }
-
-            /* Check listening socket */
+            // Check listening socket */
             if (event_data->type == ED_SERVER_SOCKET) {
-                /* We have a notification on the listening socket, which
-                   means one or more incoming connections. */
+                // We have a notification on the listening socket, which
+                 //  means one or more incoming connections.
                 while (1)  {
                     /* A client is asking a new connection */
                     socklen_t addrlen;
@@ -676,7 +590,7 @@ int main(int argc, char *argv[])
 
                 /* We have data on the fd waiting to be read.
                    We must read whatever data is available completely,
-                   as we are running in edge-triggered mode and 
+                   as we are running in edge-triggered mode and
                    won't get a notification again for the same data. */
                 while (1) {
                     ssize_t count;
@@ -714,11 +628,11 @@ int main(int argc, char *argv[])
                     if (rc == -1) {
                         close_event(event_data);
                         break;
-                    } 
+                    }
                     if (rc == RES_WRITE_QUEUE) {
                         event.events =  EPOLLIN | EPOLLOUT | EPOLLET;
                         event.data.ptr =  event_data;
-                        if (epoll_ctl (efd, EPOLL_CTL_MOD, event_data->fd, &event) == -1) 
+                        if (epoll_ctl (efd, EPOLL_CTL_MOD, event_data->fd, &event) == -1)
                             perror ("epoll_ctl");
                     }
 
@@ -727,16 +641,6 @@ int main(int argc, char *argv[])
                 } /* while */
             } /* if EPOLLIN */
             /* End of one event */
-        }
-        if (poll_timeout > 0) {
-          for (ai=0; ai < MAX_ARMS; ai++) {
-            arm_handle* arm = nb_ctx->arm[ai];
-            if (arm == NULL) continue;
-            if ((arm->bv.int_mask_register <= 0) && (arm->bv.uart_count>0)) {
-                if (verbose > 2) printf("readpty..\n");
-                armpty_readuart(arm, 1);
-            }
-          }
         }
     }
 }

@@ -30,14 +30,12 @@
 
 /* Default parameters */
 char* PORT = NULL;
-char* INDEX = NULL;
 int   BAUD = 10000000;
 #ifdef OS_WIN32
 char* firmwaredir = "./fw"
 #else
 char* firmwaredir = "/opt/fw";
 #endif
-int device_index;
 int upboard;
 int verbose = 0;
 int do_verify = 0;
@@ -62,7 +60,6 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     red = fread(prog_data, 1, MAX_FW_SIZE, fd);
-    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
     fclose(fd);
     return red;
 }
@@ -95,7 +92,6 @@ int arm_flash_file(void* fwctx, const char* fwname)
     } else {
         vprintf("Error opening firmware file %s\n", fwname);
     }
-    return 0;
 }
 
 int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int overwrite)
@@ -136,7 +132,6 @@ int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int over
     } else {
         vprintf("Error opening nvram file %s\n", fwname);
     }
-    return 0;
 }
 
 
@@ -149,17 +144,15 @@ static struct option long_options[] = {
   {"spidev",  no_argument,      0, 's'},
   {"baud",  required_argument,  0, 'b'},
   {"dir", required_argument,    0, 'd'},
-  {"index", required_argument,	0, 'i'},
   {0, 0, 0, 0}
 };
 
 void print_usage(char *argv0)
 {
     printf("\nUtility for Programming Neuron via ModBus RTU\n");
-    printf("%s [-vPRC] -s <spidevice> -i <index> [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
+    printf("%s [-vPRC] -s <spidevice> [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
     printf("\n");
-    printf("--index <index>\t\t [0...n] device index\n");
-    printf("--spidev <spidev>\t\t /dev/neuronspi \n");
+    printf("--spidev <spidev>\t\t /dev/spidev[1,2,3,0] \n");
     printf("--baud <baudrate>\t default 10000000\n");
     printf("--dir <firmware dir>\t default /opt/fw\n");
     printf("--verbose\t show more messages\n");
@@ -185,7 +178,7 @@ int main(int argc, char **argv)
     char *endptr;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vPRCs:b:d:F:i:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vPRCs:b:d:F:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -229,29 +222,24 @@ int main(int argc, char **argv)
        case 'd':
            firmwaredir = strdup(optarg);
            break;
-       case 'i':
-    	   INDEX = strdup(optarg);
-    	   device_index = atoi(INDEX);
-    	   break;
+
        default:
            print_usage(argv[0]);
            exit(EXIT_FAILURE);
            break;
        }
     }
-    if (INDEX == NULL) {
-    	printf("Device index must be specified\n", optarg);
+
+    if (PORT == NULL) {
+        printf("Port device must be specified\n", optarg);
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
-    }
-    if (PORT == NULL) {
-        PORT = "/dev/neuronspi";
     }
 
     // Open port
     ctx = malloc(sizeof(arm_handle));
 
-    if ( arm_init(ctx, PORT , BAUD, device_index, NULL) < 0) {
+    if ( arm_init(ctx, PORT , BAUD, 0, NULL) < 0) {
         fprintf(stderr, "Unable to create the spi context\n");
         free(ctx);
         return -1;
@@ -308,7 +296,7 @@ int main(int argc, char **argv)
         if (verbose) printf("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
         int rwred = RW_START_PAGE;
-        int rwlen = 0;
+		int rwlen = 0;
         free(fwname);
         if (red <= 0) {
             if (red == 0) {
@@ -319,6 +307,7 @@ int main(int argc, char **argv)
             free(ctx);
             return -1;
         }
+        //red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
         if (verbose) printf("Program size: %d\n", red);
         if (do_resetrw) {
             // load rw consts file
@@ -331,7 +320,15 @@ int main(int argc, char **argv)
             rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
             if (verbose) printf("Final page: %d\n", rwred);
         }
-
+        
+        // init FW programmer
+        //if (write_bit(ctx, 1006, 1) != 1) {
+        //    fprintf(stderr, "Program mode setting failed\n");
+        //    close(ctx->fd);
+        //    free(ctx);
+        //    return -1;
+        //}
+        
         if (do_prog || do_calibrate) {
             void * fwctx = start_firmware(ctx);
             if (fwctx != NULL) {
@@ -339,9 +336,11 @@ int main(int argc, char **argv)
                 if (do_resetrw) send_firmware(fwctx, rw_data, rwlen, 0xe000);
                 finish_firmware(fwctx);
             }
+            //flashit(ctx,prog_data, rw_data, red, rwred);
         }
+        free(prog_data);
     }
     close(ctx->fd);
-    //free(ctx);
+    free(ctx);
     return 0;
 }

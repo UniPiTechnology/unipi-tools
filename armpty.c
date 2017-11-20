@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <termios.h>
-#include <time.h>
 
 #include "armspi.h"
 
@@ -41,6 +40,7 @@ int armpty_open(arm_handle* arm, uint8_t uart)
     char slavename[256];
     const char dirname[] = "/dev/extcomm";
     char tmp[265];
+
     arm->uart_q[uart].masterpty = -1;
     int n = openpty(&masterfd, &slavefd, slavename, NULL, NULL);
     if (n < 0) {
@@ -203,17 +203,11 @@ int armpty_readuart(arm_handle* arm, int do_idle)
     int wanted = sizeof(buffer);
     int nr = 0;
     int tries = 3;
-    struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = 100000;
-    if (do_idle) {
-    	idle_op(arm);
-    	nanosleep(&ts, NULL);
-    }
+
+    if (do_idle) idle_op(arm);
     while ((n = arm->uart_q[uart].remain) > 0) {
         if (n > wanted) n = wanted;
         n = read_string(arm, uart, buffer + nr, n);
-    	//nanosleep(&ts, NULL);
         if (n < 0) {
             if (--tries) continue;
             break;
@@ -253,4 +247,3 @@ int armpty_readuart(arm_handle* arm, int do_idle)
         }
     }
 }
-

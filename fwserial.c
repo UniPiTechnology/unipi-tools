@@ -52,10 +52,8 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     int read_n, i;
     fd = fopen(path, "rb");
     struct stat finfo;
-#ifdef OS_WIN32
     fstat(fd->_file, &finfo);
     off_t filesize = finfo.st_size;
-#endif
     if (!fd) {
         printf("error opening firmware file \"%s\"\n", path);
         return -1;
@@ -63,7 +61,6 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     read_n = fread(prog_data, 1, MAX_FW_SIZE, fd);
-#ifdef OS_WIN32
     if (!read_n) {
     	for (int i = 0; i < filesize; i++) {
     		prog_data[i] = fgetc(fd);
@@ -71,7 +68,6 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     	read_n = filesize;
     }
     printf("READ: %d %x %d\n", read_n, prog_data[0], filesize);
-#endif
     fclose(fd);
     return read_n;
 }
@@ -83,7 +79,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
     int ret, chunk, page;
     uint16_t val, reg;
 
-            //modbus_set_response_timeout(ctx, 2, 999999);
+            modbus_set_response_timeout(ctx, 2, 999999);
             pd = (uint16_t*) prog_data;
             for (page=0; page < last_page; page++) {
                 printf("Verifying page %.2d ...", page);
@@ -120,7 +116,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
     uint16_t* pd;
     int ret, chunk, page;
             // Programming
-            //modbus_set_response_timeout(ctx, 1, 0);
+            modbus_set_response_timeout(ctx, 1, 0);
             page = 0;
             int errors = 0;
             while (page < last_page) {
@@ -295,11 +291,8 @@ int main(int argc, char **argv)
 
     // get FW & HW version
     uint16_t r1000[5];
-    uint16_t r1022[128];
     Tboard_version bv;
     //int hw_version, sw_version, base_version;
-
-    modbus_read_registers(ctx, 1000, 22, r1022);
     if (modbus_read_registers(ctx, 1000, 5, r1000) == 5) {
         parse_version(&bv, r1000);
         printf("Boardset:   %3d %-30s (v%d.%d%s)\n",
@@ -315,9 +308,7 @@ int main(int argc, char **argv)
         modbus_free(ctx);
         return -1;
     }
-    //modbus_set_response_timeout(ctx, 0, 800000);
-
-    printf("Modbus timeout set\n");
+    modbus_set_response_timeout(ctx, 0, 800000);
     if (do_prog || do_verify) {
         // FW manipulation
         if (do_calibrate) {
@@ -354,13 +345,13 @@ int main(int argc, char **argv)
         }
         red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
         if (verbose) printf("Program pages: %d\n", red);
-        int rwlen = 0;
+
         if (do_resetrw) {
             // load rw consts file
             rw_data = malloc(MAX_RW_SIZE);
             char* rwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
             if (verbose) printf("Opening RW settings file: %s\n", rwname);
-            rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
+            int rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
             free(rwname);
             // calc page count of firmware file
             rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
@@ -373,6 +364,19 @@ int main(int argc, char **argv)
             modbus_free(ctx);
             return -1;
         }
+        /*
+        if (modbus_read_registers(ctx, 1000, 5, version) == 5) {
+        if (modbus_read_registers(ctx, 1000, 5, r1000) == 5) {
+            parse_version(&xbv, r1000);
+            if (xbv.hw_version != 0xffff) {
+                printf("Boot boardset:   %3d (v%d.%d%s)\n", xhw_version >> 8, (xhw_version & 0xff)>>4, xhw_version & 0x7, (xhw_version & 0x8)?" CAL":"");
+            } else {
+                printf("Boot boardset:   Undefined\n");
+            }
+            printf("Boot baseboard:  %3d (v%d.%d)\n", xbase_version>> 8, (xbase_version & 0xff)>>4, xbase_version & 0x7);
+            printf("Boot firmware:  v%d.%d\n", xsw_version >> 8, xsw_version & 0xff);
+        }
+        */
         if (do_prog || do_calibrate) {
             flashit(ctx,prog_data, rw_data, red, rwred);
         }

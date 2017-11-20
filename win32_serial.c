@@ -449,7 +449,7 @@ void flash_button_pressed(GtkButton *caller) {
 	}
 
 	// init FW programmer
-	if (modbus_write_bit(ctx, 1006, 1, 0) != 1) {
+	if (modbus_write_bit(ctx, 1006, 1) != 1) {
 		snprintf(output_string, sizeof(output_string), "Program mode setting failed: %s\n", modbus_strerror(errno));
 		gtk_label_set_text(GTK_LABEL(output_label), output_string);
     	modbus_close(ctx);
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
         }
 
         // init FW programmer
-        if (modbus_write_bit(ctx, 1006, 1, 0) != 1) {
+        if (modbus_write_bit(ctx, 1006, 1) != 1) {
             fprintf(stderr, "Program mode setting failed: %s\n", modbus_strerror(errno));
             modbus_free(ctx);
             return -1;

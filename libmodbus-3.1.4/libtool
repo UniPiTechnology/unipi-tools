@@ -42,7 +42,7 @@ macro_version=2.4.6
 macro_revision=2.4.6
 
 # Whether or not to build static libraries.
-build_old_libs=yes
+build_old_libs=no
 
 # Assembler program.
 AS="as"
@@ -51,16 +51,16 @@ AS="as"
 DLLTOOL="false"
 
 # Object dumper program.
-OBJDUMP="objdump"
+OBJDUMP="arm-bcm2708-linux-gnueabi-objdump"
 
 # What type of objects to build.
 pic_mode=yes
 
 # Whether or not to build shared libraries.
-build_libtool_libs=no
+build_libtool_libs=yes
 
 # Whether or not to optimize for fast installation.
-fast_install=needless
+fast_install=yes
 
 # Shared archive member basename,for filename based shared library versioning on AIX.
 shared_archive_member_spec=
@@ -100,7 +100,7 @@ EGREP="/bin/grep -E"
 FGREP="/bin/grep -F"
 
 # A BSD- or MS-compatible name lister.
-NM="nm"
+NM="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin//arm-bcm2708-linux-gnueabi-nm -B"
 
 # Whether we need soft or hard links.
 LN_S="cp -pR"
@@ -145,7 +145,7 @@ want_nocaseglob="no"
 sharedlib_from_linklib_cmd="printf %s\\n"
 
 # The archiver.
-AR="ar"
+AR="arm-bcm2708-linux-gnueabi-ar"
 
 # Flags to create an archive.
 AR_FLAGS="cru"
@@ -154,10 +154,10 @@ AR_FLAGS="cru"
 archiver_list_spec="@"
 
 # A symbol stripping program.
-STRIP="strip"
+STRIP="arm-bcm2708-linux-gnueabi-strip"
 
 # Commands used to install an old-style archive.
-RANLIB="ranlib"
+RANLIB="arm-bcm2708-linux-gnueabi-ranlib"
 old_postinstall_cmds="chmod 644 \$oldlib~\$RANLIB \$tool_oldlib"
 old_postuninstall_cmds=""
 
@@ -165,7 +165,7 @@ old_postuninstall_cmds=""
 lock_old_archive_extraction=no
 
 # A C compiler.
-LTCC="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/arm-bcm2708-linux-gnueabi-gcc -g -std=gnu99"
+LTCC="arm-bcm2708-linux-gnueabi-gcc -std=gnu99"
 
 # LTCC compiler flags.
 LTCFLAGS="-g -O2"
@@ -303,8 +303,8 @@ dlopen_self=unknown
 dlopen_self_static=unknown
 
 # Commands to strip libraries.
-old_striplib="strip --strip-debug"
-striplib="strip --strip-unneeded"
+old_striplib="arm-bcm2708-linux-gnueabi-strip --strip-debug"
+striplib="arm-bcm2708-linux-gnueabi-strip --strip-unneeded"
 
 
 # The linker used to build libraries.
@@ -318,7 +318,7 @@ reload_cmds="\$LD\$reload_flag -o \$output\$reload_objs"
 old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"
 
 # A language specific compiler.
-CC="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/arm-bcm2708-linux-gnueabi-gcc -g -std=gnu99"
+CC="arm-bcm2708-linux-gnueabi-gcc -std=gnu99"
 
 # Is the compiler the GNU compiler?
 with_gcc=yes
@@ -339,7 +339,7 @@ link_static_flag="-static"
 compiler_c_o="yes"
 
 # Whether or not to add -lc for building shared libraries.
-build_libtool_need_lc=yes
+build_libtool_need_lc=no
 
 # Whether or not to disallow shared libs when runtime libs are static.
 allow_libtool_libs_with_static_runtimes=no
@@ -11671,7 +11671,7 @@ reload_cmds="\$LD\$reload_flag -o \$output\$reload_objs"
 old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs~\$RANLIB \$tool_oldlib"
 
 # A language specific compiler.
-CC="g++"
+CC="arm-bcm2708-linux-gnueabi-g++"
 
 # Is the compiler the GNU compiler?
 with_gcc=yes
@@ -11792,17 +11792,17 @@ file_list_spec=""
 hardcode_action=immediate
 
 # The directories searched by this compiler when creating a shared library.
-compiler_lib_search_dirs="/usr/lib/gcc/i586-linux-gnu/4.9 /usr/lib/gcc/i586-linux-gnu/4.9/../../../i386-linux-gnu /usr/lib/gcc/i586-linux-gnu/4.9/../../../../lib /lib/i386-linux-gnu /lib/../lib /usr/lib/i386-linux-gnu /usr/lib/../lib /usr/lib/gcc/i586-linux-gnu/4.9/../../.."
+compiler_lib_search_dirs="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1 /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1/../../../../arm-bcm2708-linux-gnueabi/lib /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/lib /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/usr/lib"
 
 # Dependencies to place before and after the objects being linked to
 # create a shared library.
-predep_objects="/usr/lib/gcc/i586-linux-gnu/4.9/../../../i386-linux-gnu/crti.o /usr/lib/gcc/i586-linux-gnu/4.9/crtbeginS.o"
-postdep_objects="/usr/lib/gcc/i586-linux-gnu/4.9/crtendS.o /usr/lib/gcc/i586-linux-gnu/4.9/../../../i386-linux-gnu/crtn.o"
+predep_objects="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/usr/lib/crti.o /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1/crtbeginS.o"
+postdep_objects="/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1/crtendS.o /root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/usr/lib/crtn.o"
 predeps=""
 postdeps="-lstdc++ -lm -lgcc_s -lc -lgcc_s"
 
 # The library search path used internally by the compiler when linking
 # a shared library.
-compiler_lib_search_path="-L/usr/lib/gcc/i586-linux-gnu/4.9 -L/usr/lib/gcc/i586-linux-gnu/4.9/../../../i386-linux-gnu -L/usr/lib/gcc/i586-linux-gnu/4.9/../../../../lib -L/lib/i386-linux-gnu -L/lib/../lib -L/usr/lib/i386-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/i586-linux-gnu/4.9/../../.."
+compiler_lib_search_path="-L/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1 -L/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc -L/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../lib/gcc/arm-bcm2708-linux-gnueabi/4.7.1/../../../../arm-bcm2708-linux-gnueabi/lib -L/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/lib -L/root/rpitools/tools/arm-bcm2708/arm-bcm2708-linux-gnueabi/bin/../arm-bcm2708-linux-gnueabi/sysroot/usr/lib"
 
 # ### END LIBTOOL TAG CONFIG: CXX

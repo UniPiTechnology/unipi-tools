@@ -90,7 +90,7 @@ int idle_op(arm_handle* arm);
 int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);
 int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
-int write_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_lock);
+int write_bit(arm_handle* arm, uint16_t reg, uint8_t value);
 int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);
 int write_char(arm_handle* arm, uint8_t uart, uint8_t c);
 int write_string(arm_handle* arm, uint8_t uart, uint8_t* str, int len);

@@ -191,6 +191,8 @@ MODULE_DEVICE_TABLE(of, neuronspi_id_match);
 #define NEURONSPI_RECONF_IER				(1 << 1)
 #define NEURONSPI_RECONF_RS485				(1 << 2)
 
+#define MODBUS_FIRST_DATA_BYTE				10
+
 #define MODBUS_MAX_READ_BITS                2000
 #define MODBUS_MAX_WRITE_BITS               1968
 #define MODBUS_MAX_READ_REGISTERS           125
@@ -944,7 +946,7 @@ void neuronspi_spi_uart_set_cflag(struct spi_device* spi_dev, u8 port, uint32_t 
 	kfree(recv_buf);
 }
 
-void neuronspi_spi_uart_set_ldisc(struct spi_device* spi_dev, u8 port, uint32_t to)
+void neuronspi_spi_uart_set_ldisc(struct spi_device* spi_dev, u8 port, uint8_t to)
 {
 	u8 *message_buf;
 	u8 *recv_buf;
@@ -954,51 +956,39 @@ void neuronspi_spi_uart_set_ldisc(struct spi_device* spi_dev, u8 port, uint32_t 
 	if (d_data->slower_model) {
 		frequency = NEURONSPI_SLOWER_FREQ;
 	}
-#if NEURONSPI_DETAILED_DEBUG > 0
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: SPI TERMIOS Set, Dev-CS:%d, to:%x\n", spi_dev->chip_select, to);
 #endif
-	message_buf = kzalloc(NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, GFP_KERNEL);
-	recv_buf = kzalloc(NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, GFP_KERNEL);
-	memcpy(message_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN);
-	crc1 = neuronspi_spi_crc(message_buf, 4, 0);
-	memcpy(&message_buf[4], &crc1, 2);
-	memcpy(&message_buf[10], &to, 4);
-	crc2 = neuronspi_spi_crc(&message_buf[6], NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN - 8, crc1);
-	memcpy(&message_buf[NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN - 2], &crc2, 2);
+	neuronspi_spi_compose_single_register_write(503, &message_buf, &recv_buf, to);
 	if (!d_data->reserved_device) {
-		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
+		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 35, 1);
 	}
 	kfree(message_buf);
 	kfree(recv_buf);
 }
 
-uint32_t neuronspi_spi_uart_get_ldisc(struct spi_device* spi_dev, u8 port)
+u8 neuronspi_spi_uart_get_ldisc(struct spi_device* spi_dev, u8 port)
 {
 	u8 *message_buf;
 	u8 *recv_buf;
-	uint16_t crc1, crc2, ret;
+	u16 crc1, crc2;
+	u8 outp;
 	struct neuronspi_driver_data *d_data = spi_get_drvdata(spi_dev);
 	int32_t frequency = NEURONSPI_COMMON_FREQ;
 	if (d_data->slower_model) {
 		frequency = NEURONSPI_SLOWER_FREQ;
 	}
-	message_buf = kzalloc(NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN, GFP_KERNEL);
-	recv_buf = kzalloc(NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN, GFP_KERNEL);
-	memcpy(message_buf, NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE, NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN);
-	crc1 = neuronspi_spi_crc(message_buf, 4, 0);
-	memcpy(&message_buf[4], &crc1, 2);
-	crc2 = neuronspi_spi_crc(&message_buf[6], NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN - 8, crc1);
-	memcpy(&message_buf[NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN - 2], &crc2, 2);
-	if (!d_data->reserved_device) {
-		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_GET_CFLAG_MESSAGE_LEN, frequency, 65, 1);
-	}
-	ret = ((uint32_t*)recv_buf)[5];
-#if NEURONSPI_DETAILED_DEBUG > 0
-	printk(KERN_INFO "NEURONSPI: SPI TERMIOS Get, Dev-CS:%d, val:%x\n", spi_dev->chip_select, ret);
+#if NEURONSPI_DETAILED_DEBUG > 1
+	printk(KERN_INFO "NEURONSPI: SPI TERMIOS GET, Dev-CS:%d, to:%x\n", spi_dev->chip_select);
 #endif
+	neuronspi_spi_compose_single_register_read(503, &message_buf, &recv_buf);
+	if (!d_data->reserved_device) {
+		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_UART_SET_CFLAG_MESSAGE_LEN, frequency, 35, 1);
+	}
+	outp = recv_buf[MODBUS_FIRST_DATA_BYTE + 1];
 	kfree(message_buf);
 	kfree(recv_buf);
-	return ret;
+	return outp;
 }
 
 
@@ -1739,9 +1729,12 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	struct neuronspi_driver_data *n_spi;
 	int32_t ret, i, index, no_irq = 0;
 	u8 uart_count = 0;
+	/* **********************************
+	 * Message composition test variables
 	u8 *test_inp;
 	u8 *test_out;
 	u8 *test_data;
+	************************************/
 	size_t test_length;
 	n_spi = kzalloc(sizeof *n_spi, GFP_KERNEL);
 	if (!n_spi)
@@ -1817,6 +1810,8 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);
 		n_spi->led_count = 4;
 		n_spi->led_driver = kzalloc(sizeof(struct neuronspi_led_driver) * n_spi->led_count, GFP_KERNEL);
+		/*
+		 *  Message composition test
 		test_data = kzalloc(2, GFP_KERNEL);
 		test_data[0] = 0x02;
 		test_length = neuronspi_spi_compose_multiple_coil_write(4, 8, &test_inp, &test_out, test_data);
@@ -1853,6 +1848,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
 		kfree(test_inp);
 		kfree(test_out);
+		****************************/
 	} else {
 		n_spi->led_driver = NULL;
 		n_spi->led_count = 0;

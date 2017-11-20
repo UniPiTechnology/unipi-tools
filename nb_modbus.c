@@ -147,6 +147,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
             int n = read_bits(arm, address, nb, rsp+rsp_length); 
             if (n >= nb) {
                 rsp_length += (nb / 8) + ((nb % 8) ? 1 : 0);
+            } else if (n < 0) {
+            	rsp_length = nb_response_exception(
+                        nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                        "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, 
@@ -175,6 +179,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
                     rsp[rsp_length-1] = rsp[rsp_length];
                     rsp[rsp_length++] = c;
                 }
+            } else if (n < 0) {
+            	rsp_length = nb_response_exception(
+                        nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                        "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
@@ -201,6 +209,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
                 n = write_bit(arm, address, data ? 1 : 0, 0);
             if (n == 1) {
                 rsp_length += 4; // = req_length;
+            } else if (n < 0) {
+            	rsp_length = nb_response_exception(
+                        nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                        "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
@@ -215,6 +227,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
         int n = write_regs(arm, address, 1, &data);
         if (n == 1) {
             rsp_length += 4; // = req_length;
+        } else if (n < 0) {
+        	rsp_length = nb_response_exception(
+                    nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                    "Illegal data value 0x%0X in read_bits\n", address);
         } else {
             rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
@@ -235,6 +251,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
             int n = write_bits(arm, address, nb, rsp+rsp_length + 5);
             if ( n == nb ) {
                 rsp_length += 4;
+            } else if (n < 0) {
+            	rsp_length = nb_response_exception(
+                        nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                        "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
@@ -263,6 +283,10 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
             int n = write_regs(arm, address, nb, (uint16_t*)(rsp + rsp_length + 5));
             if (n == nb) {
                 rsp_length += 4; // = req_length;
+            } else if (n < 0) {
+            	rsp_length = nb_response_exception(
+                        nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                        "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
@@ -305,7 +329,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
 }
 
 
-nb_modbus_t*  nb_modbus_new_tcp(const char *ip_address, int port)
+nb_modbus_t* nb_modbus_new_tcp(const char *ip_address, int port)
 {
     modbus_t* ctx = modbus_new_tcp(ip_address, port);
     if (ctx == NULL) return NULL;

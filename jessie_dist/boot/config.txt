@@ -1,0 +1,21 @@
+
+gpu_mem=32
+dtparam=i2c=on,watchdog=on
+
+dtoverlay=i2c-rtc,mcp7941x
+
+# disable it on Unipi 1.x (gpio24, 25!)
+#dtoverlay=spi-neuron,cs2_pin=25,cs3_pin=24
+dtoverlay=neuron-spi-new
+dtoverlay=neuronee
+#dtoverlay=unipiee
+#dtoverlay=mcp2515-can0
+dtoverlay=ds2482
+
+#remove dependency of spi-clock on system freq
+core_freq=250
+
+#BT enabled on RPi3 swaps UART (ttyAMA) and miniUART ttyS0 
+dtoverlay=pi3-disable-bt
+
+lcd_rotate=2

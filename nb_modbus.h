@@ -13,6 +13,7 @@
 #define __nb_modbus_h
 
 #include <modbus.h>
+#include <modbus-tcp.h>
 
 #include "armspi.h"
 
@@ -21,6 +22,15 @@
 #define _REPORT_MB_SLAVE_ID 181
 #define _MODBUS_TCP_PRESET_RSP_LENGTH  8
 #define _MODBUS_TCP_HEADER_LENGTH      7
+
+
+/* Hardware constants */
+#define PAGE_SIZE   1024
+#define REG_SIZE    64
+
+#define MAX_FW_SIZE (64*PAGE_SIZE)
+#define MAX_RW_SIZE (PAGE_SIZE)
+#define RW_START_PAGE ((0xE000) / PAGE_SIZE)
 
 // from modbus_h
 /* Modbus function codes */

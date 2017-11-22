@@ -124,7 +124,7 @@ fwserial-win: win32_serial.o armutil.o
 endif
 
 neuronspi:
-	$(shell cp neuronspi.c /root/kernel/neuron_spi/) 
+	$(shell cp neuronspi.* /root/kernel/neuron_spi/) 
 
 bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@

@@ -53,6 +53,7 @@ int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/fw";
 int do_check_fw = 0;
+int broadcast_address = 0;
 
 #define MAXEVENTS 64
 
@@ -230,7 +231,7 @@ int parse_buffer(mb_event_data_t* event_data)
         } else {
             event_data->rd_buffer = NULL;
         }
-        buffer->index = nb_modbus_reply(nb_ctx, buffer->data, reqlen);
+        buffer->index = nb_modbus_reply(nb_ctx, buffer->data, reqlen, broadcast_address);
         if ( buffer->index > 0) {
             //printf("wr len = %d\n", buffer->index);
             //debpr( buffer->data, buffer->index);
@@ -283,12 +284,13 @@ static struct option long_options[] = {
   {"bauds",required_argument, 0, 'b'},
   {"fwdir", required_argument, 0, 'f'},
   {"check-firmware", no_argument,0, 'c'},
+  {"broadcast-address", required_argument, 0, 'a'},
   {0, 0, 0, 0}
 };
 
 static void print_usage(const char *progname)
 {
-  printf("usage: %s [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
+  printf("usage: %s [-a broadcast_address] [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
@@ -367,7 +369,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:t:s:b:f:n:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdcl:p:t:s:b:f:n:a:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -428,6 +430,13 @@ int main(int argc, char *argv[])
        case 'c':
            do_check_fw = 1;
            break;
+       case 'a':
+    	   broadcast_address = atoi(optarg);
+    	   if (broadcast_address < 0 || broadcast_address > 255) {
+    		   printf("Invalid broadcast address specified (given %s)\n", optarg);
+    		   exit(EXIT_FAILURE);
+    	   }
+    	   break;
        default:
            print_usage(argv[0]);
            exit(EXIT_FAILURE);

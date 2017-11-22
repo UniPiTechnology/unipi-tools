@@ -85,7 +85,7 @@ static int nb_response_exception(modbus_t *ctx, int exception_code, uint8_t *rsp
    If an error occurs, this function construct the response
    accordingly.
 */
-int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_handle* arm)
+int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broadcast_address)
 {
     int offset;
     int slave;
@@ -103,7 +103,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length) //, arm_h
     //offset = nb_ctx->ctx->backend->header_length;
     offset = _MODBUS_TCP_HEADER_LENGTH;
     slave = req[offset - 1];
-    if (slave == 255) {
+    if (slave == broadcast_address) {
     	slave = 0;
     }
     function = req[offset];
@@ -507,19 +507,13 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
     free(fwname);
     vprintf("SW ver: %04x\n", fwver);
     if (fwver > arm->bv.sw_version) {
-    	char* fwname_rw = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
-                               fwdir, ".rw");
-    	char* fwname_bin = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
-                               fwdir, ".bin");
+    	char* fwname_rw = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".rw");
+    	char* fwname_bin = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".bin");
         prog_data = malloc(MAX_FW_SIZE);
         rw_data = malloc(MAX_FW_SIZE);
 
-
-
-
         int red = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
         int rwlen = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
-
 
         void * fwctx = start_firmware(arm);
         if (fwctx == NULL)

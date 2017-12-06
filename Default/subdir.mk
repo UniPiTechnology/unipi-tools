@@ -18,9 +18,14 @@ C_SRCS += \
 ../win32_serial.c 
 
 O_SRCS += \
+../armpty.o \
+../armspi.o \
 ../armutil.o \
 ../fwserial.o \
-../fwspi.o 
+../fwspi.o \
+../nb_modbus.o \
+../neuron_tcp_server.o \
+../spicrc.o 
 
 OBJS += \
 ./armpty.o \

@@ -9,6 +9,12 @@ C_SRCS += \
 ../libmodbus-3.1.4/src/modbus-tcp.c \
 ../libmodbus-3.1.4/src/modbus.c 
 
+O_SRCS += \
+../libmodbus-3.1.4/src/modbus-data.o \
+../libmodbus-3.1.4/src/modbus-rtu.o \
+../libmodbus-3.1.4/src/modbus-tcp.o \
+../libmodbus-3.1.4/src/modbus.o 
+
 OBJS += \
 ./libmodbus-3.1.4/src/modbus-data.o \
 ./libmodbus-3.1.4/src/modbus-rtu.o \

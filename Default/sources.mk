@@ -25,9 +25,15 @@ CPP_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 . \
-libmodbus-3.1.4/src/.libs \
 libmodbus-3.1.4/src/PaxHeaders.46003 \
 libmodbus-3.1.4/src \
 libmodbus-3.1.4/tests/PaxHeaders.46003 \
 libmodbus-3.1.4/tests \
+unipi2/E_4Dali_0 \
+unipi2/E_4Dali__0 \
+unipi2/common/src \
+unipi2/common/startup \
+unipi2/prog/flash-arm \
+unipi2/python/flash-arm \
+unipi2/python/spi-test \
 

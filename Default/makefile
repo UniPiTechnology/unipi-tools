@@ -8,10 +8,16 @@ RM := del
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include unipi2/python/spi-test/subdir.mk
+-include unipi2/python/flash-arm/subdir.mk
+-include unipi2/prog/flash-arm/subdir.mk
+-include unipi2/common/startup/subdir.mk
+-include unipi2/common/src/subdir.mk
+-include unipi2/E_4Dali__0/subdir.mk
+-include unipi2/E_4Dali_0/subdir.mk
 -include libmodbus-3.1.4/tests/PaxHeaders.46003/subdir.mk
 -include libmodbus-3.1.4/tests/subdir.mk
 -include libmodbus-3.1.4/src/PaxHeaders.46003/subdir.mk
--include libmodbus-3.1.4/src/.libs/subdir.mk
 -include libmodbus-3.1.4/src/subdir.mk
 -include subdir.mk
 -include objects.mk

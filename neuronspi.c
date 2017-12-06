@@ -470,6 +470,18 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
     			// If len is more than NEURONSPI_MAX_TX * i, then chunk len is NEURONSPI_MAX_TX, otherwise it's the remainder
     			s_trans[i].len = (len - (NEURONSPI_MAX_TX * i)) > 0 ? NEURONSPI_MAX_TX : len;
     		}
+    	} else if (i == trans_count - 1) {
+    		if (send_header) {
+    			s_trans[i].tx_buf = &(send_buf[NEURONSPI_FIRST_MESSAGE_LENGTH + (NEURONSPI_MAX_TX * (i - 2))]);
+    			s_trans[i].rx_buf = &(recv_buf[NEURONSPI_FIRST_MESSAGE_LENGTH + (NEURONSPI_MAX_TX * (i - 2))]);
+    			s_trans[i].len = ((NEURONSPI_MAX_TX * (i - 1)) - len) < 0 ? NEURONSPI_MAX_TX : (len - (NEURONSPI_MAX_TX * (i - 2)));
+    		} else {
+    			s_trans[i].tx_buf = &(send_buf[NEURONSPI_MAX_TX * (i - 1)]);
+    			s_trans[i].rx_buf = &(recv_buf[NEURONSPI_MAX_TX * (i - 1)]);
+    			s_trans[i].len = ((NEURONSPI_MAX_TX * i) - len) < 0 ? NEURONSPI_MAX_TX : (len - (NEURONSPI_MAX_TX * (i - 1)));
+    		}
+    		s_trans[i].delay_usecs = NEURONSPI_LAST_TRANSFER_DELAY;
+    		// If len is more than NEURONSPI_MAX_TX * i (+ optionally header), then chunk len is NEURONSPI_MAX_TX (+ optionally header), otherwise it's the remainder
     	} else {
     		if (send_header) {
     			s_trans[i].tx_buf = &(send_buf[NEURONSPI_FIRST_MESSAGE_LENGTH + (NEURONSPI_MAX_TX * (i - 2))]);
@@ -787,7 +799,6 @@ static int32_t neuronspi_uart_poll(void *data)
 				if (u_data->p[i].dev_index == d_data->neuron_index) {
 					kthread_queue_work(&u_data->kworker, &u_data->p[i].irq_work);
 				}
-
 			}
 		}
 	}
@@ -1107,6 +1118,18 @@ void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brigh
 #endif
 	kfree(message_buf);
 	kfree(recv_buf);
+	recv_buf = kzalloc(8, GFP_KERNEL);
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+	kfree(recv_buf);
+	recv_buf = kzalloc(8, GFP_KERNEL);
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+	kfree(recv_buf);
+	recv_buf = kzalloc(8, GFP_KERNEL);
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+	kfree(recv_buf);
 }
 
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness)
@@ -1127,12 +1150,15 @@ int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size
 	u8 *outp_buf;
 	int i, write_length;
 	int block_counter = 0;
+	printk(KERN_INFO "NEURONSPI: RM_READ %d %x %d %x\n", reg_size, mb_reg_buf[0], val_size, mb_val_buf[0]);
 	for (i = 0; i < (reg_size / 2); i++) {
 		// Check for continuity and read the largest possible continuous block
-		if (block_counter != ((reg_size / 2) - 1) && ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1])) {
-			write_length = neuronspi_spi_compose_multiple_register_read(block_counter, mb_reg_buf[i - block_counter], &inp_buf, &outp_buf);
+		if (block_counter == ((reg_size / 2) - 1) || ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1])) {
+			write_length = neuronspi_spi_compose_multiple_register_read(block_counter + 1, mb_reg_buf[i - block_counter], &inp_buf, &outp_buf);
 			neuronspi_spi_send_message(spi, inp_buf, outp_buf, write_length, n_spi->ideal_frequency, 125, 1);
-			memcpy(&mb_val_buf[i - block_counter], &outp_buf[NEURONSPI_HEADER_LENGTH], block_counter * 2);
+			memcpy(&mb_val_buf[i - block_counter], &outp_buf[NEURONSPI_HEADER_LENGTH], (block_counter + 1) * 2);
+			kfree(inp_buf);
+			kfree(outp_buf);
 			block_counter = 0;
 		} else {
 			block_counter++;
@@ -1147,9 +1173,12 @@ int neuronspi_regmap_hw_reg_read(void *context, unsigned int reg, unsigned int *
 	u8 *inp_buf;
 	u8 *outp_buf;
 	int write_length;
+	printk(KERN_INFO "NEURONSPI: RM_REG_READ\n");
 	write_length = neuronspi_spi_compose_single_register_read(reg, &inp_buf, &outp_buf);
 	neuronspi_spi_send_message(spi, inp_buf, outp_buf, write_length, n_spi->ideal_frequency, 25, 1);
 	memcpy(val, &outp_buf[NEURONSPI_HEADER_LENGTH], sizeof(u16));
+	kfree(inp_buf);
+	kfree(outp_buf);
 	return 0;
 }
 
@@ -1167,6 +1196,8 @@ int neuronspi_regmap_hw_reg_write(void *context, unsigned int reg, unsigned int 
 	write_length = neuronspi_spi_compose_single_register_read(reg, &inp_buf, &outp_buf);
 	neuronspi_spi_send_message(spi, inp_buf, outp_buf, write_length, n_spi->ideal_frequency, 25, 1);
 	memcpy(&val, &outp_buf[NEURONSPI_HEADER_LENGTH], sizeof(u16));
+	kfree(inp_buf);
+	kfree(outp_buf);
 	return 0;
 }
 
@@ -1181,11 +1212,13 @@ int neuronspi_regmap_hw_gather_write(void *context, const void *reg, size_t reg_
 	int block_counter = 0;
 	for (i = 0; i < (reg_size / 2); i++) {
 		// Check for continuity and read the largest possible continuous block
-		if (block_counter != ((reg_size / 2) - 1) && ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1])) {
+		if (block_counter == ((reg_size / 2) - 1) || ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1]))  {
 			write_length = neuronspi_spi_compose_multiple_register_write(block_counter, mb_reg_buf[i - block_counter], &inp_buf, &outp_buf,
 					                                                     (uint8_t*)(&mb_val_buf[i - block_counter]));
 			neuronspi_spi_send_message(spi, inp_buf, outp_buf, write_length, n_spi->ideal_frequency, 125, 1);
 			block_counter = 0;
+			kfree(inp_buf);
+			kfree(outp_buf);
 		} else {
 			block_counter++;
 		}
@@ -1205,9 +1238,10 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	/* **********************************
 	 * Message composition test variables
 	u8 *test_inp;
-	u8 *test_out;
+
 	u8 *test_data;
 	************************************/
+	u8 *test_out;
 	size_t test_length;
 	n_spi = kzalloc(sizeof *n_spi, GFP_KERNEL);
 	if (!n_spi)
@@ -1275,17 +1309,19 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	}
 	n_spi->ideal_frequency = NEURONSPI_COMMON_FREQ;
 	for (i = 0; i < NEURONSPI_SLOWER_MODELS_LEN; i++) {
-		if (NEURONSPI_SLOWER_MODELS[i] == (n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16])) {
+		if (NEURONSPI_SLOWER_MODELS[i] == (n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18])) {
 			n_spi->slower_model = 1;
 			n_spi->ideal_frequency = NEURONSPI_SLOWER_FREQ;
 		}
 	}
+	printk(KERN_INFO "NEURONSPI: Neuron device on CS %d uses SPI communication freq. %d Mhz\n", spi->chip_select, n_spi->ideal_frequency);
 	// Check for user-configurable LED devices
 	if (NEURONSPI_LED_BRAIN_MODEL == (n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16])) {
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);
 		n_spi->led_count = 4;
 		n_spi->led_driver = kzalloc(sizeof(struct neuronspi_led_driver) * n_spi->led_count, GFP_KERNEL);
-
+		n_spi->reg_map = regmap_init(&(spi->dev), &neuronspi_regmap_bus, spi, &neuronspi_regmap_config_default);
+		//regmap_n_spi->reg_map
 		/*
 		 *  Message composition test
 		test_data = kzalloc(2, GFP_KERNEL);

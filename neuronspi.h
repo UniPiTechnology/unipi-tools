@@ -51,10 +51,11 @@
 #define NEURONSPI_DEFAULT_FREQ			500000
 #define NEURONSPI_COMMON_FREQ			12000000
 #define NEURONSPI_SLOWER_FREQ			8000000
-#define NEURONSPI_MAX_TX				64
+#define NEURONSPI_MAX_TX				62
 #define NEURONSPI_MAX_BAUD				115200
 #define NEURONSPI_FIFO_SIZE				(256)
-#define NEURONSPI_DETAILED_DEBUG		3
+#define NEURONSPI_DETAILED_DEBUG		0
+#define NEURONSPI_LAST_TRANSFER_DELAY	40
 
 #define NEURONSPI_NAME "neuronspi"
 #define NEURON_DEVICE_NAME "neuron"
@@ -171,6 +172,27 @@ const uint16_t NEURONSPI_CRC16TABLE[NEURONSPI_CRC16TABLE_LEN] = {
  3458,  1922,   514
 };
 
+/*
+#define NEURONSPI_BOARDTABLE_LEN		16
+const uint16_t NEURONSPI_BOARDTABLE[5][NEURONSPI_BOARDTABLE_LEN] = {
+		{0,		0,	0,	21,	32},			// B_1000
+		{1, 	1,	0,	0,	0},				// E-8Di8Ro
+		{2, 	2,	0,	0,	0},				// E-14Ro
+		{3, 	3,	0,	0,	0},				// E-16Di
+		{4, 	1,	1,	0,	0},				// E-8Di8Ro_P-11DiR485
+		{5, 	2,	1,	0,	0},				// E-14Ro_P-11DiR485
+		{6, 	3,	1,	0,	0},				// E-16Di_P-11DiR485
+		{7, 	2,	2,	0,	0},				// E-14Ro_U-14Ro
+		{8, 	3,	2,	0,	0},				// E-16Di_U-14Ro
+		{9,		2,	3,	0,	0},				// E-14Ro_U-14Di
+		{10,	3,	3,	0,	0},				// E-16Di_U-14Di
+		{11,	11,	0,	0,	0},				// E-4Ai4Ao
+		{12,	11,	4,	0,	0},				// E-4Ai4Ao_P-6Di5Ro
+		{13,	0,	13,	0,	0},				// B-485
+		{14,	14,	0,	0,	0},				// E-4Dali
+		{15,	11,	5,	0,	0}				// E-4Ai4Ao_U-6Di5Ro
+};
+*/
 
 static const struct of_device_id neuronspi_id_match[] = {
 		{.compatible = "unipi,neuron"},
@@ -262,6 +284,7 @@ struct neuronspi_driver_data
 	struct uart_driver *serial_driver;
 	struct neuronspi_uart_data *uart_data;
 	struct neuronspi_led_driver *led_driver;
+	struct regmap *reg_map;
 	struct task_struct *poll_thread;
 	struct mutex device_lock;
 	u8 led_count;
@@ -438,7 +461,10 @@ static const struct regmap_bus neuronspi_regmap_bus =
 	.reg_write					= neuronspi_regmap_hw_reg_write,
 	.read						= neuronspi_regmap_hw_read,
 	.reg_read					= neuronspi_regmap_hw_reg_read,
+	.reg_format_endian_default  = REGMAP_ENDIAN_NATIVE,
+	.val_format_endian_default  = REGMAP_ENDIAN_NATIVE,
 	.max_raw_read				= 200,								// CRC and other overhead not included
+	.max_raw_write				= 200,								// CRC and other overhead not included
 };
 
 static const struct regmap_config neuronspi_regmap_config_default =
@@ -453,7 +479,6 @@ static const struct regmap_config neuronspi_regmap_config_default =
 		.use_single_rw			= 0,
 		.can_multi_write		= 1,
 };
-
 
 // These defines need to be at the end
 #define to_neuronspi_uart_data(p,e)  ((container_of((p), struct neuronspi_uart_data, e)))
@@ -483,7 +508,7 @@ __always_inline size_t neuronspi_spi_compose_single_coil_write(uint16_t start, u
 	(*buf_inp)[0] = 0x05;
 	(*buf_inp)[1] = data;
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
 	return 6;
@@ -501,7 +526,7 @@ __always_inline size_t neuronspi_spi_compose_single_coil_read(uint16_t start, ui
 	(*buf_inp)[1] = 0x06;
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -525,7 +550,7 @@ __always_inline size_t neuronspi_spi_compose_multiple_coil_write(uint8_t number,
 	(*buf_inp)[1] = 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -553,7 +578,7 @@ __always_inline size_t neuronspi_spi_compose_multiple_coil_read(uint8_t number, 
 	(*buf_inp)[1] = 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -577,7 +602,7 @@ __always_inline size_t neuronspi_spi_compose_single_register_write(uint16_t star
 	(*buf_inp)[1] = 0x06;
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -602,7 +627,7 @@ __always_inline size_t neuronspi_spi_compose_single_register_read(uint16_t start
 	(*buf_inp)[1] = 0x06;
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -626,7 +651,7 @@ __always_inline size_t neuronspi_spi_compose_multiple_register_write(uint8_t num
 	(*buf_inp)[1] = 4 + (number * 2);
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -652,7 +677,7 @@ __always_inline size_t neuronspi_spi_compose_multiple_register_read(uint8_t numb
 	(*buf_inp)[1] = 4 + (number * 2);
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
-	(*buf_inp)[3] = start >> 16;
+	(*buf_inp)[3] = start >> 8;
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);

@@ -207,13 +207,13 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     FILE* fd;
     int read_n, i;
     fd = fopen(path, "rb");
-    struct stat finfo;
-    fstat(fd->_file, &finfo);
-    off_t filesize = finfo.st_size;
     if (!fd) {
         printf("error opening firmware file \"%s\"\n", path);
         return -1;
     }
+    struct stat finfo;
+    fstat(fd->_file, &finfo);
+    off_t filesize = finfo.st_size;
     memset(prog_data, 0xff, len);
 
     read_n = fread(prog_data, 1, MAX_FW_SIZE, fd);

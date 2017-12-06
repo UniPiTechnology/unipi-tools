@@ -31,7 +31,7 @@
 /* Default parameters */
 char* PORT = NULL;
 char* INDEX = NULL;
-int   BAUD = 10000000;
+int   BAUD = 8000000;
 #ifdef OS_WIN32
 char* firmwaredir = "./fw"
 #else

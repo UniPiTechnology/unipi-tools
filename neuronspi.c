@@ -504,7 +504,7 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
     printk(KERN_INFO "NEURONSPI: SPI Master Read - %d:\n\t%100ph\n\t%100ph\n\t%100ph\n\t%100ph\n", len,recv_buf, &recv_buf[64], &recv_buf[128], &recv_buf[192]);
 #endif
     d_data = spi_get_drvdata(spi_dev);
-    if (d_data != NULL && !d_data->reserved_device) {
+    if (d_data == NULL || (d_data != NULL && !d_data->reserved_device)) {
 		recv_crc1 = neuronspi_spi_crc(recv_buf, 4, 0);
 		memcpy(&packet_crc, &recv_buf[4], 2);
 #if NEURONSPI_DETAILED_DEBUG > 1
@@ -554,9 +554,8 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
 #endif
 			recv_buf[0] = 0;
 		}
-    } else {
-
     }
+
     mutex_unlock(&neuronspi_master_mutex);
     kfree(s_trans);
 }
@@ -729,6 +728,12 @@ static void neuronspi_uart_tx_proc(struct kthread_work *ws)
 	neuronspi_uart_handle_tx(port);
 }
 
+
+static void neuronspi_led_proc(struct kthread_work *ws)
+{
+	struct neuronspi_led_driver *led = to_led_driver(ws, led_work);
+	neuronspi_spi_led_set_brightness(led->spi, led->brightness, led->id);
+}
 
 static void neuronspi_uart_rx_proc(struct kthread_work *ws)
 {
@@ -1135,9 +1140,10 @@ void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brigh
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness)
 {
 	struct neuronspi_led_driver *led = container_of(ldev, struct neuronspi_led_driver, ldev);
+	struct neuronspi_driver_data *n_spi = spi_get_drvdata(led->spi);
 	spin_lock(&led->lock);
 	led->brightness = brightness;
-	neuronspi_spi_led_set_brightness(led->spi, brightness, led->id);
+	kthread_queue_work(&n_spi->primary_worker, &led->led_work);
 	spin_unlock(&led->lock);
 }
 
@@ -1230,6 +1236,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 {
 	const struct neuronspi_devtype *devtype;
 	const struct regmap_config *regm_conf;
+	struct sched_param sched_param = { .sched_priority = MAX_RT_PRIO / 2 };
 
 	struct neuronspi_driver_data *n_spi;
 
@@ -1283,6 +1290,17 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		devtype = (struct neuronspi_devtype *)id_entry->driver_data;
 	}
 
+
+	kthread_init_worker(&n_spi->primary_worker);
+
+	n_spi->primary_worker_task = kthread_run(kthread_worker_fn, &n_spi->primary_worker, "neuronspi");
+	if (IS_ERR(n_spi->primary_worker_task )) {
+		ret = PTR_ERR(n_spi->primary_worker_task);
+		return ret;
+	}
+	sched_setscheduler(n_spi->primary_worker_task, SCHED_FIFO, &sched_param);
+
+
 	// We perform an initial probe of registers 1000-1004 to identify the device, using a premade message
 	n_spi->recv_buf = kzalloc(NEURONSPI_BUFFER_MAX, GFP_KERNEL);
 	n_spi->send_buf = kzalloc(NEURONSPI_BUFFER_MAX, GFP_KERNEL);
@@ -1320,6 +1338,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);
 		n_spi->led_count = 4;
 		n_spi->led_driver = kzalloc(sizeof(struct neuronspi_led_driver) * n_spi->led_count, GFP_KERNEL);
+		kthread_init_work(&(n_spi->led_driver->led_work), neuronspi_led_proc);
 		n_spi->reg_map = regmap_init(&(spi->dev), &neuronspi_regmap_bus, spi, &neuronspi_regmap_config_default);
 		//regmap_n_spi->reg_map
 		/*

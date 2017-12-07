@@ -284,6 +284,8 @@ struct neuronspi_driver_data
 	struct uart_driver *serial_driver;
 	struct neuronspi_uart_data *uart_data;
 	struct neuronspi_led_driver *led_driver;
+	struct kthread_worker	primary_worker;
+	struct task_struct 		*primary_worker_task;
 	struct regmap *reg_map;
 	struct task_struct *poll_thread;
 	struct mutex device_lock;
@@ -308,6 +310,7 @@ struct neuronspi_led_driver
 {
 	struct led_classdev	ldev;
 	struct spi_device	*spi;
+	struct kthread_work	led_work;
 	int					id;
 	int					brightness;
 	char				name[sizeof("neuron:green:uled-x1")];
@@ -483,6 +486,7 @@ static const struct regmap_config neuronspi_regmap_config_default =
 // These defines need to be at the end
 #define to_neuronspi_uart_data(p,e)  ((container_of((p), struct neuronspi_uart_data, e)))
 #define to_neuronspi_port(p,e)	((container_of((p), struct neuronspi_port, e)))
+#define to_led_driver(p,e)	((container_of((p), struct neuronspi_led_driver, e)))
 #define to_uart_port(p,e)	((container_of((p), struct uart_port, e)))
 
 

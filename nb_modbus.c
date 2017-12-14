@@ -17,6 +17,8 @@
 #include <errno.h>
 #include <limits.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -405,7 +407,7 @@ int arm_flash_file(void* fwctx, const char* fwname)
         struct stat st;
         if((ret=fstat(fd,&st)) >= 0) {
             size_t len_file = st.st_size;
-            vprintf("Sending firmware file %s length=%d\n", fwname, len_file);
+            vprintf("Sending firmware file %s length=%zu\n", fwname, len_file);
             if (len_file > min_len) { 
                 if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
                     send_firmware(fwctx, (uint8_t*) data, len_file, 0);
@@ -435,7 +437,7 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
         struct stat st;
         if((ret=fstat(fd,&st)) >= 0) {
             size_t len_file = st.st_size;
-            vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
+            vprintf("Sending nvram file %s length=%zu\n", fwname, len_file);
             if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) { 
                 if ((n2000 > 0)|| overwrite) {
                     if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
@@ -474,7 +476,7 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     red = fread(prog_data, 1, MAX_FW_SIZE, fd);
-    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
+    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
     fclose(fd);
     return red;
 }
@@ -524,7 +526,7 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
             struct stat st;
             if((ret=fstat(fd,&st)) >= 0) {
                 size_t len_file = st.st_size;
-                vprintf("Sending nvram file %s length=%d\n", fwname_rw, len_file);
+                vprintf("Sending nvram file %s length=%zu\n", fwname_rw, len_file);
                 if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) {
                     if ((n2000 > 0)|| overwrite) {
                         if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {

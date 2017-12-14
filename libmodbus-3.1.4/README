@@ -1,0 +1,8 @@
+on Ubuntu:
+
+make clean
+# to fix version
+autoreconf
+./configure --enable-static=yes --enable-shared=no
+make
+

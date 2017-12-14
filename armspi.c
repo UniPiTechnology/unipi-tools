@@ -24,6 +24,7 @@
 #include <string.h>
 #include "armspi.h"
 #include "armutil.h"
+#include "spicrc.h"
 
 // brain/modbus_prot.h
 #define ARM_OP_READ_BIT   1
@@ -199,12 +200,12 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     uint32_t total = SIZEOF_HEADER + CRC_SIZE + tr_len2 + CRC_SIZE;
     uint8_t char_package[total + 10];
 
-    crc = SpiCrcString(&arm->tx1, SIZEOF_HEADER, 0);
+    crc = SpiCrcString((uint8_t*)&arm->tx1, SIZEOF_HEADER, 0);
     arm->tx1.crc = crc;                           // crc of first phase
     memset(char_package, 0, sizeof(char_package));
     memcpy(char_package+10, &arm->tx1, SIZEOF_HEADER + CRC_SIZE);
 
-    crc = SpiCrcString(&arm->tx2, tr_len2, crc);   // crc of second phase
+    crc = SpiCrcString((uint8_t*)&arm->tx2, tr_len2, crc);   // crc of second phase
     ((uint16_t*)arm->tx2)[tr_len2>>1] = crc;
     memcpy(char_package+16, &arm->tx2, tr_len2 + CRC_SIZE);
     char_package[0] = (uint8_t)arm->index;
@@ -577,7 +578,7 @@ typedef struct {
 
 int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr, uint8_t do_lock)
 {
-	printf ("Bytes 54:%x, 55:%x, 56: %x, 57: %x, 58: %x, 59: %x, 60: %x, 61: %x, 62: %x, 63: %x\n", tx->data[54], tx->data[55], tx->data[56], tx->data[57], tx->data[58], tx->data[59], tx->data[60], tx->data[61], tx->data[62], tx->data[63]);
+    printf ("Bytes 54:%x, 55:%x, 56: %x, 57: %x, 58: %x, 59: %x, 60: %x, 61: %x, 62: %x, 63: %x\n", tx->data[54], tx->data[55], tx->data[56], tx->data[57], tx->data[58], tx->data[59], tx->data[60], tx->data[61], tx->data[62], tx->data[63]);
     tx->crc = SpiCrcString((uint8_t*)tx, sizeof(arm_comm_firmware) - sizeof(tx->crc), 0);
     uint8_t char_package[sizeof(arm_comm_firmware) + 10];
     memset(char_package, 0, sizeof(arm_comm_firmware) + 10);
@@ -585,13 +586,13 @@ int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, i
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 0;
     char_package[7] = do_lock;
-    printf("FW-OP package len:%d: %x %x %x %x %x \t %x %x %x %x %x\n", sizeof(arm_comm_firmware), char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
+    printf("FW-OP package len:%zu: %x %x %x %x %x \t %x %x %x %x %x\n", sizeof(arm_comm_firmware), char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19]);
     int ret = write(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     if (ret == sizeof(arm_comm_firmware) + 10) {
     	ret = read(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     	memcpy(rx, char_package, sizeof(arm_comm_firmware) + 10);
     } else {
-    	printf("Invalid length written: %d, exp: %d\n", ret, sizeof(arm_comm_firmware) + 10);
+    	printf("Invalid length written: %d, exp: %zu\n", ret, sizeof(arm_comm_firmware) + 10);
         pabort("Invalid length written");
         return -1;
     }

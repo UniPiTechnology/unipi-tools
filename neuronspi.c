@@ -884,7 +884,7 @@ static void neuronspi_uart_set_termios(struct uart_port *port, struct ktermios *
 	neuronspi_spi_uart_set_cflag(neuronspi_s_dev[n_port->dev_index], n_port->dev_port, termios->c_cflag);
 	if ((old->c_iflag & PARMRK) != (termios->c_iflag & PARMRK)) {
 		if (termios->c_iflag & PARMRK) {
-			neuronspi_uart_set_parmrk(port, 1);
+			//neuronspi_uart_set_parmrk(port, 1);	TODO: Re-enable line discipline once finished
 		} else {
 			neuronspi_uart_set_parmrk(port, 0);
 		}

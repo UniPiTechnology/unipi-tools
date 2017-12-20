@@ -14,7 +14,7 @@
 	  pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
 	  cs-gpios = <&gpio 8 1>, <&gpio 7 1>, <&gpio 24 1>, <&gpio 25 1>;
 	  neuronspi0: neuronspi@0 {
-	     compatible = "unipi,neuron";
+	     compatible = "neuronspi";
 	     reg = <1>;
 	     #address-cells = <1>;
 	     #size-cells = <0>;
@@ -26,7 +26,7 @@
 	     status = "okay";
 	  };
 	  neuronspi1: neuronspi@1 {
-	     compatible = "unipi,neuron";
+	     compatible = "neuronspi";
 	     reg = <2>;
 	     #address-cells = <1>;
 	     #size-cells = <0>;
@@ -38,7 +38,7 @@
 	     status = "okay";
 	  };
 	  neuronspi2: neuronspi@2 {
-	     compatible = "unipi,neuron";
+	     compatible = "neuronspi";
 	     reg = <3>;
 	     #address-cells = <1>;
 	     #size-cells = <0>;

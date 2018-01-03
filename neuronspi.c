@@ -14,11 +14,6 @@
 
 #include "neuronspi.h"
 
-#if NEURONSPI_SCHED_REQUIRED > 0
-#include <uapi/linux/sched/types.h>
-#endif
-
-
 /***********************
  * End of Data section *
  ***********************/
@@ -1208,8 +1203,8 @@ int neuronspi_regmap_hw_reg_write(void *context, unsigned int reg, unsigned int 
 }
 
 int neuronspi_regmap_hw_gather_write(void *context, const void *reg, size_t reg_size, const void *val, size_t val_size) {
-	uint16_t *mb_reg_buf = (uint16_t*)reg;
-	uint16_t *mb_val_buf = (uint16_t*)val;
+	u16 *mb_reg_buf = (u16*)reg;
+	u16 *mb_val_buf = (u16*)val;
 	struct spi_device *spi = context;
 	struct neuronspi_driver_data *n_spi = spi_get_drvdata(spi);
 	u8 *inp_buf;
@@ -1262,8 +1257,8 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 #endif
 	/* Setup SPI bus */
 	spi->bits_per_word	= 8;
-	spi->mode		= spi->mode ? : SPI_MODE_0;
-	spi->max_speed_hz	= spi->max_speed_hz ? : 12000000;
+	spi->mode		= spi->mode ? spi->mode : SPI_MODE_0;
+	spi->max_speed_hz	= spi->max_speed_hz ? spi->max_speed_hz : 12000000;
 	ret = spi_setup(spi);
 	n_spi->neuron_index = spi->chip_select - 1;
 	n_spi->reserved_device = 0;

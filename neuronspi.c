@@ -1301,6 +1301,9 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	n_spi->send_buf = kzalloc(NEURONSPI_BUFFER_MAX, GFP_KERNEL);
 	n_spi->first_probe_reply = kzalloc(NEURONSPI_PROBE_MESSAGE_LEN, GFP_KERNEL);	// allocate space for initial probe
 	n_spi->second_probe_reply = kzalloc(NEURONSPI_PROBE_MESSAGE_LEN, GFP_KERNEL); // allocate space for uart probe
+	n_spi->lower_board_id = 0xFF;
+	n_spi->upper_board_id = 0xFF;
+	n_spi->combination_id = 0xFF;
 	n_spi->spi_driver = &neuronspi_spi_driver;
 
 	memcpy(n_spi->send_buf, &NEURONSPI_PROBE_MESSAGE, NEURONSPI_PROBE_MESSAGE_LEN);
@@ -1311,9 +1314,24 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	memset(n_spi->first_probe_reply, 0, NEURONSPI_PROBE_MESSAGE_LEN);
 	neuronspi_spi_send_message(spi, n_spi->send_buf, n_spi->first_probe_reply, NEURONSPI_PROBE_MESSAGE_LEN, NEURONSPI_DEFAULT_FREQ, 25, 1);
 
-	if (n_spi->first_probe_reply[0] != 0) {
+	if (n_spi->first_probe_reply[0] != 0) { 	// CRC error sets the first byte to 0
 		uart_count = n_spi->first_probe_reply[14] & 0x0f;
-		printk(KERN_INFO "NEURONSPI: Probe detected Neuron Board %d v%d.%d on CS %d, Uart count: %d - reg1000: %x, reg1001: %x, reg1002: %x, reg1003: %x, reg1004: %x\n",  n_spi->neuron_index, n_spi->first_probe_reply[11],  n_spi->first_probe_reply[10], spi->chip_select, uart_count, n_spi->first_probe_reply[11] << 8 | n_spi->first_probe_reply[10], n_spi->first_probe_reply[13] << 8 | n_spi->first_probe_reply[12], n_spi->first_probe_reply[15] << 8 | n_spi->first_probe_reply[14], n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16], n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18]);
+		for (i = 0; i < NEURONSPI_BOARDTABLE_LEN; i++) {
+			if (n_spi->first_probe_reply[19] == NEURONSPI_BOARDTABLE[i][1]) {
+				if (n_spi->lower_board_id == 0xFF) {
+					n_spi->lower_board_id = n_spi->first_probe_reply[17];
+				}
+				if (n_spi->first_probe_reply[17] == NEURONSPI_BOARDTABLE[i][0] && n_spi->combination_id == 0xFF) {
+					n_spi->combination_id = n_spi->first_probe_reply[19];
+					n_spi->upper_board_id = NEURONSPI_BOARDTABLE[i][2];
+				}
+			}
+		}
+		if (n_spi->lower_board_id != 255) {
+			printk(KERN_INFO "NEURONSPI: Probe detected Neuron Board L:%x U:%x C:%x Index: %d Fw: v%d.%d on CS %d, Uart count: %d - reg1000: %x, reg1001: %x, reg1002: %x, reg1003: %x, reg1004: %x\n", n_spi->lower_board_id, n_spi->upper_board_id, n_spi->combination_id,  n_spi->neuron_index, n_spi->first_probe_reply[11],  n_spi->first_probe_reply[10], spi->chip_select, uart_count, n_spi->first_probe_reply[11] << 8 | n_spi->first_probe_reply[10], n_spi->first_probe_reply[13] << 8 | n_spi->first_probe_reply[12], n_spi->first_probe_reply[15] << 8 | n_spi->first_probe_reply[14], n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16], n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18]);
+		} else {
+			printk(KERN_INFO "NEURONSPI: Probe detected Neuron Board L:??? C:??? Index: %d Fw: v%d.%d on CS %d, Uart count: %d - reg1000: %x, reg1001: %x, reg1002: %x, reg1003: %x, reg1004: %x\n",  n_spi->neuron_index, n_spi->first_probe_reply[11],  n_spi->first_probe_reply[10], spi->chip_select, uart_count, n_spi->first_probe_reply[11] << 8 | n_spi->first_probe_reply[10], n_spi->first_probe_reply[13] << 8 | n_spi->first_probe_reply[12], n_spi->first_probe_reply[15] << 8 | n_spi->first_probe_reply[14], n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16], n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18]);
+		}
 	} else {
 		ret = -5;
 		kfree(n_spi);
@@ -1327,7 +1345,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 			n_spi->ideal_frequency = NEURONSPI_SLOWER_FREQ;
 		}
 	}
-	printk(KERN_INFO "NEURONSPI: Neuron device on CS %d uses SPI communication freq. %d Mhz\n", spi->chip_select, n_spi->ideal_frequency);
+	printk(KERN_INFO "NEURONSPI: Neuron device on CS %d uses SPI communication freq. %d MHz\n", spi->chip_select, n_spi->ideal_frequency);
 	// Check for user-configurable LED devices
 	if (NEURONSPI_LED_BRAIN_MODEL == (n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16])) {
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);

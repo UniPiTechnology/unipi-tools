@@ -339,7 +339,6 @@ void neuronspi_spi_uart_set_ldisc(struct spi_device* spi_dev, u8 port, uint8_t t
 {
 	u8 *message_buf;
 	u8 *recv_buf;
-	//uint16_t crc1, crc2;
 	struct neuronspi_driver_data *d_data = spi_get_drvdata(spi_dev);
 	int32_t frequency = NEURONSPI_COMMON_FREQ;
 	if (d_data->slower_model) {
@@ -360,7 +359,6 @@ u8 neuronspi_spi_uart_get_ldisc(struct spi_device* spi_dev, u8 port)
 {
 	u8 *message_buf;
 	u8 *recv_buf;
-	//u16 crc1, crc2;
 	u8 outp;
 	struct neuronspi_driver_data *d_data = spi_get_drvdata(spi_dev);
 	int32_t frequency = NEURONSPI_COMMON_FREQ;
@@ -381,6 +379,51 @@ u8 neuronspi_spi_uart_get_ldisc(struct spi_device* spi_dev, u8 port)
 	return outp;
 }
 
+int neuronspi_gpio_di_direction_input(struct gpio_chip *chip, unsigned offset) {
+	return 0;
+}
+int neuronspi_gpio_di_direction_output(struct gpio_chip *chip, unsigned offset, int value) {
+	return -1;
+}
+int	neuronspi_gpio_di_get(struct gpio_chip *chip, unsigned offset) {
+	struct spi_device *spi = gpiochip_get_data(chip);
+	return neuronspi_spi_gpio_di_get(spi, offset);
+}
+
+int neuronspi_iio_stm_ai_read_raw(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask) {
+	struct neuronspi_stm_ai_data *ai_data = iio_priv(iio_dev);
+	struct spi_device *spi = ai_data->parent;
+	switch(ai_data->mode) {
+	case 0: {
+		if (ch->type == IIO_VOLTAGE) {
+			return IIO_VAL_FRACTIONAL;
+		} else {
+			return -EINVAL;
+		}
+		break;
+	}
+	case 1: {
+		if (ch->type == IIO_CURRENT) {
+			return IIO_VAL_FRACTIONAL;
+		} else {
+			return -EINVAL;
+		}
+		break;
+	}
+	case 3: {
+		if (ch->type == IIO_RESISTANCE) {
+			return IIO_VAL_FRACTIONAL;
+		} else {
+			return -EINVAL;
+		}
+		break;
+	}
+	default: {
+		return -EINVAL;
+		break;
+	}
+	}
+}
 
 static int32_t neuronspi_spi_watchdog(void *data)
 {
@@ -510,7 +553,7 @@ void neuronspi_spi_send_message(struct spi_device* spi_dev, u8 *send_buf, u8 *re
 #if NEURONSPI_DETAILED_DEBUG > 1
 		printk(KERN_INFO "NEURONSPI: SPI CRC1 Correct");
 #endif
-			if (recv_buf[0] == 0x41) {
+			if (d_data && recv_buf[0] == 0x41) {
 				d_data->uart_buf[0] = recv_buf[3];
 #if NEURONSPI_DETAILED_DEBUG > 0
 				printk(KERN_INFO "NEURONSPI: Reading UART data for device %d\n", d_data->neuron_index);
@@ -727,6 +770,7 @@ static void neuronspi_uart_tx_proc(struct kthread_work *ws)
 static void neuronspi_led_proc(struct kthread_work *ws)
 {
 	struct neuronspi_led_driver *led = to_led_driver(ws, led_work);
+	printk("NEURONSPI: BRIGHT id:%d\n", led->id);
 	neuronspi_spi_led_set_brightness(led->spi, led->brightness, led->id);
 }
 
@@ -824,21 +868,21 @@ static uint32_t neuronspi_uart_get_mctrl(struct uart_port *port)
 	return TIOCM_DSR | TIOCM_CAR;
 }
 
-static void neuronspi_uart_set_mctrl(struct uart_port *port, uint32_t mctrl)
-{
-
-}
+static void neuronspi_uart_set_mctrl(struct uart_port *port, uint32_t mctrl) {}
 
 int	neuronspi_uart_ioctl (struct uart_port *port, unsigned int ioctl_code, unsigned long ioctl_arg)
 {
 	switch (ioctl_code) {
 	case TIOCSETD: {
+		printk(KERN_INFO "NEURONSPI: IOCTL TIOCSETD\n");
 		return 1;
 	}
 	case 0x5480: {
+		printk(KERN_INFO "NEURONSPI: IOCTL 0x5480\n");
 		return 1;
 	}
 	case 0x5481: {
+		printk(KERN_INFO "NEURONSPI: IOCTL 0x5481\n");
 		return 1;
 	}
 	default: {
@@ -873,17 +917,27 @@ static void neuronspi_uart_set_termios(struct uart_port *port, struct ktermios *
 	int32_t baud;
 	struct neuronspi_port *n_port;
 	n_port = to_neuronspi_port(port, port);
+	if (old && old->c_iflag && old->c_iflag != termios->c_iflag) {
+		printk(KERN_INFO "NEURONSPI: c_iflag termios:%d\n", termios->c_iflag);
+	}
 #if NEURONSPI_DETAILED_DEBUG > 0
-	printk(KERN_DEBUG "NEURONSPI: TERMIOS Set, p:%d, c_cflag:%x", port->line, termios->c_cflag);
+	printk(KERN_DEBUG "NEURONSPI: TERMIOS Set, p:%d, c_cflag:%x\n", port->line, termios->c_cflag);
 #endif
 	neuronspi_spi_uart_set_cflag(neuronspi_s_dev[n_port->dev_index], n_port->dev_port, termios->c_cflag);
-	if ((old->c_iflag & PARMRK) != (termios->c_iflag & PARMRK)) {
+	if (old && termios && (old->c_iflag & PARMRK) != (termios->c_iflag & PARMRK)) {
 		if (termios->c_iflag & PARMRK) {
-			//neuronspi_uart_set_parmrk(port, 1);	TODO: Re-enable line discipline once finished
+			neuronspi_uart_set_parmrk(port, 1); 		// TODO: Re-enable line discipline once finished
 		} else {
 			neuronspi_uart_set_parmrk(port, 0);
 		}
 	}
+	if (old && termios && old->c_line != termios->c_line) {
+		if (termios->c_line == N_PROFIBUS_FDL) {
+			printk(KERN_INFO "NEURONSPI: Line Discipline change/n");
+			neuronspi_uart_set_ldisc(port, termios);
+		}
+	}
+
 	baud = uart_get_baud_rate(port, termios, old, 2400, 115200);
 	uart_update_timeout(port, termios->c_cflag, baud);
 }
@@ -898,7 +952,6 @@ static int32_t neuronspi_uart_config_rs485(struct uart_port *port, struct serial
 static int32_t neuronspi_uart_startup(struct uart_port *port)
 {
 	struct neuronspi_port *n_port = to_neuronspi_port(port, port);
-
 	struct spi_device *spi = neuronspi_s_dev[n_port->dev_index];
 	struct neuronspi_driver_data *d_data = spi_get_drvdata(spi);
 	neuronspi_spi_set_irqs(spi, 0x5);
@@ -986,11 +1039,11 @@ static int32_t neuronspi_uart_probe(struct spi_device* dev, u8 device_index)
 		uart_data->p[i].line		= i;
 		uart_data->p[i].port.dev	= &(dev->dev);
 		uart_data->p[i].port.irq	= dev->irq;
-		uart_data->p[i].port.type	= PORT_SC16IS7XX;
+		uart_data->p[i].port.type	= PORT_NEURONSPI;
 		uart_data->p[i].port.fifosize	= NEURONSPI_FIFO_SIZE;
 		uart_data->p[i].port.flags	= UPF_FIXED_TYPE | UPF_LOW_LATENCY;
 		uart_data->p[i].port.iotype	= UPIO_PORT;
-		uart_data->p[i].port.uartclk	= 9800;
+		uart_data->p[i].port.uartclk	= 9600;
 		uart_data->p[i].port.rs485_config = neuronspi_uart_config_rs485;
 		uart_data->p[i].port.ops	= &neuronspi_uart_ops;
 		uart_data->p[i].port.line	= neuronspi_uart_alloc_line();
@@ -1025,7 +1078,7 @@ static int32_t neuronspi_uart_probe(struct spi_device* dev, u8 device_index)
 						if (uart_data->p[j].dev_index == i) {
 							uart_data->p[j].port.dev	= &(neuronspi_s_dev[i]->dev);
 							uart_data->p[j].port.irq	= neuronspi_s_dev[i]->irq;
-							uart_data->p[j].port.type	= PORT_SC16IS7XX;
+							uart_data->p[j].port.type	= PORT_NEURONSPI;
 							uart_data->p[j].port.fifosize	= NEURONSPI_FIFO_SIZE;
 							uart_data->p[j].port.flags	= UPF_FIXED_TYPE | UPF_LOW_LATENCY;
 							uart_data->p[j].port.iotype	= UPIO_PORT;
@@ -1113,9 +1166,9 @@ void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brigh
 	if (!d_data->reserved_device) {
 		neuronspi_spi_send_message(spi_dev, message_buf, recv_buf, NEURONSPI_SPI_LED_SET_MESSAGE_LEN, frequency, 25, 0);
 	}
-#if NEURONSPI_DETAILED_DEBUG > 0
+//#if NEURONSPI_DETAILED_DEBUG > 0
 	printk(KERN_INFO "NEURONSPI: Brightness set to %d on led %d\n", brightness, id);
-#endif
+//#endif
 	kfree(message_buf);
 	kfree(recv_buf);
 	recv_buf = kzalloc(8, GFP_KERNEL);
@@ -1132,6 +1185,23 @@ void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brigh
 	kfree(recv_buf);
 }
 
+int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id) {
+	u8 *recv_buf;
+	bool ret = 0;
+	struct neuronspi_driver_data *d_data = spi_get_drvdata(spi_dev);
+
+	recv_buf = kzalloc(4, GFP_KERNEL);
+	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_read(d_data->reg_map, 0, (void*)recv_buf));
+	if (*recv_buf & (0x1 << id)) {
+		ret = 1;
+	}
+	kfree(recv_buf);
+//#if NEURONSPI_DETAILED_DEBUG > 0
+	printk(KERN_INFO "NEURONSPI: GPIO DI %d get %d\n", id, ret);
+//#endif
+	return ret;
+}
+
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness)
 {
 	struct neuronspi_led_driver *led = container_of(ldev, struct neuronspi_led_driver, ldev);
@@ -1145,12 +1215,20 @@ static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_bri
 int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size, void *val_buf, size_t val_size) {
 	const u16 *mb_reg_buf = reg_buf;
 	u16 *mb_val_buf = val_buf;
-	struct spi_device *spi = context;
-	struct neuronspi_driver_data *n_spi = spi_get_drvdata(spi);
+	struct spi_device *spi;
+	struct neuronspi_driver_data *n_spi;
 	u8 *inp_buf;
 	u8 *outp_buf;
 	int i, write_length;
 	int block_counter = 0;
+	if (context == NULL) {
+		return 0;
+	}
+	spi = context;
+	n_spi = spi_get_drvdata(spi);
+	if (n_spi == NULL) {
+		return 0;
+	}
 	printk(KERN_INFO "NEURONSPI: RM_READ %d %x %d %x\n", reg_size, mb_reg_buf[0], val_size, mb_val_buf[0]);
 	for (i = 0; i < (reg_size / 2); i++) {
 		// Check for continuity and read the largest possible continuous block
@@ -1310,9 +1388,19 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 	neuronspi_spi_send_message(spi, n_spi->send_buf, n_spi->first_probe_reply, NEURONSPI_PROBE_MESSAGE_LEN, NEURONSPI_DEFAULT_FREQ, 25, 1);
 
 	// Throw away the first message - the associated SPI Master is sometimes not properly initialised at this point
-	memcpy(n_spi->send_buf, &NEURONSPI_PROBE_MESSAGE, NEURONSPI_PROBE_MESSAGE_LEN);
-	memset(n_spi->first_probe_reply, 0, NEURONSPI_PROBE_MESSAGE_LEN);
-	neuronspi_spi_send_message(spi, n_spi->send_buf, n_spi->first_probe_reply, NEURONSPI_PROBE_MESSAGE_LEN, NEURONSPI_DEFAULT_FREQ, 25, 1);
+	i = 0;
+	do {
+		memcpy(n_spi->send_buf, &NEURONSPI_PROBE_MESSAGE, NEURONSPI_PROBE_MESSAGE_LEN);
+		memset(n_spi->first_probe_reply, 0, NEURONSPI_PROBE_MESSAGE_LEN);
+		neuronspi_spi_send_message(spi, n_spi->send_buf, n_spi->first_probe_reply, NEURONSPI_PROBE_MESSAGE_LEN, NEURONSPI_DEFAULT_FREQ, 25, 1);
+		i++;
+		if (i > 1000) {	// Sanity check to prevent looping if we get constant UART/0x41 messages
+			ret = -4;
+			kfree(n_spi);
+			printk(KERN_INFO "NEURONSPI: Probe did not detect a valid Neuron device on CS %d\n", spi->chip_select);
+			return ret;
+		}
+	} while (n_spi->first_probe_reply[0] == 0x41);	// UART messages should be ignored
 
 	if (n_spi->first_probe_reply[0] != 0) { 	// CRC error sets the first byte to 0
 		uart_count = n_spi->first_probe_reply[14] & 0x0f;
@@ -1351,48 +1439,13 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);
 		n_spi->led_count = 4;
 		n_spi->led_driver = kzalloc(sizeof(struct neuronspi_led_driver) * n_spi->led_count, GFP_KERNEL);
-		kthread_init_work(&(n_spi->led_driver->led_work), neuronspi_led_proc);
+		kthread_init_work(&(n_spi->led_driver[0].led_work), neuronspi_led_proc);
+		kthread_init_work(&(n_spi->led_driver[1].led_work), neuronspi_led_proc);
+		kthread_init_work(&(n_spi->led_driver[2].led_work), neuronspi_led_proc);
+		kthread_init_work(&(n_spi->led_driver[3].led_work), neuronspi_led_proc);
 		n_spi->reg_map = regmap_init(&(spi->dev), &neuronspi_regmap_bus, spi, &neuronspi_regmap_config_default);
-		//regmap_n_spi->reg_map
-		/*
-		 *  Message composition test
-		test_data = kzalloc(2, GFP_KERNEL);
-		test_data[0] = 0x02;
-		test_length = neuronspi_spi_compose_multiple_coil_write(4, 8, &test_inp, &test_out, test_data);
-		printk(KERN_INFO "NEURONSPI WRITE: %d\n", test_inp[13]);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_coil_read(1, 8, &test_inp, &test_out);
-		printk(KERN_INFO "NEURONSPI READ: %d\n", test_inp[13]);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_coil_write(8, &test_inp, &test_out, 0x01);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_coil_read(8, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_register_read(20, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_register_write(20, &test_inp, &test_out, 0x05);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_register_read(1, 20, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_register_write(1, 20, &test_inp, &test_out, test_data);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		****************************/
+		n_spi->di_driver = kzalloc(sizeof(struct neuronspi_di_driver), GFP_KERNEL);
+		n_spi->di_driver->di_count = 4;
 	} else {
 		n_spi->led_driver = NULL;
 		n_spi->led_count = 0;
@@ -1464,6 +1517,20 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 			led_classdev_register(&spi->dev, &(n_spi->led_driver[i].ldev));
 		}
 	}
+#ifdef CONFIG_GPIOLIB
+	if (n_spi->di_driver) {
+		n_spi->di_driver->gpio_c.owner = THIS_MODULE;
+		n_spi->di_driver->gpio_c.parent = &(spi->dev);
+		n_spi->di_driver->gpio_c.label = dev_name(&(spi->dev));
+		n_spi->di_driver->gpio_c.can_sleep = 1;
+		n_spi->di_driver->gpio_c.ngpio = n_spi->di_driver->di_count;
+		n_spi->di_driver->gpio_c.base = -1;
+		n_spi->di_driver->gpio_c.direction_input = neuronspi_gpio_di_direction_input;
+		n_spi->di_driver->gpio_c.direction_output = neuronspi_gpio_di_direction_output;
+		n_spi->di_driver->gpio_c.get = neuronspi_gpio_di_get;
+		gpiochip_add_data(&n_spi->di_driver->gpio_c, spi);
+	}
+#endif
 
 	if (uart_count) {
 #if NEURONSPI_DETAILED_DEBUG > 0
@@ -1509,9 +1576,13 @@ static int32_t neuronspi_spi_remove(struct spi_device *spi)
 		for (i = 0; i < n_spi->led_count; i++) {
 			led_classdev_unregister(&(n_spi->led_driver[i].ldev));
 		}
+		kthread_flush_worker(&n_spi->primary_worker);
 		kfree(n_spi->led_driver);
 		n_spi->led_driver = NULL;
 	}
+#if NEURONSPI_DETAILED_DEBUG > 0
+	printk("NEURONSPI: LED DRIVER UNREGISTERED\n");
+#endif
 	kfree(n_spi->send_buf);
 	n_spi->send_buf = NULL;
 	kfree(n_spi->recv_buf);

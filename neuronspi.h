@@ -23,7 +23,11 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/gpio/driver.h>
 #include <linux/i2c.h>
+#include <linux/iio/iio.h>
+#include <uapi/linux/iio/types.h>
+#include <linux/iio/sysfs.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -301,6 +305,9 @@ const uint16_t NEURONSPI_CRC16TABLE[NEURONSPI_CRC16TABLE_LEN] = {
 #define NEURONSPI_REGFLAG_ACC_15MIN 0x6 << 16
 #define NEURONSPI_REGFLAG_ACC_ONCE 	0x7 << 16
 
+#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x0
+#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x1
+#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x3
 
 // Register system flags:
 #define NEURONSPI_REGFLAG_SYS_READ_ONLY	0x1 << 24
@@ -1435,6 +1442,7 @@ struct neuronspi_port
 	u8							dev_index;
 	u8							dev_port;
 	u8							parmrk_enabled;
+	u64							parmrk_frame_delay;
 };
 
 struct neuronspi_uart_data
@@ -1452,6 +1460,11 @@ static unsigned long neuronspi_lines;
 
 static struct uart_driver* neuronspi_uart;
 
+//static const struct iio_info ad7791_info = {
+//	.read_raw = ,
+//	.attrs = &ad7791_attribute_group,
+//	.driver_module = THIS_MODULE,
+//};
 
 // Instantiated once
 struct neuronspi_char_driver
@@ -1472,6 +1485,7 @@ struct neuronspi_driver_data
 	struct uart_driver *serial_driver;
 	struct neuronspi_uart_data *uart_data;
 	struct neuronspi_led_driver *led_driver;
+	struct neuronspi_di_driver *di_driver;
 	struct kthread_worker	primary_worker;
 	struct task_struct 		*primary_worker_task;
 	struct regmap *reg_map;
@@ -1495,6 +1509,31 @@ struct neuronspi_driver_data
 	int32_t neuron_index;
 	uint32_t ideal_frequency;
 };
+
+/*struct neuronspi_di_data
+{
+
+};
+*/
+struct neuronspi_di_driver
+{
+	struct gpio_chip gpio_c;
+	u8 di_count;
+};
+
+struct neuronspi_stm_ai_data
+{
+	u8 mode;
+	struct spi_device *parent;
+};
+
+struct neuronspi_stm_ai_driver
+{
+	struct iio_dev iio_d;
+	struct iio_info iio_i;
+	struct neuronspi_stm_ai_data data;
+};
+
 
 // Instantiated once per LED
 struct neuronspi_led_driver
@@ -1588,6 +1627,10 @@ static void neuronspi_uart_handle_tx(struct neuronspi_port *port);
 static void neuronspi_uart_handle_rx(struct neuronspi_port *port, uint32_t rxlen, uint32_t iir);
 static void neuronspi_uart_handle_irq(struct neuronspi_uart_data *uart_data, int32_t portno);
 
+int neuronspi_gpio_di_direction_input(struct gpio_chip *chip, unsigned offset);
+int neuronspi_gpio_di_direction_output(struct gpio_chip *chip, unsigned offset, int value);
+int	neuronspi_gpio_di_get(struct gpio_chip *chip, unsigned offset);
+
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness);
 
 int neuronspi_regmap_hw_gather_write(void *context, const void *reg, size_t reg_size, const void *val, size_t val_size);
@@ -1600,6 +1643,7 @@ static struct spinlock* neuronspi_spi_w_spinlock;
 static u8 neuronspi_spi_w_flag = 1;
 static struct spi_device* neuronspi_s_dev[NEURONSPI_MAX_DEVS];// = { NULL, NULL, NULL };
 
+int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id);
 
 /***********************
  * Function structures *
@@ -1611,7 +1655,7 @@ static struct spi_driver neuronspi_spi_driver =
 	.driver =
 	{
 		.name			= NEURONSPI_NAME,
-		.of_match_table	= of_match_ptr(neuronspi_id_match),
+		.of_match_table	= of_match_ptr(neuronspi_id_match)
 	},
 	.probe				= neuronspi_spi_probe,
 	.remove				= neuronspi_spi_remove,
@@ -1645,6 +1689,7 @@ static const struct uart_ops neuronspi_uart_ops =
 	.config_port		= neuronspi_uart_config_port,
 	.verify_port		= neuronspi_uart_verify_port,
 	.pm					= neuronspi_uart_pm,
+	.ioctl				= neuronspi_uart_ioctl,
 };
 
 static const struct regmap_bus neuronspi_regmap_bus =
@@ -1885,3 +1930,44 @@ __always_inline size_t neuronspi_spi_compose_multiple_register_read(uint8_t numb
 }
 
 #endif /* NEURONSPI_H_ */
+
+//regmap_n_spi->reg_map
+/*
+ *  Message composition test
+test_data = kzalloc(2, GFP_KERNEL);
+test_data[0] = 0x02;
+test_length = neuronspi_spi_compose_multiple_coil_write(4, 8, &test_inp, &test_out, test_data);
+printk(KERN_INFO "NEURONSPI WRITE: %d\n", test_inp[13]);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_multiple_coil_read(1, 8, &test_inp, &test_out);
+printk(KERN_INFO "NEURONSPI READ: %d\n", test_inp[13]);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_single_coil_write(8, &test_inp, &test_out, 0x01);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_single_coil_read(8, &test_inp, &test_out);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_single_register_read(20, &test_inp, &test_out);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_single_register_write(20, &test_inp, &test_out, 0x05);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_multiple_register_read(1, 20, &test_inp, &test_out);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+test_length = neuronspi_spi_compose_multiple_register_write(1, 20, &test_inp, &test_out, test_data);
+neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
+kfree(test_inp);
+kfree(test_out);
+****************************/

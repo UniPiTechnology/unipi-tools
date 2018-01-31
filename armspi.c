@@ -281,7 +281,7 @@ int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result)
     if (ret < 0) {
         return ret;
     }
-    /*
+
     if ((ac_header(arm->rx2)->op != ARM_OP_READ_REG) || 
         (ac_header(arm->rx2)->len > cnt) ||
         (ac_header(arm->rx2)->reg != reg)) {
@@ -289,7 +289,7 @@ int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result)
             return -1;
     }
     cnt =  ac_header(arm->rx2)->len;
-    */
+
     memmove(result, arm->rx2+SIZEOF_HEADER, cnt * sizeof(uint16_t));
     if (arm_verbose) printf("CNT: %d %d %x %x %x %x %x\n", cnt, ret, result[0], result[1], result[2], result[3], result[4]);
     return cnt;

@@ -40,10 +40,20 @@
 #include <linux/leds.h>
 #include <linux/uaccess.h>
 #include <asm/termbits.h>
+#include <asm/gpio.h>
 
 /********************************
  * HW Constants Data Structures *
  ********************************/
+
+struct neuronspi_board_entry {
+	u16		index;
+	u16		lower_board_id;
+	u16		upper_board_id;
+	u16		data_register_count;
+	u16		config_register_count;
+	struct neuronspi_board_combination *definition;
+};
 
 struct neuronspi_register_block
 {
@@ -52,19 +62,96 @@ struct neuronspi_register_block
 	u32		*register_flags;
 };
 
+struct neuronspi_board_features
+{
+	u32		do_count;
+	u32		ro_count;
+	u32		ds_count;
+	u32		di_count;
+	u32		led_count;
+	u32		stm_ai_count;
+	u32		stm_ao_count;
+	u32		sec_ai_count;
+	u32		sec_ao_count;
+	u32		uart_master_count;
+	u32		uart_slave_count;
+	u32		pwm_channel_count;
+	u32		wd_count;
+	u32		extension_sys_count;
+	u32		light_count;
+	u32		owire_count;
+};
+
+struct neuronspi_board_regstart_table
+{
+	u32		do_val_reg;
+	u32		do_val_coil;
+	u32		do_pwm_reg;
+	u32		do_pwm_ps_reg;
+	u32		do_pwm_c_reg;
+	u32		di_val_reg;
+	u32		di_counter_reg;
+	u32		di_direct_reg;
+	u32		di_deboun_reg;
+	u32		di_polar_reg;
+	u32		di_toggle_reg;
+	u32		uart_queue_reg;
+	u32		uart_conf_reg;
+	u32		uart_address_reg;
+	u32		led_val_coil;
+	u32		led_val_reg;
+	u32		wd_val_reg;
+	u32		wd_timeout_reg;
+	u32		wd_nv_sav_coil;
+	u32		wd_reset_coil;
+	u32		reg_start_reg;
+	u32		ro_val_reg;
+	u32		ro_val_coil;
+	u32		vref_inp;
+	u32		vref_int;
+	u32		stm_ao_val_reg;
+	u32		stm_ao_mode_reg;
+	u32		stm_ao_vol_err;
+	u32		stm_ao_vol_off;
+	u32		stm_ao_curr_err;
+	u32		stm_ao_curr_off;
+	u32		stm_ai_val_reg;
+	u32		stm_ai_mode_reg;
+	u32		stm_ai_curr_err;
+	u32		stm_ai_curr_off;
+	u32		stm_ai_vol_err;
+	u32		stm_ai_vol_off;
+	u32		stm_aio_val_reg;
+	u32		stm_aio_vol_err;
+	u32		stm_aio_vol_off;
+	u32		sec_ao_val_reg;
+	u32		sec_ao_mode_reg;
+	u32		sec_ai_val_reg;
+	u32		sec_ai_mode_reg;
+	u32		sys_serial_num;
+	u32		sys_hw_ver;
+	u32		sys_hw_flash_ver;
+	u32		sys_sw_ver;
+};
+
 struct neuronspi_board_combination
 {
-	uint32_t							combination_board_id;
+	u32									combination_board_id;
 	uint16_t							lower_board_id;
 	uint16_t							upper_board_id;
 	u32 								block_count;
+	size_t								name_length;
+	const char*							combination_name;
+	struct neuronspi_board_features		features;
 	u32					 			 	*blocks;
 };
 
 struct neuronspi_model_definition
 {
-	u32									name_length;
-	const char* 						model_name;
+	size_t								eeprom_length;
+	const char* 						eeprom_name;
+	size_t								name_length;
+	const char*							model_name;
 	u32									combination_count;
 	struct neuronspi_board_combination *combinations;
 };
@@ -80,7 +167,7 @@ struct neuronspi_model_definition
 #define NEURONSPI_FIRST_MESSAGE_LENGTH	6
 #define NEURONSPI_EDGE_DELAY			10
 #define NEURONSPI_B_PER_WORD 			8
-#define NEURONSPI_DEFAULT_FREQ			500000
+#define NEURONSPI_DEFAULT_FREQ			600000
 #define NEURONSPI_COMMON_FREQ			12000000
 #define NEURONSPI_SLOWER_FREQ			8000000
 #define NEURONSPI_MAX_TX				62
@@ -89,18 +176,16 @@ struct neuronspi_model_definition
 #define NEURONSPI_DETAILED_DEBUG		0
 #define NEURONSPI_LAST_TRANSFER_DELAY	40
 
-#define NEURONSPI_NAME 					"neuronspi"
-#define NEURON_DEVICE_NAME 				"neuron"
-#define NEURON_DEVICE_CLASS 			"neuron"
-#define NEURON_MAX_MB_BUFFER_LEN 		260
-#define MODBUS_TCP_HEADER_LENGTH 		7
+
+#define NEURON_DEVICE_NAME 				"neuronspi"
+#define NEURON_DEVICE_CLASS 			"modbus_spi"
+#define NEURON_DRIVER_NAME				"NEURONSPI"
 #define PORT_NEURONSPI					184
 
 #define STRICT_RESERVING
+#define NEURONSPI_ALWAYS_EXPORT
 
 #define NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(X)	((((X) + 15) >> 4) << 1)
-
-#define NEURONSPI_LED_BRAIN_MODEL						0x10
 
 #define NEURONSPI_NO_INTERRUPT_MODELS_LEN 				3
 const uint16_t NEURONSPI_NO_INTERRUPT_MODELS[NEURONSPI_NO_INTERRUPT_MODELS_LEN] = {
@@ -204,7 +289,6 @@ const uint16_t NEURONSPI_CRC16TABLE[NEURONSPI_CRC16TABLE_LEN] = {
  3458,  1922,   514
 };
 
-
 /******************
  * HW Definitions *
  ******************/
@@ -305,33 +389,12 @@ const uint16_t NEURONSPI_CRC16TABLE[NEURONSPI_CRC16TABLE_LEN] = {
 #define NEURONSPI_REGFLAG_ACC_15MIN 0x6 << 16
 #define NEURONSPI_REGFLAG_ACC_ONCE 	0x7 << 16
 
-#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x0
-#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x1
-#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x3
-
 // Register system flags:
-#define NEURONSPI_REGFLAG_SYS_READ_ONLY	0x1 << 24
+#define NEURONSPI_REGFLAG_SYS_READ_ONLY	0x10 << 24
 
-// Column 4 is the number of 0-indexed registers and column 5 is the number of 1000-indexed ones
-#define NEURONSPI_BOARDTABLE_LEN		16
-const uint16_t NEURONSPI_BOARDTABLE[NEURONSPI_BOARDTABLE_LEN][5] = {
-	{0,	NEURONSPI_BOARD_LOWER_B1000_ID,		NEURONSPI_BOARD_UPPER_NONE_ID,		21,	32}, 	// B_1000 (S103)
-	{1, NEURONSPI_BOARD_LOWER_E8DI8RO_ID,	NEURONSPI_BOARD_UPPER_NONE_ID,		19,	21},	// E-8Di8Ro (M103)
-	{2, NEURONSPI_BOARD_LOWER_E14RO_ID,		NEURONSPI_BOARD_UPPER_NONE_ID,		1,	0},		// E-14Ro
-	{3, NEURONSPI_BOARD_LOWER_E16DI_ID,		NEURONSPI_BOARD_UPPER_NONE_ID,		1,	0},		// E-16Di
-	{4, NEURONSPI_BOARD_LOWER_E8DI8RO_ID,	NEURONSPI_BOARD_UPPER_P11DIR485_ID,	36,	31},	// E-8Di8Ro_P-11DiR485 (xS10)
-	{5, NEURONSPI_BOARD_LOWER_E14RO_ID,		NEURONSPI_BOARD_UPPER_P11DIR485_ID,	20,	23},	// E-14Ro_P-11DiR485 (xS40)
-	{6, NEURONSPI_BOARD_LOWER_E16DI_ID,		NEURONSPI_BOARD_UPPER_P11DIR485_ID,	52,	36},	// E-16Di_P-11DiR485 (xS30)
-	{7, NEURONSPI_BOARD_LOWER_E14RO_ID,		NEURONSPI_BOARD_UPPER_U14RO_ID,		3,	10},	// E-14Ro_U-14Ro (M403)
-	{8, NEURONSPI_BOARD_LOWER_E16DI_ID,		NEURONSPI_BOARD_UPPER_U14RO_ID,		35,	29},	// E-16Di_U-14Ro (M203)
-	{9,	NEURONSPI_BOARD_LOWER_E14RO_ID,		NEURONSPI_BOARD_UPPER_U14DI_ID,		31,	27},	// E-14Ro_U-14Di (L503)
-	{10, NEURONSPI_BOARD_LOWER_E16DI_ID,	NEURONSPI_BOARD_UPPER_U14DI_ID,		63, 40},	// E-16Di_U-14Di (M303)
-	{11, NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	NEURONSPI_BOARD_UPPER_NONE_ID,		1,	0},		// E-4Ai4Ao
-	{12, NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	NEURONSPI_BOARD_UPPER_P6DI5RO_ID, 	27, 25},	// E-4Ai4Ao_P-6Di5Ro (xS50)
-	{13, NEURONSPI_BOARD_LOWER_B485_ID,		NEURONSPI_BOARD_UPPER_NONE_ID,		1,	0},		// B-485
-	{14, NEURONSPI_BOARD_LOWER_E4LIGHT_ID,	NEURONSPI_BOARD_UPPER_NONE_ID,		21,	8},		// E-4Light (M613)
-	{15, NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	NEURONSPI_BOARD_UPPER_U6DI5RO_ID, 	28, 24}		// E-4Ai4Ao_U-6Di5Ro (M503)
-};
+#define NEURONSPI_IIO_AI_STM_MODE_VOLTAGE 0x0
+#define NEURONSPI_IIO_AI_STM_MODE_CURRENT 0x1
+#define NEURONSPI_IIO_AI_STM_MODE_RESISTANCE 0x3
 
 /*********************
  * Board Definitions *
@@ -397,13 +460,36 @@ static u32 NEURONSPI_BOARD_B1000_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_B1000_HW_DE
 		NEURONSPI_REGFUN_RS485_CONFIG | NEURONSPI_REGFLAG_ACC_6SEC										// 1031
 };
 
+#define NEURONSPI_BOARD_B1000_HW_FEATURES {	\
+		.do_count =					  4,	\
+		.ro_count =					  0,	\
+		.ds_count =					  4,	\
+		.di_count =					  4,	\
+		.led_count =				  4,	\
+		.stm_ai_count =				  1,	\
+		.stm_ao_count =				  1,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  1,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  4,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  1,    \
+}
+
 #define NEURONSPI_BOARD_B1000_HW_DEFINITION { \
 		.combination_board_id = 	0, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_B1000_ID, \
  		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
 		.block_count = 				NEURONSPI_BOARD_B1000_HW_DEFINITION_BLOCK_SIZE, \
+		.name_length =				6, \
+		.combination_name =			"B_1000", \
+		.features =					NEURONSPI_BOARD_B1000_HW_FEATURES, \
 		.blocks = 					NEURONSPI_BOARD_B1000_HW_DEFINITION_BLOCK \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_B1000_HW_COMBINATION[] = {NEURONSPI_BOARD_B1000_HW_DEFINITION};
 
 // E-8Di8Ro (M103)
 #define NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION_BLOCK_SIZE 44
@@ -452,13 +538,36 @@ static u32 NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E8DI8RO_H
 		NEURONSPI_REGFUN_DS_TOGGLE | NEURONSPI_REGFLAG_ACC_1HZ,											// 1020
 };
 
+#define NEURONSPI_BOARD_E8DI8RO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  8,	\
+		.ds_count =					  8,	\
+		.di_count =					  8,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION { \
 		.combination_board_id = 	1, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E8DI8RO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
 		.block_count = 				NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION_BLOCK \
+		.name_length =				8, \
+		.combination_name =			"E_8Di8Ro", \
+		.blocks = 					NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E8DI8RO_HW_FEATURES	\
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E8DI8RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E8DI8RO_HW_DEFINITION};
 
 // E-14Ro
 #define NEURONSPI_BOARD_E14RO_HW_DEFINITION_BLOCK_SIZE 15
@@ -478,13 +587,36 @@ static u32 NEURONSPI_BOARD_E14RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E14RO_HW_DE
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE,										// 1009
 };
 
+#define NEURONSPI_BOARD_E14RO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  14,	\
+		.ds_count =					  0,	\
+		.di_count =					  0,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E14RO_HW_DEFINITION { \
 		.combination_board_id = 	2, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E14RO_ID, \
 		.upper_board_id =			NEURONSPI_BOARD_UPPER_NONE_ID, \
 		.block_count =				NEURONSPI_BOARD_E14RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks =					NEURONSPI_BOARD_E14RO_HW_DEFINITION_BLOCK \
+		.name_length =				6, \
+		.combination_name =			"E_14Ro", \
+		.blocks =					NEURONSPI_BOARD_E14RO_HW_DEFINITION_BLOCK, \
+		.features = 				NEURONSPI_BOARD_E14RO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E14RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E14RO_HW_DEFINITION};
 
 // E-16Di
 #define NEURONSPI_BOARD_E16DI_HW_DEFINITION_BLOCK_SIZE 15
@@ -504,13 +636,37 @@ static u32 NEURONSPI_BOARD_E16DI_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E16DI_HW_DE
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE,										// 1009
 };
 
+#define NEURONSPI_BOARD_E16DI_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  0,	\
+		.ds_count =					  0,	\
+		.di_count =					  16,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E16DI_HW_DEFINITION { \
 		.combination_board_id = 	3, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E16DI_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
 		.block_count = 				NEURONSPI_BOARD_E16DI_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E16DI_HW_DEFINITION_BLOCK \
-};
+		.name_length =				6, \
+		.combination_name =			"E_16Di", \
+		.blocks = 					NEURONSPI_BOARD_E16DI_HW_DEFINITION_BLOCK, \
+		.features = 				NEURONSPI_BOARD_E16DI_HW_FEATURES \
+}
+
+static struct neuronspi_board_combination NEURONSPI_BOARD_E16DI_HW_COMBINATION[] = {NEURONSPI_BOARD_E16DI_HW_DEFINITION};
 
 // E-8Di8Ro_P-11DiR485 (xS10)
 #define NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION_BLOCK_SIZE 47
@@ -562,13 +718,36 @@ static u32 NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_
 		NEURONSPI_REGFUN_RS485_ADDRESS | NEURONSPI_REGFLAG_ACC_6SEC										// 1022
 };
 
+#define NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  8,	\
+		.ds_count =					  8,	\
+		.di_count =					  8,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  1,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  1,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION { \
 		.combination_board_id = 	4, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E8DI8RO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_P11DIR485_ID, \
 		.block_count = 				NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION_BLOCK \
+		.name_length =				19, \
+		.combination_name =			"E_8Di8Ro_P_11DiR485", \
+		.blocks = 					NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_COMBINATION[] = {NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_DEFINITION};
 
 // E-14Ro_P-11DiR485 (xS40)
 #define NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION_BLOCK_SIZE 71
@@ -644,13 +823,36 @@ static u32 NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E1
 		NEURONSPI_REGFUN_RS485_ADDRESS | NEURONSPI_REGFLAG_ACC_6SEC										// 1030
 };
 
+#define NEURONSPI_BOARD_E14ROP11DIR485_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  14,	\
+		.ds_count =					  8,	\
+		.di_count =					  8,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  1,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  1,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION { \
 		.combination_board_id = 	5, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E14RO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_P11DIR485_ID, \
+		.name_length =				17, \
+		.combination_name =			"E_14Ro_P_11DiR485", \
 		.block_count = 				NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E14ROP11DIR485_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E14ROP11DIR485_HW_COMBINATION[] = {NEURONSPI_BOARD_E14ROP11DIR485_HW_DEFINITION};
 
 // E-16Di_P-11DiR485 (xS30)
 #define NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION_BLOCK_SIZE 92
@@ -747,13 +949,36 @@ static u32 NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E1
 		NEURONSPI_REGFUN_RS485_ADDRESS | NEURONSPI_REGFLAG_ACC_6SEC										// 1035
 };
 
+#define NEURONSPI_BOARD_E16DIP11DIR485_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  0,	\
+		.ds_count =					  0,	\
+		.di_count =					  23,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  1,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  1,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION { \
 		.combination_board_id = 	6, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E16DI_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_P11DIR485_ID, \
+		.name_length =				17, \
+		.combination_name =			"E_16Di_P_11DiR485", \
 		.block_count = 				NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E16DIP11DIR485_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E16DIP11DIR485_HW_COMBINATION[] = {NEURONSPI_BOARD_E16DIP11DIR485_HW_DEFINITION};
 
 // E-14Ro_U-14Ro (M403)
 #define NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION_BLOCK_SIZE 17
@@ -775,13 +1000,36 @@ static u32 NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E14ROU
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE | NEURONSPI_REGFLAG_SYS_READ_ONLY,		// 1009
 };
 
+#define NEURONSPI_BOARD_E14ROU14RO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  28,	\
+		.ds_count =					  0,	\
+		.di_count =					  0,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  1,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION { \
 		.combination_board_id = 	7, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E14RO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_U14RO_ID, \
+		.name_length =				13, \
+		.combination_name =			"E_14Ro_U_14Ro", \
 		.block_count = 				NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION_BLOCK, \
+		.features = 				NEURONSPI_BOARD_E14ROU14RO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E14ROU14RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E14ROU14RO_HW_DEFINITION};
 
 // E-16Di_U-14Ro (M203)
 #define NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION_BLOCK_SIZE 68
@@ -854,13 +1102,36 @@ static u32 NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E16DIU
 		NEURONSPI_REGFUN_DS_TOGGLE | NEURONSPI_REGFLAG_ACC_1HZ,											// 1028
 };
 
+#define NEURONSPI_BOARD_E16DIU14RO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  14,	\
+		.ds_count =					  14,	\
+		.di_count =					  16,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION { \
 		.combination_board_id = 	8, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E16DI_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_U14RO_ID, \
+		.name_length =				13, \
+		.combination_name =			"E_16Di_U_14Ro", \
 		.block_count = 				NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E16DIU14RO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E16DIU14RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E16DIU14RO_HW_DEFINITION};
 
 // E-14Ro_U-14Di (L503)
 #define NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION_BLOCK_SIZE 62
@@ -924,16 +1195,40 @@ static u32 NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E14ROU
 		NEURONSPI_REGFUN_DI_DEBOUNCE | NEURONSPI_REGFLAG_ACC_6SEC, 										// 1023
 		NEURONSPI_REGFUN_DS_ENABLE | NEURONSPI_REGFLAG_ACC_1HZ,											// 1024
 		NEURONSPI_REGFUN_DS_POLARITY | NEURONSPI_REGFLAG_ACC_1HZ,										// 1025
-		NEURONSPI_REGFUN_DS_TOGGLE | NEURONSPI_REGFLAG_ACC_1HZ,											// 1026
+		NEURONSPI_REGFUN_DS_TOGGLE | NEURONSPI_REGFLAG_ACC_1HZ											// 1026
 };
+
+#define NEURONSPI_BOARD_E14ROU14DI_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  14,	\
+		.ds_count =					  14,	\
+		.di_count =					  14,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
 
 #define NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION { \
 		.combination_board_id = 	9, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E14RO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_U14DI_ID, \
+		.name_length =				13, \
+		.combination_name =			"E_14Ro_U_14Di", \
 		.block_count = 				NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E14ROU14DI_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E14ROU14DI_HW_COMBINATION[] = {NEURONSPI_BOARD_E14ROU14DI_HW_DEFINITION};
+
 
 // E-16Di_U-14Di (M303)
 #define NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION_BLOCK_SIZE 107
@@ -1045,13 +1340,36 @@ static u32 NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E16DIU
 		NEURONSPI_REGFUN_DI_DEBOUNCE | NEURONSPI_REGFLAG_ACC_6SEC, 										// 1039
 };
 
+#define NEURONSPI_BOARD_E16DIU14DI_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  0,	\
+		.ds_count =					  0,	\
+		.di_count =					  30,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  0,	\
+		.sec_ao_count =				  0,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION { \
 		.combination_board_id = 	10, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E16DI_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_U14DI_ID, \
+		.name_length =				13, \
+		.combination_name =			"E_16Di_U_14Di", \
 		.block_count = 				NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E16DIU14DI_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E16DIU14DI_HW_COMBINATION[] = {NEURONSPI_BOARD_E16DIU14DI_HW_DEFINITION};
 
 // E-4Ai4Ao
 #define NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION_BLOCK_SIZE 15
@@ -1071,13 +1389,37 @@ static u32 NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E4AI4AO_H
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE | NEURONSPI_REGFLAG_SYS_READ_ONLY,		// 1009
 };
 
+#define NEURONSPI_BOARD_E4AI4AO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  0,	\
+		.ds_count =					  0,	\
+		.di_count =					  0,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  4,	\
+		.sec_ao_count =				  4,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  0,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  0,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
+
 #define NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION { \
 		.combination_board_id = 	11, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E4AI4AO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
+		.name_length =				8, \
+		.combination_name =			"E_4Ai4Ao", \
 		.block_count = 				NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E4AI4AO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E4AI4AO_HW_COMBINATION[] = {NEURONSPI_BOARD_E4AI4AO_HW_DEFINITION};
 
 // E-4Ai4Ao_P-6Di5Ro (xS50)
 #define NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION_BLOCK_SIZE 56
@@ -1138,13 +1480,36 @@ static u32 NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E4
 		NEURONSPI_REGFUN_RS485_ADDRESS | NEURONSPI_REGFLAG_ACC_6SEC										// 1024
 };
 
+#define NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_FEATURES {	\
+		.do_count =					  0,	\
+		.ro_count =					  6,	\
+		.ds_count =					  5,	\
+		.di_count =					  5,	\
+		.led_count =				  0,	\
+		.stm_ai_count =				  0,	\
+		.stm_ao_count =				  0,	\
+		.sec_ai_count =				  4,	\
+		.sec_ao_count =				  4,	\
+		.uart_master_count =		  0,	\
+		.uart_slave_count = 		  1,	\
+		.pwm_channel_count = 		  0,	\
+		.wd_count = 				  1,	\
+		.extension_sys_count = 		  1,	\
+		.light_count = 				  0,	\
+		.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION { \
 		.combination_board_id = 	12, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E4AI4AO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_P6DI5RO_ID, \
+		.name_length =				17, \
+		.combination_name =			"E_4Ai4Ao_P_6Di5Ro", \
 		.block_count = 				NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_DEFINITION};
 
 // B-485
 #define NEURONSPI_BOARD_B485_HW_DEFINITION_BLOCK_SIZE 15
@@ -1164,13 +1529,36 @@ static u32 NEURONSPI_BOARD_B485_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_B485_HW_DEFI
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE | NEURONSPI_REGFLAG_SYS_READ_ONLY,		// 1009
 };
 
+#define NEURONSPI_BOARD_B485_HW_FEATURES {	\
+	.do_count =					  0,	\
+	.ro_count =					  0,	\
+	.ds_count =					  0,	\
+	.di_count =					  0,	\
+	.led_count =				  0,	\
+	.stm_ai_count =				  0,	\
+	.stm_ao_count =				  0,	\
+	.sec_ai_count =				  4,	\
+	.sec_ao_count =				  4,	\
+	.uart_master_count =		  1,	\
+	.uart_slave_count = 		  0,	\
+	.pwm_channel_count = 		  0,	\
+	.wd_count = 				  1,	\
+	.extension_sys_count = 		  0,	\
+	.light_count = 				  0,	\
+	.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_B485_HW_DEFINITION { \
 		.combination_board_id = 	13, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_B485_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
+		.name_length =				5, \
+		.combination_name =			"B_485", \
 		.block_count = 				NEURONSPI_BOARD_B485_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_B485_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_B485_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_B485_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_B485_HW_COMBINATION[] = {NEURONSPI_BOARD_B485_HW_DEFINITION};
 
 // E-4Light (M613)
 #define NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION_BLOCK_SIZE 35
@@ -1210,13 +1598,36 @@ static u32 NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E4LIGHT_H
 		NEURONSPI_REGFUN_V_REF_INT | NEURONSPI_REGFLAG_ACC_ONCE | NEURONSPI_REGFLAG_SYS_READ_ONLY,		// 1009
 };
 
+#define NEURONSPI_BOARD_E4LIGHT_HW_FEATURES {	\
+	.do_count =					  0,	\
+	.ro_count =					  0,	\
+	.ds_count =					  0,	\
+	.di_count =					  0,	\
+	.led_count =				  0,	\
+	.stm_ai_count =				  0,	\
+	.stm_ao_count =				  0,	\
+	.sec_ai_count =				  0,	\
+	.sec_ao_count =				  0,	\
+	.uart_master_count =		  0,	\
+	.uart_slave_count = 		  0,	\
+	.pwm_channel_count = 		  0,	\
+	.wd_count = 				  1,	\
+	.extension_sys_count = 		  0,	\
+	.light_count = 				  4,	\
+	.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION { \
 		.combination_board_id = 	14, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E4LIGHT_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_NONE_ID, \
+		.name_length =				8, \
+		.combination_name =			"E_4Light", \
 		.block_count = 				NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E4LIGHT_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E4LIGHT_HW_COMBINATION[] = {NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION};
 
 // E-4Ai4Ao_U-6Di5Ro (L503)
 #define NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK_SIZE 56
@@ -1228,8 +1639,8 @@ static u32 NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E4
 		NEURONSPI_REGFUN_AO_VER2_RW | NEURONSPI_REGFLAG_ACC_AFAP,												// 3
 		NEURONSPI_REGFUN_AO_VER2_RW | NEURONSPI_REGFLAG_ACC_AFAP,												// 4
 		NEURONSPI_REGFUN_AO_VER2_RW | NEURONSPI_REGFLAG_ACC_AFAP,												// 5
-		NEURONSPI_REGFUN_AI_VER2_READ_LOWER | NEURONSPI_REGFLAG_ACC_AFAP | NEURONSPI_REGFLAG_SYS_READ_ONLY, 	// 6
-		NEURONSPI_REGFUN_AI_VER2_READ_UPPER | NEURONSPI_REGFLAG_ACC_AFAP | NEURONSPI_REGFLAG_SYS_READ_ONLY, 	// 7
+		NEURONSPI_REGFUN_AI_VER2_READ_LOWER | NEURONSPI_REGFLAG_ACC_AFAP, 	// 6
+		NEURONSPI_REGFUN_AI_VER2_READ_UPPER | NEURONSPI_REGFLAG_ACC_AFAP, 	// 7
 		NEURONSPI_REGFUN_AI_VER2_READ_LOWER | NEURONSPI_REGFLAG_ACC_AFAP | NEURONSPI_REGFLAG_SYS_READ_ONLY, 	// 8
 		NEURONSPI_REGFUN_AI_VER2_READ_UPPER | NEURONSPI_REGFLAG_ACC_AFAP | NEURONSPI_REGFLAG_SYS_READ_ONLY, 	// 9
 		NEURONSPI_REGFUN_AI_VER2_READ_LOWER | NEURONSPI_REGFLAG_ACC_AFAP | NEURONSPI_REGFLAG_SYS_READ_ONLY, 	// 10
@@ -1277,13 +1688,36 @@ static u32 NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK[NEURONSPI_BOARD_E4
 		NEURONSPI_REGFUN_RS485_CONFIG | NEURONSPI_REGFLAG_ACC_6SEC												// 1023
 };
 
+#define NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_FEATURES {	\
+	.do_count =					  0,	\
+	.ro_count =					  5,	\
+	.ds_count =					  5,	\
+	.di_count =					  6,	\
+	.led_count =				  0,	\
+	.stm_ai_count =				  0,	\
+	.stm_ao_count =				  0,	\
+	.sec_ai_count =				  4,	\
+	.sec_ao_count =				  4,	\
+	.uart_master_count =		  0,	\
+	.uart_slave_count = 		  0,	\
+	.pwm_channel_count = 		  0,	\
+	.wd_count = 				  1,	\
+	.extension_sys_count = 		  0,	\
+	.light_count = 				  4,	\
+	.owire_count =				  0,    \
+}
+
 #define NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION { \
 		.combination_board_id = 	15, \
 		.lower_board_id = 			NEURONSPI_BOARD_LOWER_E4AI4AO_ID, \
 		.upper_board_id = 			NEURONSPI_BOARD_UPPER_U6DI5RO_ID, \
+		.name_length =				17, \
+		.combination_name =			"E_4Ai4Ao_U_6Di5Ro", \
 		.block_count = 				NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK_SIZE, \
-		.blocks = 					NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK \
+		.blocks = 					NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION_BLOCK, \
+		.features =					NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_FEATURES \
 }
+static struct neuronspi_board_combination NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_COMBINATION[] = {NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION};
 
 /*********************
  * Model Definitions *
@@ -1294,8 +1728,18 @@ struct neuronspi_board_combination NEURONSPI_MODEL_S103_HW_DEFINITION_BOARD[NEUR
 		NEURONSPI_BOARD_B1000_HW_DEFINITION
 };
 
+#define NEURONSPI_MODEL_S103G_HW_DEFINITION_BOARD_SIZE 1
+struct neuronspi_board_combination NEURONSPI_MODEL_S103G_HW_DEFINITION_BOARD[NEURONSPI_MODEL_S103G_HW_DEFINITION_BOARD_SIZE] = {
+		NEURONSPI_BOARD_B1000_HW_DEFINITION
+};
+
 #define NEURONSPI_MODEL_S103IQ_HW_DEFINITION_BOARD_SIZE 1
 struct neuronspi_board_combination NEURONSPI_MODEL_S103IQ_HW_DEFINITION_BOARD[NEURONSPI_MODEL_S103IQ_HW_DEFINITION_BOARD_SIZE] = {
+		NEURONSPI_BOARD_B1000_HW_DEFINITION
+};
+
+#define NEURONSPI_MODEL_S103EO_HW_DEFINITION_BOARD_SIZE 1
+struct neuronspi_board_combination NEURONSPI_MODEL_S103EO_HW_DEFINITION_BOARD[NEURONSPI_MODEL_S103EO_HW_DEFINITION_BOARD_SIZE] = {
 		NEURONSPI_BOARD_B1000_HW_DEFINITION
 };
 
@@ -1324,8 +1768,8 @@ struct neuronspi_board_combination NEURONSPI_MODEL_M503_HW_DEFINITION_BOARD[NEUR
 		NEURONSPI_BOARD_B1000_HW_DEFINITION, NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION
 };
 
-#define NEURONSPI_MODEL_M613_HW_DEFINITION_BOARD_SIZE 2
-struct neuronspi_board_combination NEURONSPI_MODEL_M613_HW_DEFINITION_BOARD[NEURONSPI_MODEL_M613_HW_DEFINITION_BOARD_SIZE] = {
+#define NEURONSPI_MODEL_M603_HW_DEFINITION_BOARD_SIZE 2
+struct neuronspi_board_combination NEURONSPI_MODEL_M603_HW_DEFINITION_BOARD[NEURONSPI_MODEL_M603_HW_DEFINITION_BOARD_SIZE] = {
 		NEURONSPI_BOARD_B1000_HW_DEFINITION, NEURONSPI_BOARD_E4LIGHT_HW_DEFINITION
 };
 
@@ -1354,35 +1798,77 @@ struct neuronspi_board_combination NEURONSPI_MODEL_L513_HW_DEFINITION_BOARD[NEUR
 		NEURONSPI_BOARD_B1000_HW_DEFINITION, NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION, NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_DEFINITION
 };
 
+// Board table
+// Column 4 is the number of 0-indexed registers and column 5 is the number of 1000-indexed ones
+#define NEURONSPI_BOARDTABLE_LEN		16
+static struct neuronspi_board_entry NEURONSPI_BOARDTABLE[NEURONSPI_BOARDTABLE_LEN] = {
+	{.index = 0, .lower_board_id = NEURONSPI_BOARD_LOWER_B1000_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 21,	.config_register_count = 32, .definition = NEURONSPI_BOARD_B1000_HW_COMBINATION}, 	// B_1000 (S103)
+	{.index = 1, .lower_board_id = NEURONSPI_BOARD_LOWER_E8DI8RO_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 19,	.config_register_count = 21, .definition = NEURONSPI_BOARD_E8DI8RO_HW_COMBINATION},	// E-8Di8Ro (M103)
+	{.index = 2, .lower_board_id = NEURONSPI_BOARD_LOWER_E14RO_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 1,	.config_register_count = 0,  .definition = NEURONSPI_BOARD_E14RO_HW_COMBINATION},		// E-14Ro
+	{.index = 3, .lower_board_id = NEURONSPI_BOARD_LOWER_E16DI_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 1,	.config_register_count = 0,	 .definition = NEURONSPI_BOARD_E16DI_HW_COMBINATION},		// E-16Di
+	{.index = 4, .lower_board_id = NEURONSPI_BOARD_LOWER_E8DI8RO_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_P11DIR485_ID,
+			.data_register_count = 36,	.config_register_count = 31,  .definition = NEURONSPI_BOARD_E8DI8ROP11DIR485_HW_COMBINATION},	// E-8Di8Ro_P-11DiR485 (xS10)
+	{.index = 5, .lower_board_id = NEURONSPI_BOARD_LOWER_E14RO_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_P11DIR485_ID,
+			.data_register_count = 20,	.config_register_count = 23,  .definition = NEURONSPI_BOARD_E14ROP11DIR485_HW_COMBINATION},	// E-14Ro_P-11DiR485 (xS40)
+	{.index = 6, .lower_board_id = NEURONSPI_BOARD_LOWER_E16DI_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_P11DIR485_ID,
+			.data_register_count = 52,	.config_register_count = 36,  .definition = NEURONSPI_BOARD_E16DIP11DIR485_HW_COMBINATION},	// E-16Di_P-11DiR485 (xS30)
+	{.index = 7, .lower_board_id = NEURONSPI_BOARD_LOWER_E14RO_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_U14RO_ID,
+			.data_register_count = 3,	.config_register_count = 10,  .definition = NEURONSPI_BOARD_E14ROU14RO_HW_COMBINATION},	// E-14Ro_U-14Ro (M403)
+	{.index = 8, .lower_board_id = NEURONSPI_BOARD_LOWER_E16DI_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_U14RO_ID,
+			.data_register_count = 35,	.config_register_count = 29,  .definition = NEURONSPI_BOARD_E16DIU14RO_HW_COMBINATION},	// E-16Di_U-14Ro (M203)
+	{.index = 9, .lower_board_id = NEURONSPI_BOARD_LOWER_E14RO_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_U14DI_ID,
+			.data_register_count = 31,	.config_register_count = 27,  .definition = NEURONSPI_BOARD_E14ROU14DI_HW_COMBINATION},	// E-14Ro_U-14Di (L503)
+	{.index = 10, .lower_board_id = NEURONSPI_BOARD_LOWER_E16DI_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_U14DI_ID,
+			.data_register_count = 63, .config_register_count = 40,   .definition = NEURONSPI_BOARD_E16DIU14DI_HW_COMBINATION},	// E-16Di_U-14Di (M303)
+	{.index = 11, .lower_board_id = NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 1,	.config_register_count = 0,   .definition = NEURONSPI_BOARD_E4AI4AO_HW_COMBINATION},		// E-4Ai4Ao
+	{.index = 12, .lower_board_id = NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_P6DI5RO_ID,
+			.data_register_count = 27, .config_register_count = 25,	  .definition = NEURONSPI_BOARD_E4AI4AOP6DI5RO_HW_COMBINATION},	// E-4Ai4Ao_P-6Di5Ro (xS50)
+	{.index = 13, .lower_board_id = NEURONSPI_BOARD_LOWER_B485_ID,		.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 1,  .config_register_count = 0,	  .definition = NEURONSPI_BOARD_B485_HW_COMBINATION},		// B-485
+	{.index = 14, .lower_board_id = NEURONSPI_BOARD_LOWER_E4LIGHT_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_NONE_ID,
+			.data_register_count = 21, .config_register_count = 8,    .definition = NEURONSPI_BOARD_E4LIGHT_HW_COMBINATION},		// E-4Light (M603)
+	{.index = 15, .lower_board_id = NEURONSPI_BOARD_LOWER_E4AI4AO_ID,	.upper_board_id = NEURONSPI_BOARD_UPPER_U6DI5RO_ID,
+			.data_register_count = 28, .config_register_count = 24,   .definition = NEURONSPI_BOARD_E4AI4AOU6DI5RO_HW_COMBINATION}		// E-4Ai4Ao_U-6Di5Ro (M503)
+};
+
 // Module table
-#define NEURONSPI_MODELTABLE_LEN		13
+#define NEURONSPI_MODELTABLE_LEN		15
 static struct neuronspi_model_definition NEURONSPI_MODELTABLE[NEURONSPI_MODELTABLE_LEN] = {
-		{.name_length = 4, .model_name = "S103", .combination_count = 1,
-				.combinations = NEURONSPI_MODEL_S103_HW_DEFINITION_BOARD},
-		{.name_length = 6, .model_name = "S103IQ", .combination_count = 1,
-				.combinations = NEURONSPI_MODEL_S103IQ_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M103", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M103_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M203", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M203_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M303", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M303_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M403", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M403_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M503", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M503_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "M613", .combination_count = 2,
-				.combinations = NEURONSPI_MODEL_M613_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "L203", .combination_count = 3,
-				.combinations = NEURONSPI_MODEL_L203_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "L303", .combination_count = 3,
-				.combinations = NEURONSPI_MODEL_L303_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "L403", .combination_count = 3,
-				.combinations = NEURONSPI_MODEL_L403_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "L503", .combination_count = 3,
-				.combinations = NEURONSPI_MODEL_L503_HW_DEFINITION_BOARD},
-		{.name_length = 4, .model_name = "L513", .combination_count = 3,
-				.combinations = NEURONSPI_MODEL_L513_HW_DEFINITION_BOARD}
+		{.eeprom_length = 4, .eeprom_name = "S103", .name_length = 4, .model_name = "S103",
+				.combination_count = 1, .combinations = NEURONSPI_MODEL_S103_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "S103", .name_length = 6, .model_name = "S103-G",
+				.combination_count = 1, .combinations = NEURONSPI_MODEL_S103G_HW_DEFINITION_BOARD},
+		{.eeprom_length = 6, .eeprom_name = "S103IQ", .name_length = 7, .model_name = "S103-IQ",
+				.combination_count = 1, .combinations = NEURONSPI_MODEL_S103IQ_HW_DEFINITION_BOARD},
+		{.eeprom_length = 6, .eeprom_name = "S103EO", .name_length = 7, .model_name = "S103-EO",
+				.combination_count = 1, .combinations = NEURONSPI_MODEL_S103EO_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M103", .name_length = 4, .model_name = "M103",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M103_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M203", .name_length = 4, .model_name = "M203",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M203_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M303", .name_length = 4, .model_name = "M303",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M303_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M403", .name_length = 4, .model_name = "M403",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M403_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M503", .name_length = 4, .model_name = "M503",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M503_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "M603", .name_length = 4, .model_name = "M603",
+				.combination_count = 2, .combinations = NEURONSPI_MODEL_M603_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "L203", .name_length = 4, .model_name = "L203",
+				.combination_count = 3, .combinations = NEURONSPI_MODEL_L203_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "L303", .name_length = 4, .model_name = "L303",
+				.combination_count = 3, .combinations = NEURONSPI_MODEL_L303_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "L403", .name_length = 4, .model_name = "L403",
+				.combination_count = 3, .combinations = NEURONSPI_MODEL_L403_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "L503", .name_length = 4, .model_name = "L503",
+				.combination_count = 3, .combinations = NEURONSPI_MODEL_L503_HW_DEFINITION_BOARD},
+		{.eeprom_length = 4, .eeprom_name = "L513", .name_length = 4, .model_name = "L513",
+				.combination_count = 3, .combinations = NEURONSPI_MODEL_L513_HW_DEFINITION_BOARD}
 };
 
 
@@ -1392,7 +1878,7 @@ static struct neuronspi_model_definition NEURONSPI_MODELTABLE[NEURONSPI_MODELTAB
 
 static const struct of_device_id neuronspi_id_match[] = {
 		{.compatible = "unipi,neuron"},
-		{.compatible = NEURONSPI_NAME},
+		{.compatible = NEURON_DEVICE_NAME},
 		{}
 };
 MODULE_DEVICE_TABLE(of, neuronspi_id_match);
@@ -1420,6 +1906,24 @@ MODULE_DEVICE_TABLE(of, neuronspi_id_match);
 /*******************
  * Data structures *
  *******************/
+
+enum neuron_str_attribute_type {
+		NEURON_SATTR_MODEL,
+		NEURON_SATTR_EEPROM,
+		NEURON_SATTR_BOARD_NAME,
+		NEURON_SATTR_GPIO_GROUP_NAME
+};
+
+enum neuron_num_attribute_type {
+		NEURON_NATTR_BOARDCOUNT,
+		NEURON_NATTR_MODE,
+		NEURON_NATTR_CURRENT_VALUE
+};
+
+static struct class neuron_plc_class = {
+		.name = NEURON_DEVICE_CLASS,
+		.owner = THIS_MODULE,
+};
 
 struct neuronspi_devtype
 {
@@ -1460,12 +1964,6 @@ static unsigned long neuronspi_lines;
 
 static struct uart_driver* neuronspi_uart;
 
-//static const struct iio_info ad7791_info = {
-//	.read_raw = ,
-//	.attrs = &ad7791_attribute_group,
-//	.driver_module = THIS_MODULE,
-//};
-
 // Instantiated once
 struct neuronspi_char_driver
 {
@@ -1477,6 +1975,7 @@ struct neuronspi_char_driver
 	struct device* dev;
 };
 
+
 // Instantiated once per SPI device
 struct neuronspi_driver_data
 {
@@ -1486,12 +1985,21 @@ struct neuronspi_driver_data
 	struct neuronspi_uart_data *uart_data;
 	struct neuronspi_led_driver *led_driver;
 	struct neuronspi_di_driver *di_driver;
-	struct kthread_worker	primary_worker;
-	struct task_struct 		*primary_worker_task;
+	struct neuronspi_do_driver *do_driver;
+	struct neuronspi_ro_driver *ro_driver;
+	struct platform_device *board_device;
+	struct iio_dev *stm_ai_driver;
+	struct iio_dev *stm_ao_driver;
+	struct iio_dev **sec_ai_driver;
+	struct iio_dev **sec_ao_driver;
+	struct kthread_worker primary_worker;
+	struct task_struct *primary_worker_task;
 	struct regmap *reg_map;
 	struct task_struct *poll_thread;
 	struct mutex device_lock;
-	u8 led_count;
+	struct neuronspi_board_features *features;
+	struct neuronspi_board_regstart_table *regstart_table;
+	char platform_name[sizeof("plc_group0")];
 	u8 *send_buf;
 	u8 *recv_buf;
 	u8 *first_probe_reply;
@@ -1500,7 +2008,6 @@ struct neuronspi_driver_data
 	u8 uart_count;
 	u8 uart_read;
 	u8 *uart_buf;
-	u8 spi_index;
 	u8 slower_model;
 	u8 no_irq;
 	u8 lower_board_id;
@@ -1510,30 +2017,67 @@ struct neuronspi_driver_data
 	uint32_t ideal_frequency;
 };
 
-/*struct neuronspi_di_data
-{
-
-};
-*/
 struct neuronspi_di_driver
 {
 	struct gpio_chip gpio_c;
+	struct platform_device *plat_dev;
 	u8 di_count;
+	char name[sizeof("di_0")];
+};
+
+struct neuronspi_do_driver
+{
+	struct gpio_chip gpio_c;
+	struct platform_device *plat_dev;
+	u8 do_count;
+	char name[sizeof("do_0")];
+};
+
+struct neuronspi_ro_driver
+{
+	struct gpio_chip gpio_c;
+	struct platform_device *plat_dev;
+	u8 ro_count;
+	char name[sizeof("ro_0")];
+};
+
+struct neuronspi_sec_ai_driver
+{
+	struct iio *devices;
+	u16 dev_count;
+};
+
+struct neuronspi_sec_ao_driver
+{
+	struct iio *devices;
+	u16 dev_count;
 };
 
 struct neuronspi_stm_ai_data
 {
-	u8 mode;
+	u32 mode;
 	struct spi_device *parent;
 };
 
-struct neuronspi_stm_ai_driver
+struct neuronspi_stm_ao_data
 {
-	struct iio_dev iio_d;
-	struct iio_info iio_i;
-	struct neuronspi_stm_ai_data data;
+	u32 mode;
+	struct spi_device *parent;
 };
 
+struct neuronspi_sec_ai_data
+{
+	u32 index;
+	u32 mode;
+	struct spi_device *parent;
+};
+
+struct neuronspi_sec_ao_data
+{
+	u32 index;
+	u32 mode;
+	struct spi_device *parent;
+};
 
 // Instantiated once per LED
 struct neuronspi_led_driver
@@ -1580,6 +2124,16 @@ static ssize_t neuronspi_write (struct file *, const char *, size_t, loff_t *);
 static int32_t char_register_driver(void);
 static int32_t char_unregister_driver(void);
 
+static int neuronspi_create_reg_starts(struct neuronspi_board_regstart_table *out_table, struct neuronspi_board_combination *board);
+static int32_t neuronspi_find_reg_start(struct neuronspi_board_combination *board, uint16_t regfun);
+static int32_t neuronspi_find_model_id(uint32_t probe_count);
+
+int neuronspi_iio_stm_ai_read_raw(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+int neuronspi_iio_stm_ao_read_raw(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+int neuronspi_iio_stm_ao_write_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int val, int val2, long mask);
+int neuronspi_iio_sec_ai_read_raw(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+int neuronspi_iio_sec_ao_write_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int val, int val2, long mask);
+
 static irqreturn_t neuronspi_spi_irq(int32_t irq, void *dev_id);
 static int32_t neuronspi_spi_probe(struct spi_device *spi);
 static int32_t neuronspi_spi_remove(struct spi_device *spi);
@@ -1589,6 +2143,18 @@ static int32_t neuronspi_spi_uart_write(struct spi_device *spi, u8 *send_buf, u8
 void neuronspi_spi_uart_read(struct spi_device* spi_dev, u8 *send_buf, u8 *recv_buf, int32_t len, u8 uart_index);
 void neuronspi_spi_set_irqs(struct spi_device* spi_dev, uint16_t to);
 void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brightness brightness, int id);
+void neuronspi_spi_iio_stm_ai_read_voltage(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_stm_ai_read_current(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_stm_ao_read_resistance(struct iio_dev *indio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_stm_ao_set_voltage(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int val, int val2, long mask);
+void neuronspi_spi_iio_stm_ao_set_current(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int val, int val2, long mask);
+void neuronspi_spi_iio_sec_ai_read_voltage(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_sec_ai_read_current(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_sec_ai_read_resistance(struct iio_dev *iio_dev, struct iio_chan_spec const *ch, int *val, int *val2, long mask);
+void neuronspi_spi_iio_sec_ao_set_voltage(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int val, int val2, long mask);
+int neuronspi_spi_gpio_do_set(struct spi_device* spi_dev, uint32_t id, int value);
+int neuronspi_spi_gpio_ro_set(struct spi_device* spi_dev, uint32_t id, int value);
+int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id);
 
 static void neuronspi_uart_start_tx(struct uart_port *port);
 static void neuronspi_uart_stop_tx(struct uart_port *port);
@@ -1630,8 +2196,52 @@ static void neuronspi_uart_handle_irq(struct neuronspi_uart_data *uart_data, int
 int neuronspi_gpio_di_direction_input(struct gpio_chip *chip, unsigned offset);
 int neuronspi_gpio_di_direction_output(struct gpio_chip *chip, unsigned offset, int value);
 int	neuronspi_gpio_di_get(struct gpio_chip *chip, unsigned offset);
+int neuronspi_gpio_do_direction_input(struct gpio_chip *chip, unsigned offset);
+int neuronspi_gpio_do_direction_output(struct gpio_chip *chip, unsigned offset, int value);
+void neuronspi_gpio_do_set(struct gpio_chip *chip, unsigned offset, int value);
+int neuronspi_gpio_ro_direction_input(struct gpio_chip *chip, unsigned offset);
+int neuronspi_gpio_ro_direction_output(struct gpio_chip *chip, unsigned offset, int value);
+void neuronspi_gpio_ro_set(struct gpio_chip *chip, unsigned offset, int value);
 
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness);
+
+static ssize_t neuronspi_show_model(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_show_eeprom(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_serial(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_board(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_lboard_id(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_uboard_id(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_hw_version(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_hw_flash_version(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_fw_version(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_uart_queue_length(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_show_uart_config(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_store_uart_config(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_show_watchdog_status(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_store_watchdog_status(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_show_watchdog_timeout(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_store_watchdog_timeout(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_show_pwm_freq(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_store_pwm_freq(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_show_pwm_cycle(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_store_pwm_cycle(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_show_pwm_presc(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_store_pwm_presc(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_store_ds_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_store_ds_toggle(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_store_ds_polarity(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_show_ds_enable(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_ds_toggle(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_ds_polarity(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_do_prefix(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_do_base(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_do_count(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_di_prefix(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_di_base(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_di_count(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_ro_prefix(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_ro_base(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_show_ro_count(struct device *dev, struct device_attribute *attr, char *buf);
 
 int neuronspi_regmap_hw_gather_write(void *context, const void *reg, size_t reg_size, const void *val, size_t val_size);
 int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size, void *val_buf, size_t val_size);
@@ -1639,9 +2249,16 @@ int neuronspi_regmap_hw_reg_read(void *context, unsigned int reg, unsigned int *
 int neuronspi_regmap_hw_reg_write(void *context, unsigned int reg, unsigned int val);
 int neuronspi_regmap_hw_write(void *context, const void *data, size_t count);
 
+static void neuronspi_regmap_invalidate_device(struct regmap *reg_map, struct neuronspi_board_combination *device_def, uint32_t period_counter);
+static int32_t neuronspi_regmap_invalidate(void *data);
+
 static struct spinlock* neuronspi_spi_w_spinlock;
 static u8 neuronspi_spi_w_flag = 1;
-static struct spi_device* neuronspi_s_dev[NEURONSPI_MAX_DEVS];// = { NULL, NULL, NULL };
+static u8 neuronspi_probe_count = 0;
+static int neuronspi_model_id = -1;
+static spinlock_t neuronspi_probe_spinlock;
+static struct spi_device* neuronspi_s_dev[NEURONSPI_MAX_DEVS];
+static struct task_struct *neuronspi_invalidate_thread;
 
 int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id);
 
@@ -1649,12 +2266,33 @@ int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id);
  * Function structures *
  ***********************/
 
+static const struct iio_info neuronspi_stm_ai_info = {
+	.read_raw = neuronspi_iio_stm_ai_read_raw,
+	.driver_module = THIS_MODULE,
+};
+
+static const struct iio_info neuronspi_stm_ao_info = {
+	.read_raw = neuronspi_iio_stm_ao_read_raw,
+	.write_raw = neuronspi_iio_stm_ao_write_raw,
+	.driver_module = THIS_MODULE,
+};
+
+static const struct iio_info neuronspi_sec_ai_info = {
+	.read_raw = neuronspi_iio_sec_ai_read_raw,
+	.driver_module = THIS_MODULE,
+};
+
+static const struct iio_info neuronspi_sec_ao_info = {
+	.write_raw = neuronspi_iio_sec_ao_write_raw,
+	.driver_module = THIS_MODULE,
+};
+
 // Host driver struct
 static struct spi_driver neuronspi_spi_driver =
 {
 	.driver =
 	{
-		.name			= NEURONSPI_NAME,
+		.name			= NEURON_DRIVER_NAME,
 		.of_match_table	= of_match_ptr(neuronspi_id_match)
 	},
 	.probe				= neuronspi_spi_probe,
@@ -1694,7 +2332,7 @@ static const struct uart_ops neuronspi_uart_ops =
 
 static const struct regmap_bus neuronspi_regmap_bus =
 {
-	.fast_io 					= 0,
+	.fast_io 					= 1,
 	.write 						= neuronspi_regmap_hw_write,
 	.gather_write 				= neuronspi_regmap_hw_gather_write,
 	.reg_write					= neuronspi_regmap_hw_reg_write,
@@ -1718,6 +2356,197 @@ static const struct regmap_config neuronspi_regmap_config_default =
 		.use_single_rw			= 0,
 		.can_multi_write		= 1,
 };
+
+static const struct iio_chan_spec neuronspi_stm_ai_chan_spec[] = {
+	{
+			.type = IIO_VOLTAGE,
+			.indexed = 1,
+			.channel = 0,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	},
+	{
+			.type = IIO_CURRENT,
+			.indexed = 1,
+			.channel = 1,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	}
+};
+
+static const struct iio_chan_spec neuronspi_stm_ao_chan_spec[] = {
+	{
+			.type = IIO_VOLTAGE,
+			.indexed = 1,
+			.channel = 0,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	},
+	{
+			.type = IIO_CURRENT,
+			.indexed = 1,
+			.channel = 1,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	},
+	{
+			.type = IIO_RESISTANCE,
+			.indexed = 1,
+			.channel = 2,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	}
+};
+
+static const struct iio_chan_spec neuronspi_sec_ai_chan_spec[] = {
+	{
+			.type = IIO_VOLTAGE,
+			.indexed = 1,
+			.channel = 0,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	},
+	{
+			.type = IIO_CURRENT,
+			.indexed = 1,
+			.channel = 1,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	},
+	{
+			.type = IIO_RESISTANCE,
+			.indexed = 1,
+			.channel = 2,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	}
+};
+
+static const struct iio_chan_spec neuronspi_sec_ao_chan_spec[] = {
+	{
+			.type = IIO_VOLTAGE,
+			.indexed = 1,
+			.channel = 0,
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+	}
+};
+
+static DEVICE_ATTR(model_name, 0440, neuronspi_show_model, NULL);
+static DEVICE_ATTR(eeprom_name, 0440, neuronspi_show_eeprom, NULL);
+static DEVICE_ATTR(board_serial, 0440, neuronspi_spi_show_serial, NULL);
+static DEVICE_ATTR(board_name, 0440, neuronspi_spi_show_board, NULL);
+static DEVICE_ATTR(lower_board_id, 0440, neuronspi_spi_show_lboard_id, NULL);
+static DEVICE_ATTR(upper_board_id, 0440, neuronspi_spi_show_uboard_id, NULL);
+static DEVICE_ATTR(hardware_version, 0440, neuronspi_spi_show_hw_version, NULL);
+static DEVICE_ATTR(hardflash_version, 0440, neuronspi_spi_show_hw_flash_version, NULL);
+static DEVICE_ATTR(software_version, 0440, neuronspi_spi_show_fw_version, NULL);
+static DEVICE_ATTR(watchdog_status, 0660, neuronspi_spi_show_watchdog_status, neuronspi_spi_store_watchdog_status);
+static DEVICE_ATTR(watchdog_timeout, 0660, neuronspi_spi_show_watchdog_timeout, neuronspi_spi_store_watchdog_timeout);
+static DEVICE_ATTR(gpio_do_count, 0440, neuronspi_spi_gpio_show_do_count, NULL);
+static DEVICE_ATTR(gpio_do_prefix, 0440, neuronspi_spi_gpio_show_do_prefix, NULL);
+static DEVICE_ATTR(gpio_do_base, 0440, neuronspi_spi_gpio_show_do_base, NULL);
+static DEVICE_ATTR(gpio_di_count, 0440, neuronspi_spi_gpio_show_di_count, NULL);
+static DEVICE_ATTR(gpio_di_prefix, 0440, neuronspi_spi_gpio_show_di_prefix, NULL);
+static DEVICE_ATTR(ds_enable, 0660, neuronspi_spi_gpio_show_ds_enable, neuronspi_spi_gpio_store_ds_enable);
+static DEVICE_ATTR(ds_toggle, 0660, neuronspi_spi_gpio_show_ds_toggle, neuronspi_spi_gpio_store_ds_toggle);
+static DEVICE_ATTR(ds_polarity, 0660, neuronspi_spi_gpio_show_ds_polarity, neuronspi_spi_gpio_store_ds_polarity);
+static DEVICE_ATTR(pwm_frequency_cycle, 0660, neuronspi_spi_gpio_show_pwm_freq, neuronspi_spi_gpio_store_pwm_freq);
+static DEVICE_ATTR(pwm_prescaler, 0660, neuronspi_spi_gpio_show_pwm_presc, neuronspi_spi_gpio_store_pwm_presc);
+static DEVICE_ATTR(pwm_duty_cycle, 0660, neuronspi_spi_gpio_show_pwm_cycle, neuronspi_spi_gpio_store_pwm_cycle);
+static DEVICE_ATTR(uart_queue_length, 0440, neuronspi_spi_show_uart_queue_length, NULL);
+static DEVICE_ATTR(uart_config, 0660, neuronspi_spi_show_uart_config, neuronspi_spi_store_uart_config);
+static DEVICE_ATTR(gpio_di_base, 0440, neuronspi_spi_gpio_show_di_base, NULL);
+static DEVICE_ATTR(gpio_ro_count, 0440, neuronspi_spi_gpio_show_ro_count, NULL);
+static DEVICE_ATTR(gpio_ro_prefix, 0440, neuronspi_spi_gpio_show_ro_prefix, NULL);
+static DEVICE_ATTR(gpio_ro_base, 0440, neuronspi_spi_gpio_show_ro_base, NULL);
+
+
+static struct attribute *neuron_plc_attrs[] = {
+		&dev_attr_model_name.attr,
+		&dev_attr_eeprom_name.attr,
+		NULL,
+};
+
+static struct attribute *neuron_board_attrs[] = {
+		&dev_attr_board_name.attr,
+		&dev_attr_lower_board_id.attr,
+		&dev_attr_upper_board_id.attr,
+		&dev_attr_hardware_version.attr,
+		&dev_attr_hardflash_version.attr,
+		&dev_attr_software_version.attr,
+		&dev_attr_watchdog_status.attr,
+		&dev_attr_watchdog_timeout.attr,
+		&dev_attr_board_serial.attr,
+		&dev_attr_uart_queue_length.attr,
+		&dev_attr_uart_config.attr,
+		NULL,
+};
+
+static struct attribute *neuron_gpio_di_attrs[] = {
+		&dev_attr_gpio_di_count.attr,
+		&dev_attr_gpio_di_prefix.attr,
+		&dev_attr_gpio_di_base.attr,
+		&dev_attr_ds_enable.attr,
+		&dev_attr_ds_toggle.attr,
+		&dev_attr_ds_polarity.attr,
+		NULL,
+};
+
+static struct attribute *neuron_gpio_do_attrs[] = {
+		&dev_attr_gpio_do_count.attr,
+		&dev_attr_gpio_do_prefix.attr,
+		&dev_attr_gpio_do_base.attr,
+		&dev_attr_pwm_frequency_cycle.attr,
+		&dev_attr_pwm_prescaler.attr,
+		&dev_attr_pwm_duty_cycle.attr,
+		NULL,
+};
+
+static struct attribute *neuron_gpio_ro_attrs[] = {
+		&dev_attr_gpio_ro_count.attr,
+		&dev_attr_gpio_ro_prefix.attr,
+		&dev_attr_gpio_ro_base.attr,
+		NULL,
+};
+
+static struct attribute_group neuron_plc_attr_group = {
+	.attrs = neuron_plc_attrs,
+};
+
+static struct attribute_group neuron_board_attr_group = {
+	.attrs = neuron_board_attrs,
+};
+
+static struct attribute_group neuron_gpio_di_attr_group = {
+	.attrs = neuron_gpio_di_attrs,
+};
+
+static struct attribute_group neuron_gpio_do_attr_group = {
+	.attrs = neuron_gpio_do_attrs,
+};
+
+static struct attribute_group neuron_gpio_ro_attr_group = {
+	.attrs = neuron_gpio_ro_attrs,
+};
+
+static const struct attribute_group *neuron_plc_attr_groups[] = {
+	&neuron_plc_attr_group,
+	NULL,
+};
+
+static const struct attribute_group *neuron_board_attr_groups[] = {
+	&neuron_board_attr_group,
+	NULL,
+};
+
+static const struct attribute_group *neuron_gpio_di_attr_groups[] = {
+	&neuron_gpio_di_attr_group,
+	NULL,
+};
+
+static const struct attribute_group *neuron_gpio_do_attr_groups[] = {
+	&neuron_gpio_do_attr_group,
+	NULL,
+};
+
+static const struct attribute_group *neuron_gpio_ro_attr_groups[] = {
+	&neuron_gpio_ro_attr_group,
+	NULL,
+};
+
+static struct platform_device *neuron_plc_dev;
 
 // These defines need to be at the end
 #define to_neuronspi_uart_data(p,e)  ((container_of((p), struct neuronspi_uart_data, e)))
@@ -1843,6 +2672,7 @@ __always_inline size_t neuronspi_spi_compose_single_register_write(uint16_t star
 	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
+	printk(KERN_INFO "NEURONSPI: COMPOSE SINGLE WRITE DATA: %x\n", data);
 	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
@@ -1930,44 +2760,3 @@ __always_inline size_t neuronspi_spi_compose_multiple_register_read(uint8_t numb
 }
 
 #endif /* NEURONSPI_H_ */
-
-//regmap_n_spi->reg_map
-/*
- *  Message composition test
-test_data = kzalloc(2, GFP_KERNEL);
-test_data[0] = 0x02;
-test_length = neuronspi_spi_compose_multiple_coil_write(4, 8, &test_inp, &test_out, test_data);
-printk(KERN_INFO "NEURONSPI WRITE: %d\n", test_inp[13]);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_multiple_coil_read(1, 8, &test_inp, &test_out);
-printk(KERN_INFO "NEURONSPI READ: %d\n", test_inp[13]);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_single_coil_write(8, &test_inp, &test_out, 0x01);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_single_coil_read(8, &test_inp, &test_out);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_single_register_read(20, &test_inp, &test_out);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_single_register_write(20, &test_inp, &test_out, 0x05);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_multiple_register_read(1, 20, &test_inp, &test_out);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-test_length = neuronspi_spi_compose_multiple_register_write(1, 20, &test_inp, &test_out, test_data);
-neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-kfree(test_inp);
-kfree(test_out);
-****************************/

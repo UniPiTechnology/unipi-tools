@@ -98,8 +98,11 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Users\Tom\Desktop\kernel_source\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\etc\arm_gcc\arm-none-eabi\include&quot;"/>
 								</option>
-								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1015420132" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" valueType="definedSymbols">
+								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1015420132" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="CONFIG_GPIOLIB"/>
+									<listOptionValue builtIn="false" value="REGMAP_ENDIAN_NATIVE=1"/>
+									<listOptionValue builtIn="false" value="__KERNEL__"/>
+									<listOptionValue builtIn="false" value="CONFIG_REGMAP"/>
 								</option>
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1795107374" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input"/>
 							</tool>

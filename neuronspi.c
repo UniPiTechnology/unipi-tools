@@ -1581,7 +1581,11 @@ static int32_t __init neuronspi_init(void)
 		pr_err("Failed to init neuronspi spi --> %d\n", ret);
 		return ret;
 	} else {
+#ifdef NEURONSPI_MAJOR_VERSIONSTRING
+		printk(KERN_INFO "NEURONSPI: SPI Driver Registered, Major Version: %s\n", NEURONSPI_MAJOR_VERSIONSTRING);
+#else
 		printk(KERN_INFO "NEURONSPI: SPI Driver Registered\n");
+#endif
 	}
 	return ret;
 }

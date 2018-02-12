@@ -3152,7 +3152,11 @@ static int32_t __init neuronspi_init(void)
 		printk(KERN_ERR "NEURONSPI: Failed to init neuronspi spi --> %d\n", ret);
 		return ret;
 	} else {
+#ifdef NEURONSPI_MAJOR_VERSIONSTRING
+		printk(KERN_INFO "NEURONSPI: SPI Driver Registered, Major Version: %s\n", NEURONSPI_MAJOR_VERSIONSTRING);
+#else
 		printk(KERN_INFO "NEURONSPI: SPI Driver Registered\n");
+#endif
 	}
 	neuronspi_invalidate_thread = kthread_create(neuronspi_regmap_invalidate, NULL, "neuronspi_inv");
 	if (neuronspi_invalidate_thread != NULL) {

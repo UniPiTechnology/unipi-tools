@@ -18,6 +18,8 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define NEURONSPI_SCHED_REQUIRED 0 // Older kernels do not require sched/types to be specifically imported
 
+#define NEURONSPI_MAJOR_VERSIONSTRING "Development Beta Version 0.01:12:02:2018"
+
 #include <linux/bitops.h>
 #include <linux/clk.h>
 #include <linux/delay.h>

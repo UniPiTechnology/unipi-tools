@@ -1,4 +1,5 @@
 #!/bin/sh
-ln -s /sys/devices/platform/unipi_plc -t /run/
+mkdir -p /run/
+ln -s /sys/devices/platform/unipi_plc /run/unipi 
 exit 0
 

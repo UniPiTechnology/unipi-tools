@@ -1984,9 +1984,9 @@ struct neuronspi_driver_data
 	struct uart_driver *serial_driver;
 	struct neuronspi_uart_data *uart_data;
 	struct neuronspi_led_driver *led_driver;
-	struct neuronspi_di_driver *di_driver;
-	struct neuronspi_do_driver *do_driver;
-	struct neuronspi_ro_driver *ro_driver;
+	struct neuronspi_di_driver **di_driver;
+	struct neuronspi_do_driver **do_driver;
+	struct neuronspi_ro_driver **ro_driver;
 	struct platform_device *board_device;
 	struct iio_dev *stm_ai_driver;
 	struct iio_dev *stm_ao_driver;
@@ -1999,7 +1999,8 @@ struct neuronspi_driver_data
 	struct mutex device_lock;
 	struct neuronspi_board_features *features;
 	struct neuronspi_board_regstart_table *regstart_table;
-	char platform_name[sizeof("plc_group0")];
+	struct spinlock sysfs_regmap_lock;
+	char platform_name[sizeof("io_group0")];
 	u8 *send_buf;
 	u8 *recv_buf;
 	u8 *first_probe_reply;
@@ -2014,31 +2015,35 @@ struct neuronspi_driver_data
 	u8 upper_board_id;
 	u8 combination_id;
 	int32_t neuron_index;
+	uint16_t sysfs_regmap_target;
+	uint16_t sysfs_counter_target;
 	uint32_t ideal_frequency;
 };
 
-struct neuronspi_di_driver
-{
+struct neuronspi_di_driver {
+	struct spi_device* spi;
 	struct gpio_chip gpio_c;
 	struct platform_device *plat_dev;
-	u8 di_count;
-	char name[sizeof("di_0")];
+	u8 di_index;
+	char name[sizeof("di_0_00")];
 };
 
 struct neuronspi_do_driver
 {
+	struct spi_device* spi;
 	struct gpio_chip gpio_c;
 	struct platform_device *plat_dev;
-	u8 do_count;
-	char name[sizeof("do_0")];
+	u8 do_index;
+	char name[sizeof("do_0_00")];
 };
 
 struct neuronspi_ro_driver
 {
+	struct spi_device* spi;
 	struct gpio_chip gpio_c;
 	struct platform_device *plat_dev;
-	u8 ro_count;
-	char name[sizeof("ro_0")];
+	u8 ro_index;
+	char name[sizeof("ro_0_00")];
 };
 
 struct neuronspi_sec_ai_driver
@@ -2205,8 +2210,15 @@ void neuronspi_gpio_ro_set(struct gpio_chip *chip, unsigned offset, int value);
 
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness);
 
+static ssize_t neuronspi_iio_show_ai_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_ai_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_iio_show_ao_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_ao_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+
 static ssize_t neuronspi_show_model(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_show_eeprom(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_show_regmap(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_store_regmap(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_show_serial(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_show_board(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_show_lboard_id(struct device *dev, struct device_attribute *attr, char *buf);
@@ -2223,6 +2235,8 @@ static ssize_t neuronspi_spi_show_watchdog_timeout(struct device *dev, struct de
 static ssize_t neuronspi_spi_store_watchdog_timeout(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_freq(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_store_pwm_freq(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_show_counter(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_store_counter(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_cycle(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_store_pwm_cycle(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_presc(struct device *dev, struct device_attribute *attr, char *buf);
@@ -2424,80 +2438,82 @@ static const struct iio_chan_spec neuronspi_sec_ao_chan_spec[] = {
 };
 
 static DEVICE_ATTR(model_name, 0440, neuronspi_show_model, NULL);
-static DEVICE_ATTR(eeprom_name, 0440, neuronspi_show_eeprom, NULL);
-static DEVICE_ATTR(board_serial, 0440, neuronspi_spi_show_serial, NULL);
-static DEVICE_ATTR(board_name, 0440, neuronspi_spi_show_board, NULL);
-static DEVICE_ATTR(lower_board_id, 0440, neuronspi_spi_show_lboard_id, NULL);
-static DEVICE_ATTR(upper_board_id, 0440, neuronspi_spi_show_uboard_id, NULL);
-static DEVICE_ATTR(hardware_version, 0440, neuronspi_spi_show_hw_version, NULL);
-static DEVICE_ATTR(hardflash_version, 0440, neuronspi_spi_show_hw_flash_version, NULL);
-static DEVICE_ATTR(software_version, 0440, neuronspi_spi_show_fw_version, NULL);
+static DEVICE_ATTR(sys_eeprom_name, 0440, neuronspi_show_eeprom, NULL);
+static DEVICE_ATTR(register_read, 0660, neuronspi_show_regmap, neuronspi_store_regmap);
+static DEVICE_ATTR(sys_board_serial, 0440, neuronspi_spi_show_serial, NULL);
+static DEVICE_ATTR(sys_board_name, 0440, neuronspi_spi_show_board, NULL);
+static DEVICE_ATTR(sys_primary_major_id, 0440, neuronspi_spi_show_lboard_id, NULL);
+static DEVICE_ATTR(sys_secondary_major_id, 0440, neuronspi_spi_show_uboard_id, NULL);
+static DEVICE_ATTR(sys_primary_minor_id, 0440, neuronspi_spi_show_hw_version, NULL);
+static DEVICE_ATTR(sys_secondary_minor_id, 0440, neuronspi_spi_show_hw_flash_version, NULL);
+static DEVICE_ATTR(firmware_version, 0440, neuronspi_spi_show_fw_version, NULL);
 static DEVICE_ATTR(watchdog_status, 0660, neuronspi_spi_show_watchdog_status, neuronspi_spi_store_watchdog_status);
 static DEVICE_ATTR(watchdog_timeout, 0660, neuronspi_spi_show_watchdog_timeout, neuronspi_spi_store_watchdog_timeout);
-static DEVICE_ATTR(gpio_do_count, 0440, neuronspi_spi_gpio_show_do_count, NULL);
-static DEVICE_ATTR(gpio_do_prefix, 0440, neuronspi_spi_gpio_show_do_prefix, NULL);
-static DEVICE_ATTR(gpio_do_base, 0440, neuronspi_spi_gpio_show_do_base, NULL);
-static DEVICE_ATTR(gpio_di_count, 0440, neuronspi_spi_gpio_show_di_count, NULL);
-static DEVICE_ATTR(gpio_di_prefix, 0440, neuronspi_spi_gpio_show_di_prefix, NULL);
-static DEVICE_ATTR(ds_enable, 0660, neuronspi_spi_gpio_show_ds_enable, neuronspi_spi_gpio_store_ds_enable);
-static DEVICE_ATTR(ds_toggle, 0660, neuronspi_spi_gpio_show_ds_toggle, neuronspi_spi_gpio_store_ds_toggle);
-static DEVICE_ATTR(ds_polarity, 0660, neuronspi_spi_gpio_show_ds_polarity, neuronspi_spi_gpio_store_ds_polarity);
+static DEVICE_ATTR(sys_gpio_do_count, 0440, neuronspi_spi_gpio_show_do_count, NULL);
+static DEVICE_ATTR(sys_gpio_do_prefix, 0440, neuronspi_spi_gpio_show_do_prefix, NULL);
+static DEVICE_ATTR(sys_gpio_do_base, 0440, neuronspi_spi_gpio_show_do_base, NULL);
+static DEVICE_ATTR(sys_gpio_di_count, 0440, neuronspi_spi_gpio_show_di_count, NULL);
+static DEVICE_ATTR(sys_gpio_di_prefix, 0440, neuronspi_spi_gpio_show_di_prefix, NULL);
+static DEVICE_ATTR(direct_switch_enable, 0660, neuronspi_spi_gpio_show_ds_enable, neuronspi_spi_gpio_store_ds_enable);
+static DEVICE_ATTR(direct_switch_toggle, 0660, neuronspi_spi_gpio_show_ds_toggle, neuronspi_spi_gpio_store_ds_toggle);
+static DEVICE_ATTR(direct_switch_polarity, 0660, neuronspi_spi_gpio_show_ds_polarity, neuronspi_spi_gpio_store_ds_polarity);
 static DEVICE_ATTR(pwm_frequency_cycle, 0660, neuronspi_spi_gpio_show_pwm_freq, neuronspi_spi_gpio_store_pwm_freq);
-static DEVICE_ATTR(pwm_prescaler, 0660, neuronspi_spi_gpio_show_pwm_presc, neuronspi_spi_gpio_store_pwm_presc);
+static DEVICE_ATTR(pwm_prescale, 0660, neuronspi_spi_gpio_show_pwm_presc, neuronspi_spi_gpio_store_pwm_presc);
 static DEVICE_ATTR(pwm_duty_cycle, 0660, neuronspi_spi_gpio_show_pwm_cycle, neuronspi_spi_gpio_store_pwm_cycle);
 static DEVICE_ATTR(uart_queue_length, 0440, neuronspi_spi_show_uart_queue_length, NULL);
 static DEVICE_ATTR(uart_config, 0660, neuronspi_spi_show_uart_config, neuronspi_spi_store_uart_config);
-static DEVICE_ATTR(gpio_di_base, 0440, neuronspi_spi_gpio_show_di_base, NULL);
-static DEVICE_ATTR(gpio_ro_count, 0440, neuronspi_spi_gpio_show_ro_count, NULL);
-static DEVICE_ATTR(gpio_ro_prefix, 0440, neuronspi_spi_gpio_show_ro_prefix, NULL);
-static DEVICE_ATTR(gpio_ro_base, 0440, neuronspi_spi_gpio_show_ro_base, NULL);
+static DEVICE_ATTR(sys_gpio_di_base, 0440, neuronspi_spi_gpio_show_di_base, NULL);
+static DEVICE_ATTR(sys_gpio_ro_count, 0440, neuronspi_spi_gpio_show_ro_count, NULL);
+static DEVICE_ATTR(sys_gpio_ro_prefix, 0440, neuronspi_spi_gpio_show_ro_prefix, NULL);
+static DEVICE_ATTR(sys_gpio_ro_base, 0440, neuronspi_spi_gpio_show_ro_base, NULL);
 
 
 static struct attribute *neuron_plc_attrs[] = {
 		&dev_attr_model_name.attr,
-		&dev_attr_eeprom_name.attr,
+		&dev_attr_sys_eeprom_name.attr,
 		NULL,
 };
 
 static struct attribute *neuron_board_attrs[] = {
-		&dev_attr_board_name.attr,
-		&dev_attr_lower_board_id.attr,
-		&dev_attr_upper_board_id.attr,
-		&dev_attr_hardware_version.attr,
-		&dev_attr_hardflash_version.attr,
-		&dev_attr_software_version.attr,
+		&dev_attr_sys_board_name.attr,
+		&dev_attr_sys_primary_major_id.attr,
+		&dev_attr_sys_secondary_major_id.attr,
+		&dev_attr_sys_primary_minor_id.attr,
+		&dev_attr_sys_secondary_minor_id.attr,
+		&dev_attr_firmware_version.attr,
 		&dev_attr_watchdog_status.attr,
 		&dev_attr_watchdog_timeout.attr,
-		&dev_attr_board_serial.attr,
+		&dev_attr_sys_board_serial.attr,
 		&dev_attr_uart_queue_length.attr,
 		&dev_attr_uart_config.attr,
+		&dev_attr_register_read.attr,
 		NULL,
 };
 
 static struct attribute *neuron_gpio_di_attrs[] = {
-		&dev_attr_gpio_di_count.attr,
-		&dev_attr_gpio_di_prefix.attr,
-		&dev_attr_gpio_di_base.attr,
-		&dev_attr_ds_enable.attr,
-		&dev_attr_ds_toggle.attr,
-		&dev_attr_ds_polarity.attr,
+		&dev_attr_sys_gpio_di_count.attr,
+		&dev_attr_sys_gpio_di_prefix.attr,
+		&dev_attr_sys_gpio_di_base.attr,
+		&dev_attr_direct_switch_enable.attr,
+		&dev_attr_direct_switch_toggle.attr,
+		&dev_attr_direct_switch_polarity.attr,
 		NULL,
 };
 
 static struct attribute *neuron_gpio_do_attrs[] = {
-		&dev_attr_gpio_do_count.attr,
-		&dev_attr_gpio_do_prefix.attr,
-		&dev_attr_gpio_do_base.attr,
+		&dev_attr_sys_gpio_do_count.attr,
+		&dev_attr_sys_gpio_do_prefix.attr,
+		&dev_attr_sys_gpio_do_base.attr,
 		&dev_attr_pwm_frequency_cycle.attr,
-		&dev_attr_pwm_prescaler.attr,
+		&dev_attr_pwm_prescale.attr,
 		&dev_attr_pwm_duty_cycle.attr,
 		NULL,
 };
 
 static struct attribute *neuron_gpio_ro_attrs[] = {
-		&dev_attr_gpio_ro_count.attr,
-		&dev_attr_gpio_ro_prefix.attr,
-		&dev_attr_gpio_ro_base.attr,
+		&dev_attr_sys_gpio_ro_count.attr,
+		&dev_attr_sys_gpio_ro_prefix.attr,
+		&dev_attr_sys_gpio_ro_base.attr,
 		NULL,
 };
 
@@ -2586,22 +2602,15 @@ __always_inline size_t neuronspi_spi_compose_single_coil_write(uint16_t start, u
 __always_inline size_t neuronspi_spi_compose_single_coil_read(uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(14, GFP_KERNEL);
 	*buf_inp = kzalloc(14, GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x01;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 0x06;
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
-	// Compute CRC of the second part and copy it into the buffer
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 6, crc1);
 	memcpy(&(*buf_inp)[12], &crc2, 2);
 	return 14;
@@ -2610,26 +2619,17 @@ __always_inline size_t neuronspi_spi_compose_single_coil_read(uint16_t start, ui
 __always_inline size_t neuronspi_spi_compose_multiple_coil_write(uint8_t number, uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp, uint8_t *data)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), GFP_KERNEL);
 	*buf_inp = kzalloc(12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x0F;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
-	// Change the length of part two into the actual number of coils to write
 	(*buf_inp)[7] = number;
-	// Copy data into part two
 	memcpy(&(*buf_inp)[10], data, NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number));
-	// Compute CRC of the second part and copy it into the buffer
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), crc1);
 	memcpy(&(*buf_inp)[10 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number)], &crc2, 2);
 	return 12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
@@ -2638,22 +2638,15 @@ __always_inline size_t neuronspi_spi_compose_multiple_coil_write(uint8_t number,
 __always_inline size_t neuronspi_spi_compose_multiple_coil_read(uint8_t number, uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), GFP_KERNEL);
 	*buf_inp = kzalloc(12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x01;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
-	// Compute CRC of the second part and copy it into the buffer
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 4 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number), crc1);
 	memcpy(&(*buf_inp)[10 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number)], &crc2, 2);
 	return 12 + NEURONSPI_GET_COIL_READ_PHASE2_BYTE_LENGTH(number);
@@ -2662,21 +2655,15 @@ __always_inline size_t neuronspi_spi_compose_multiple_coil_read(uint8_t number, 
 __always_inline size_t neuronspi_spi_compose_single_register_write(uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp, uint16_t data)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(14, GFP_KERNEL);
 	*buf_inp = kzalloc(14, GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x06;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 0x06;
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
 	printk(KERN_INFO "NEURONSPI: COMPOSE SINGLE WRITE DATA: %x\n", data);
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
 	(*buf_inp)[7] = 0x01;
 	memcpy(&(*buf_inp)[10], &data, 2);
@@ -2688,20 +2675,14 @@ __always_inline size_t neuronspi_spi_compose_single_register_write(uint16_t star
 __always_inline size_t neuronspi_spi_compose_single_register_read(uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(14, GFP_KERNEL);
 	*buf_inp = kzalloc(14, GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x03;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 0x06;
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
 	(*buf_inp)[7] = 0x01;
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 6, crc1);
@@ -2712,23 +2693,16 @@ __always_inline size_t neuronspi_spi_compose_single_register_read(uint16_t start
 __always_inline size_t neuronspi_spi_compose_multiple_register_write(uint8_t number, uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp, uint8_t *data)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(12 + (number * 2), GFP_KERNEL);
 	*buf_inp = kzalloc(12 + (number * 2), GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x10;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 4 + (number * 2);
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
 	(*buf_inp)[7] = number;
-	// Copy the data in
 	memcpy(&(*buf_inp)[10], data, number * 2);
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 4 + (number * 2), crc1);
 	memcpy(&(*buf_inp)[10 + (number * 2)], &crc2, 2);
@@ -2738,20 +2712,14 @@ __always_inline size_t neuronspi_spi_compose_multiple_register_write(uint8_t num
 __always_inline size_t neuronspi_spi_compose_multiple_register_read(uint8_t number, uint16_t start, uint8_t **buf_inp, uint8_t **buf_outp)
 {
 	uint16_t crc1, crc2;
-	// Allocate enough space for 2 headers (8) + 2 CRCs (4) + actual content, which is a 16-bit aligned bit field
 	*buf_outp = kzalloc(12 + (number * 2), GFP_KERNEL);
 	*buf_inp = kzalloc(12 + (number * 2), GFP_KERNEL);
-	// Read multiple coils Modbus op
 	(*buf_inp)[0] = 0x03;
-	// Phase 2 length (content + 1x header)
 	(*buf_inp)[1] = 4 + (number * 2);
-	// Read index / start address
 	(*buf_inp)[2] = start & 0xFF;
 	(*buf_inp)[3] = start >> 8;
-	/// Compute CRC for the first part and copy it into the input buffer
 	crc1 = neuronspi_spi_crc(*buf_inp, 4, 0);
 	memcpy(&(*buf_inp)[4], &crc1, 2);
-	// Copy the part one header into part two
 	memcpy(&(*buf_inp)[6], *buf_inp, 4);
 	(*buf_inp)[7] = number;
 	crc2 = neuronspi_spi_crc(&(*buf_inp)[6], 4 + (number * 2), crc1);

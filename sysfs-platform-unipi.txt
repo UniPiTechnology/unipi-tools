@@ -1,0 +1,183 @@
+What:		/sys/devices/platform/unipi_plc/model_name
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file stores the name of the UniPi PLC model detected on 
+		SPI, as formed by the individual PLC boards.
+		
+		Returns an error if no valid combination corresponding to a 
+		UniPi device can be found.
+
+What:		/sys/devices/platform/unipi_plc/eeprom_name
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file stores the name of the UniPi PLC model, as detected 
+		on the SPI, in a four byte format which is used in the I2C 
+		EEPROM. It is read only.
+		
+		Returns an error if no valid combination corresponding to a 
+		UniPi device can be found.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/board_name
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the name of the UniPi PLC coprocessor board,
+		the [1-9] corresponding to the SPI address which it is connected 
+		to. It is read only.
+
+		Returns an error if it a board which is a valid UniPi PLC board 
+		with an unknown device id, and therefore no corresponding board
+		name.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/board_serial
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the serial number of a UniPi PLC coprocessor
+		board, with the [1-9] corresponding to the SPI address which it
+		is connected to. It is read only.
+
+		Returns a zero if the serial number is not valid.
+
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/firmware_version
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the firmware version number of a UniPi PLC
+		coprocessor	board, with the [1-9] corresponding to the SPI address
+		which it is connected to. The firmware version number uses the
+		following format: [0-9,A-F].[0-9,A-F][0-9,A-F]. The file is read
+		only.
+
+		Returns an error if the version number is not valid.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/hardflash_version
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the factory flashed bootloader hardware version
+		of a UniPi PLC coprocessor board, with the [1-9] corresponding to
+		the SPI address which it is connected to. The file is read only.
+
+		Returns an error if the version number is not valid.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/hardware_version
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the hardware revision of the underlying UniPi PLC
+		coprocessor board, with the [1-9] corresponding to the SPI address
+		which it is connected to. The file is read only.
+
+		Returns an error if the version number is not valid.	
+		
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/lower_board_id
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the numerical hardware id reported by the underlying
+		UniPi PLC coprocessor board, with the [1-9] corresponding to the SPI
+		address which it is connected to. The file is read only.
+
+		Returns the value "255" if the id request does not give a valid response.	
+
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/upper_board_id
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the numerical hardware id of an expension board 
+		reported by the underlying UniPi PLC coprocessor board it is connected to,
+		with the [1-9] corresponding to its SPI	address. The file is read only.
+
+		Returns the value "255" if the id request does not give a valid response,
+		and 0 if no coprocessor satellite expansion board is present on the SPI
+		address.	
+
+
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/uart_config
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains tunneled serial port termios settings for 
+		the underlying Neuron board, with the [1-9] corresponding
+		to its SPI address. This file can be both read and written to.
+
+		Returns the value "0" if the underlying board does not support serial
+		port tunneling.
+
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/uart_queue_length
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the number of characters in the tunneled serial port
+		recieve buffer on the underlying Neuron board, with the [1-9] corresponding
+		to its SPI address. The file is read only.
+
+		Returns the value "0" if the underlying board does not support serial
+		port tunneling.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/watchdog_status
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains a '1' if the watchdog on the underlying Neuron PLC
+		board has been triggered, '0' otherwise. The [1-9] corresponds to the
+		SPI address of the underlying board. The file is read only.
+
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/watchdog_timeout
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file contains the SPI watchdog timeout (in ms.) on the 
+		underlying Neuron PLC board. The [1-9] corresponds to the
+		SPI address of the board. This file can be both read and written to.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/di_[1-9]/ds_enable
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file allows enabling the DirectSwitch feature for one of the inputs
+		on the Neuron PLC group specified by the [1-9] address. Reading the file
+		returns a string of 0s and 1s, where for each input there is a single
+		character indicating whether the DirectSwitch feature is enabled or not.
+		
+		Writing a positive number to the file turns the DirectSwitch feature on
+		for the nth input in the group (where n is the absolute value of the 
+		number written), while writing a negative number turns DirectSwitch
+		for the corresponding input off.  Writing a 0 to the file has no effect.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/di_[1-9]/ds_polarity
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file allows switching the polarity of the DirectSwitch feature for
+		one	of the inputs on the Neuron PLC group specified by the [1-9] address.
+		Reading the file returns a string of 0s and 1s, where for each input
+		there is a single character indicating whether the DirectSwitch feature
+		polarity is inverted or not.
+
+		Writing a positive number to the file inverts the DirectSwitch feature
+		polarity for the nth input in the group (where n is the absolute value
+		of the number written), while writing a negative number switches the 
+		DirectSwitch feature back to normal polarity mode.
+		Writing a 0 to the file has no effect.
+		
+What:		/sys/devices/platform/unipi_plc/plc_group[1-9]/di_[1-9]/ds_toggle
+Date:		January 2018
+Contact:	Tomas Knot <tomasknot@gmail.com>
+Description:
+		This file allows enabling the toggle function for the DirectSwitch 
+		feature on one of the inputs on the Neuron PLC group specified by
+		the [1-9] address. Reading the file	returns a string of 0s and 1s,
+		where for each input there is a single character indicating whether
+		the toggle function for the DirectSwitch feature is enabled or not.
+		
+		Writing a positive number to the file turns the DirectSwitch toggle 
+		function on	for the nth input in the group (where n is the absolute
+		value of the number written), while writing a negative number turns
+		DirectSwitch for the corresponding input off.  Writing a 0 to the
+		file has no effect.

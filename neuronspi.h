@@ -18,7 +18,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define NEURONSPI_SCHED_REQUIRED 0 // Older kernels do not require sched/types to be specifically imported
 
-#define NEURONSPI_MAJOR_VERSIONSTRING "Development Beta Version 0.01:12:02:2018"
+#define NEURONSPI_MAJOR_VERSIONSTRING "Development Beta Version 0.02:12:02:2018"
 
 #include <linux/bitops.h>
 #include <linux/clk.h>
@@ -1922,11 +1922,6 @@ enum neuron_num_attribute_type {
 		NEURON_NATTR_CURRENT_VALUE
 };
 
-static struct class neuron_plc_class = {
-		.name = NEURON_DEVICE_CLASS,
-		.owner = THIS_MODULE,
-};
-
 struct neuronspi_devtype
 {
 	u8	name[10];
@@ -2212,10 +2207,14 @@ void neuronspi_gpio_ro_set(struct gpio_chip *chip, unsigned offset, int value);
 
 static void neuronspi_led_set_brightness(struct led_classdev *ldev, enum led_brightness brightness);
 
-static ssize_t neuronspi_iio_show_ai_mode(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t neuronspi_iio_store_ai_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
-static ssize_t neuronspi_iio_show_ao_mode(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t neuronspi_iio_store_ao_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_iio_show_primary_ai_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_primary_ai_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_iio_show_primary_ao_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_primary_ao_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_iio_show_secondary_ai_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_secondary_ai_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_iio_show_secondary_ao_mode(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_iio_store_secondary_ao_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t neuronspi_show_model(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_show_eeprom(struct device *dev, struct device_attribute *attr, char *buf);
@@ -2237,8 +2236,10 @@ static ssize_t neuronspi_spi_show_watchdog_timeout(struct device *dev, struct de
 static ssize_t neuronspi_spi_store_watchdog_timeout(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_freq(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_store_pwm_freq(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
-static ssize_t neuronspi_spi_gpio_show_counter(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t neuronspi_spi_gpio_store_counter(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_di_show_counter(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_di_store_counter(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_di_show_debounce(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_di_store_debounce(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_cycle(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_store_pwm_cycle(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t neuronspi_spi_gpio_show_pwm_presc(struct device *dev, struct device_attribute *attr, char *buf);
@@ -2258,6 +2259,12 @@ static ssize_t neuronspi_spi_gpio_show_di_count(struct device *dev, struct devic
 static ssize_t neuronspi_spi_gpio_show_ro_prefix(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_show_ro_base(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t neuronspi_spi_gpio_show_ro_count(struct device *dev, struct device_attribute *attr, char *buf);
+
+static ssize_t neuronspi_spi_gpio_di_show_value(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_do_show_value(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_do_store_value(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t neuronspi_spi_gpio_ro_show_value(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t neuronspi_spi_gpio_ro_store_value(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 
 int neuronspi_regmap_hw_gather_write(void *context, const void *reg, size_t reg_size, const void *val, size_t val_size);
 int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size, void *val_buf, size_t val_size);
@@ -2281,27 +2288,6 @@ int neuronspi_spi_gpio_di_get(struct spi_device* spi_dev, uint32_t id);
 /***********************
  * Function structures *
  ***********************/
-
-static const struct iio_info neuronspi_stm_ai_info = {
-	.read_raw = neuronspi_iio_stm_ai_read_raw,
-	.driver_module = THIS_MODULE,
-};
-
-static const struct iio_info neuronspi_stm_ao_info = {
-	.read_raw = neuronspi_iio_stm_ao_read_raw,
-	.write_raw = neuronspi_iio_stm_ao_write_raw,
-	.driver_module = THIS_MODULE,
-};
-
-static const struct iio_info neuronspi_sec_ai_info = {
-	.read_raw = neuronspi_iio_sec_ai_read_raw,
-	.driver_module = THIS_MODULE,
-};
-
-static const struct iio_info neuronspi_sec_ao_info = {
-	.write_raw = neuronspi_iio_sec_ao_write_raw,
-	.driver_module = THIS_MODULE,
-};
 
 // Host driver struct
 static struct spi_driver neuronspi_spi_driver =
@@ -2378,13 +2364,15 @@ static const struct iio_chan_spec neuronspi_stm_ai_chan_spec[] = {
 			.type = IIO_VOLTAGE,
 			.indexed = 1,
 			.channel = 0,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	},
 	{
 			.type = IIO_CURRENT,
 			.indexed = 1,
 			.channel = 1,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	}
 };
 
@@ -2393,19 +2381,22 @@ static const struct iio_chan_spec neuronspi_stm_ao_chan_spec[] = {
 			.type = IIO_VOLTAGE,
 			.indexed = 1,
 			.channel = 0,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 1
 	},
 	{
 			.type = IIO_CURRENT,
 			.indexed = 1,
 			.channel = 1,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 1
 	},
 	{
 			.type = IIO_RESISTANCE,
 			.indexed = 1,
 			.channel = 2,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	}
 };
 
@@ -2414,19 +2405,22 @@ static const struct iio_chan_spec neuronspi_sec_ai_chan_spec[] = {
 			.type = IIO_VOLTAGE,
 			.indexed = 1,
 			.channel = 0,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	},
 	{
 			.type = IIO_CURRENT,
 			.indexed = 1,
 			.channel = 1,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	},
 	{
 			.type = IIO_RESISTANCE,
 			.indexed = 1,
 			.channel = 2,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 0
 	}
 };
 
@@ -2435,7 +2429,8 @@ static const struct iio_chan_spec neuronspi_sec_ao_chan_spec[] = {
 			.type = IIO_VOLTAGE,
 			.indexed = 1,
 			.channel = 0,
-			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW)
+			.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+			.output = 1
 	}
 };
 
@@ -2456,6 +2451,11 @@ static DEVICE_ATTR(sys_gpio_do_prefix, 0440, neuronspi_spi_gpio_show_do_prefix, 
 static DEVICE_ATTR(sys_gpio_do_base, 0440, neuronspi_spi_gpio_show_do_base, NULL);
 static DEVICE_ATTR(sys_gpio_di_count, 0440, neuronspi_spi_gpio_show_di_count, NULL);
 static DEVICE_ATTR(sys_gpio_di_prefix, 0440, neuronspi_spi_gpio_show_di_prefix, NULL);
+static DEVICE_ATTR(ro_value, 0660, neuronspi_spi_gpio_ro_show_value, neuronspi_spi_gpio_ro_store_value);
+static DEVICE_ATTR(do_value, 0660, neuronspi_spi_gpio_do_show_value, neuronspi_spi_gpio_do_store_value);
+static DEVICE_ATTR(counter, 0660, neuronspi_spi_gpio_di_show_counter, neuronspi_spi_gpio_di_store_counter);
+static DEVICE_ATTR(debounce, 0660, neuronspi_spi_gpio_di_show_debounce, neuronspi_spi_gpio_di_store_debounce);
+static DEVICE_ATTR(di_value, 0440, neuronspi_spi_gpio_di_show_value, NULL);
 static DEVICE_ATTR(direct_switch_enable, 0660, neuronspi_spi_gpio_show_ds_enable, neuronspi_spi_gpio_store_ds_enable);
 static DEVICE_ATTR(direct_switch_toggle, 0660, neuronspi_spi_gpio_show_ds_toggle, neuronspi_spi_gpio_store_ds_toggle);
 static DEVICE_ATTR(direct_switch_polarity, 0660, neuronspi_spi_gpio_show_ds_polarity, neuronspi_spi_gpio_store_ds_polarity);
@@ -2468,7 +2468,10 @@ static DEVICE_ATTR(sys_gpio_di_base, 0440, neuronspi_spi_gpio_show_di_base, NULL
 static DEVICE_ATTR(sys_gpio_ro_count, 0440, neuronspi_spi_gpio_show_ro_count, NULL);
 static DEVICE_ATTR(sys_gpio_ro_prefix, 0440, neuronspi_spi_gpio_show_ro_prefix, NULL);
 static DEVICE_ATTR(sys_gpio_ro_base, 0440, neuronspi_spi_gpio_show_ro_base, NULL);
-
+static DEVICE_ATTR(mode_ai_type_a, 0660, neuronspi_iio_show_primary_ai_mode, neuronspi_iio_store_primary_ai_mode);
+static DEVICE_ATTR(mode_ao_type_a, 0660, neuronspi_iio_show_primary_ao_mode, neuronspi_iio_store_primary_ao_mode);
+static DEVICE_ATTR(mode_ai_type_b, 0660, neuronspi_iio_show_secondary_ai_mode, neuronspi_iio_store_secondary_ai_mode);
+static DEVICE_ATTR(mode_ao_type_b, 0660, neuronspi_iio_show_secondary_ao_mode, neuronspi_iio_store_secondary_ao_mode);
 
 static struct attribute *neuron_plc_attrs[] = {
 		&dev_attr_model_name.attr,
@@ -2499,6 +2502,9 @@ static struct attribute *neuron_gpio_di_attrs[] = {
 		&dev_attr_direct_switch_enable.attr,
 		&dev_attr_direct_switch_toggle.attr,
 		&dev_attr_direct_switch_polarity.attr,
+		&dev_attr_di_value.attr,
+		&dev_attr_counter.attr,
+		&dev_attr_debounce.attr,
 		NULL,
 };
 
@@ -2509,6 +2515,7 @@ static struct attribute *neuron_gpio_do_attrs[] = {
 		&dev_attr_pwm_frequency_cycle.attr,
 		&dev_attr_pwm_prescale.attr,
 		&dev_attr_pwm_duty_cycle.attr,
+		&dev_attr_do_value.attr,
 		NULL,
 };
 
@@ -2516,6 +2523,27 @@ static struct attribute *neuron_gpio_ro_attrs[] = {
 		&dev_attr_sys_gpio_ro_count.attr,
 		&dev_attr_sys_gpio_ro_prefix.attr,
 		&dev_attr_sys_gpio_ro_base.attr,
+		&dev_attr_ro_value.attr,
+		NULL,
+};
+
+static struct attribute *neuron_stm_ai_attrs[] = {
+		&dev_attr_mode_ai_type_a.attr,
+		NULL,
+};
+
+static struct attribute *neuron_stm_ao_attrs[] = {
+		&dev_attr_mode_ao_type_a.attr,
+		NULL,
+};
+
+static struct attribute *neuron_sec_ai_attrs[] = {
+		&dev_attr_mode_ai_type_b.attr,
+		NULL,
+};
+
+static struct attribute *neuron_sec_ao_attrs[] = {
+		&dev_attr_mode_ao_type_b.attr,
 		NULL,
 };
 
@@ -2537,6 +2565,22 @@ static struct attribute_group neuron_gpio_do_attr_group = {
 
 static struct attribute_group neuron_gpio_ro_attr_group = {
 	.attrs = neuron_gpio_ro_attrs,
+};
+
+static struct attribute_group neuron_stm_ai_group = {
+	.attrs = neuron_stm_ai_attrs,
+};
+
+static struct attribute_group neuron_stm_ao_group = {
+	.attrs = neuron_stm_ao_attrs,
+};
+
+static struct attribute_group neuron_sec_ai_group = {
+	.attrs = neuron_sec_ai_attrs,
+};
+
+static struct attribute_group neuron_sec_ao_group = {
+	.attrs = neuron_sec_ao_attrs,
 };
 
 static const struct attribute_group *neuron_plc_attr_groups[] = {
@@ -2565,6 +2609,31 @@ static const struct attribute_group *neuron_gpio_ro_attr_groups[] = {
 };
 
 static struct platform_device *neuron_plc_dev;
+
+static const struct iio_info neuronspi_stm_ai_info = {
+	.read_raw = neuronspi_iio_stm_ai_read_raw,
+	.driver_module = THIS_MODULE,
+	.attrs = &neuron_stm_ai_group,
+};
+
+static const struct iio_info neuronspi_stm_ao_info = {
+	.read_raw = neuronspi_iio_stm_ao_read_raw,
+	.write_raw = neuronspi_iio_stm_ao_write_raw,
+	.driver_module = THIS_MODULE,
+	.attrs = &neuron_stm_ao_group,
+};
+
+static const struct iio_info neuronspi_sec_ai_info = {
+	.read_raw = neuronspi_iio_sec_ai_read_raw,
+	.driver_module = THIS_MODULE,
+	.attrs = &neuron_sec_ai_group,
+};
+
+static const struct iio_info neuronspi_sec_ao_info = {
+	.write_raw = neuronspi_iio_sec_ao_write_raw,
+	.driver_module = THIS_MODULE,
+	.attrs = &neuron_sec_ao_group,
+};
 
 // These defines need to be at the end
 #define to_neuronspi_uart_data(p,e)  ((container_of((p), struct neuronspi_uart_data, e)))

@@ -8,17 +8,7 @@
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 #
-# Devices that may have profiles.
-#
-# These are properties defining the behavior:
-#  COLORD_DEVICE		Can be assinged a profile
-#  COLORD_KIND		The kind of device
-
-# video cameras
-SUBSYSTEM=="video4linux", ENV{ID_V4L_PRODUCT}!="", ENV{COLORD_DEVICE}="1", ENV{COLORD_KIND}="camera"
-
-# Cameras with gphoto drivers
-SUBSYSTEM=="usb", ENV{ID_GPHOTO2}!="", ENV{COLORD_DEVICE}="1", ENV{COLORD_KIND}="camera"
+########################################################################
 
 # SPI UART
 KERNEL=="ttyNS0", SYMLINK+="extcomm/0/0"
@@ -38,4 +28,3 @@ KERNEL=="ttyNS2", SYMLINK+="extcomm/3/0", KERNELS=="spi0.3"
 
 # SYSFS Platform Device Symlink
 KERNEL=="unipi_plc", RUN+="/opt/link_sysfs.sh"
-

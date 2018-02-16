@@ -1124,16 +1124,22 @@ void neuronspi_spi_led_set_brightness(struct spi_device* spi_dev, enum led_brigh
 	kfree(message_buf);
 	kfree(recv_buf);
 	recv_buf = kzalloc(8, GFP_KERNEL);
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+#endif
 	kfree(recv_buf);
 	recv_buf = kzalloc(8, GFP_KERNEL);
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+#endif
 	kfree(recv_buf);
 	recv_buf = kzalloc(8, GFP_KERNEL);
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST: %d\n", regmap_bulk_read(d_data->reg_map, 1000, (void*)recv_buf, 4));
 	printk(KERN_INFO "NEURONSPI: REGMAP TEST OUT: %d %d %d %d\n", recv_buf[0], recv_buf[1], recv_buf[2], recv_buf[3]);
+#endif
 	kfree(recv_buf);
 }
 
@@ -1156,7 +1162,9 @@ int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size
 	u8 *outp_buf;
 	int i, write_length;
 	int block_counter = 0;
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: RM_READ %zu %x %zu %x\n", reg_size, mb_reg_buf[0], val_size, mb_val_buf[0]);
+#endif
 	for (i = 0; i < (reg_size / 2); i++) {
 		// Check for continuity and read the largest possible continuous block
 		if (block_counter == ((reg_size / 2) - 1) || ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1])) {
@@ -1179,7 +1187,9 @@ int neuronspi_regmap_hw_reg_read(void *context, unsigned int reg, unsigned int *
 	u8 *inp_buf;
 	u8 *outp_buf;
 	int write_length;
+#if NEURONSPI_DETAILED_DEBUG > 1
 	printk(KERN_INFO "NEURONSPI: RM_REG_READ\n");
+#endif
 	write_length = neuronspi_spi_compose_single_register_read(reg, &inp_buf, &outp_buf);
 	neuronspi_spi_send_message(spi, inp_buf, outp_buf, write_length, n_spi->ideal_frequency, 25, 1);
 	memcpy(val, &outp_buf[NEURONSPI_HEADER_LENGTH], sizeof(u16));
@@ -1339,47 +1349,6 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 		n_spi->led_count = 4;
 		n_spi->led_driver = kzalloc(sizeof(struct neuronspi_led_driver) * n_spi->led_count, GFP_KERNEL);
 		kthread_init_work(&(n_spi->led_driver->led_work), neuronspi_led_proc);
-		n_spi->reg_map = regmap_init(&(spi->dev), &neuronspi_regmap_bus, spi, &neuronspi_regmap_config_default);
-		//regmap_n_spi->reg_map
-		/*
-		 *  Message composition test
-		test_data = kzalloc(2, GFP_KERNEL);
-		test_data[0] = 0x02;
-		test_length = neuronspi_spi_compose_multiple_coil_write(4, 8, &test_inp, &test_out, test_data);
-		printk(KERN_INFO "NEURONSPI WRITE: %d\n", test_inp[13]);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_coil_read(1, 8, &test_inp, &test_out);
-		printk(KERN_INFO "NEURONSPI READ: %d\n", test_inp[13]);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_coil_write(8, &test_inp, &test_out, 0x01);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_coil_read(8, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_register_read(20, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_single_register_write(20, &test_inp, &test_out, 0x05);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_register_read(1, 20, &test_inp, &test_out);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		test_length = neuronspi_spi_compose_multiple_register_write(1, 20, &test_inp, &test_out, test_data);
-		neuronspi_spi_send_message(spi, test_inp, test_out, test_length, NEURONSPI_DEFAULT_FREQ, 25, 1);
-		kfree(test_inp);
-		kfree(test_out);
-		****************************/
 	} else {
 		n_spi->led_driver = NULL;
 		n_spi->led_count = 0;

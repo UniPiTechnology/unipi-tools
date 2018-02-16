@@ -1156,7 +1156,7 @@ int neuronspi_regmap_hw_read(void *context, const void *reg_buf, size_t reg_size
 	u8 *outp_buf;
 	int i, write_length;
 	int block_counter = 0;
-	printk(KERN_INFO "NEURONSPI: RM_READ %d %x %d %x\n", reg_size, mb_reg_buf[0], val_size, mb_val_buf[0]);
+	printk(KERN_INFO "NEURONSPI: RM_READ %zu %x %zu %x\n", reg_size, mb_reg_buf[0], val_size, mb_val_buf[0]);
 	for (i = 0; i < (reg_size / 2); i++) {
 		// Check for continuity and read the largest possible continuous block
 		if (block_counter == ((reg_size / 2) - 1) || ((mb_reg_buf[i] + 1) != mb_reg_buf[i + 1])) {

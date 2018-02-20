@@ -1342,7 +1342,7 @@ static int32_t neuronspi_spi_probe(struct spi_device *spi)
 			n_spi->ideal_frequency = NEURONSPI_SLOWER_FREQ;
 		}
 	}
-	printk(KERN_INFO "NEURONSPI: Neuron device on CS %d uses SPI communication freq. %d Mhz\n", spi->chip_select, n_spi->ideal_frequency);
+	printk(KERN_INFO "NEURONSPI: Neuron device on CS %d uses SPI communication freq. %d Hz\n", spi->chip_select, n_spi->ideal_frequency);
 	// Check for user-configurable LED devices
 	if (NEURONSPI_LED_BRAIN_MODEL == (n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16])) {
 		printk(KERN_INFO "NEURONSPI: LED model detected at CS: %d\n", spi->chip_select);

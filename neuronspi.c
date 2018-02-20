@@ -2982,7 +2982,7 @@ reg1001: %x, reg1002: %x, reg1003: %x, reg1004: %x\n",
 				n_spi->first_probe_reply[15] << 8 | n_spi->first_probe_reply[14], n_spi->first_probe_reply[17] << 8 | n_spi->first_probe_reply[16],
 				n_spi->first_probe_reply[19] << 8 | n_spi->first_probe_reply[18]);
 	}
-	printk(KERN_INFO "NEURONSPI: Neuron device %s on CS %d uses SPI communication freq. %d MHz\n",
+	printk(KERN_INFO "NEURONSPI: Neuron device %s on CS %d uses SPI communication freq. %d Hz\n",
 			NEURONSPI_BOARDTABLE[n_spi->combination_id].definition->combination_name,
 			spi->chip_select, n_spi->ideal_frequency);
 

@@ -28,9 +28,6 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 # Define project name and Ram/Flash mode here
 PROJECT = neuron_tcp_server
 
-
-
-
 # List C source files here
 LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
@@ -67,7 +64,6 @@ LIBS = util modbus
 # Define optimisation level here
 #OPT = -Ofast
 #OPT = -Os
- 
 
 INCDIR  = $(patsubst %,-I%, $(INCDIRS))
 LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
@@ -122,9 +118,6 @@ win32_serial.o: win32_serial.c
 fwserial-win: win32_serial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(LDFLAGS3) $(DFLAGS2) $(DFLAGS3) -o neuron_fw_utility -lgtk-3-0 -lglib-2.0-0 -lgobject-2.0-0
 endif
-
-neuronspi:
-	$(shell cp neuronspi.* /root/kernel/neuron_spi/) 
 
 bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@

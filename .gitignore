@@ -6,6 +6,7 @@
 *.lo
 *.log
 *.trs
+*.exe
 .travis.yml
 .dir-locals.el
 .deps

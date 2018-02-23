@@ -7,10 +7,13 @@
 *.log
 *.trs
 *.exe
+fwspi
+fwserial
+neuron_tcp_server
+bandwidth-client
 .travis.yml
 .dir-locals.el
 .deps
 .libs
-neuronspi
-libmodbus-master/tests/
-libmodbus-master/m4/
+src/libmodbus-master/tests/
+src/libmodbus-master/m4/

@@ -1,0 +1,15 @@
+
+# you need libmodbus min version 3.1.4
+
+
+# use it in case of cross compiling
+export CROSS_COMPILE=arm-linux-gnueabi-
+export CC=${CROSS_COMPILE}gcc
+
+git clone git://github.com/stephane/libmodbus
+cd libmodbus
+./autogen.sh
+ac_cv_func_malloc_0_nonnull=yes ./configure --host=armv7 --enable-static --enable-shared=no --disable-tests
+make clean
+make
+cd ..

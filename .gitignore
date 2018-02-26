@@ -17,3 +17,4 @@ bandwidth-client
 .libs
 src/libmodbus-master/tests/
 src/libmodbus-master/m4/
+libmodbus/

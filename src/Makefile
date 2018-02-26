@@ -21,15 +21,21 @@ CC   = $(CCPREFIX)gcc -g
 CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
  
-# we need libmodbus version >= 3.1.4 
+# standard version
+#MODBUS_LIBDIR = /usr/lib/modbus
+#INCDIRS = /usr/include/modbus
+
+# But we need libmodbus version >= 3.1.4 
 #   - older versions listen on all interface 
 #   - there was problem with tty name length
-MODBUSDIR = libmodbus-3.1.4
+MODBUSDIR = ../libmodbus
 MODBUS_LIBDIR = $(MODBUSDIR)/src/.libs
 INCDIRS       = $(MODBUSDIR)/src\
                 $(MODBUSDIR)
 
 LIBDIRS += $(MODBUS_LIBDIR)
+
+DSTDIR = ../bin
 
 # List all user libraries here
 LIBS = util modbus
@@ -80,26 +86,39 @@ LDFLAGS = $(LIBDIR) $(LIB)
 #
 # makefile rules
 #
+.PHONY: fwspi neuron_tcp_server fwserial
 
-all: $(OBJS) neuron_tcp_server fwspi fwserial
+neuron_tcp_server:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
+fwspi:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
+fwserial:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
+all: $(OBJS) $(DSTDIR)/neuron_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial
 
 %.o: %.c
 	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
 
-neuron_tcp_server: neuron_tcp_server.o $(OBJS) 
-	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o "../bin/neuron_tcp_server"
-	chmod +x "../bin/neuron_tcp_server"
+$(DSTDIR)/neuron_tcp_server: neuron_tcp_server.o $(OBJS) 
+	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
+	@chmod +x $@
 
-fwspi:  fwspi.o $(SPIOBJS)
-	$(CC) fwspi.o $(SPIOBJS) -o "../bin/fwspi" 
-	chmod +x "../bin/fwspi"
-
+$(DSTDIR)/fwspi:  fwspi.o $(SPIOBJS)
+	$(CC) fwspi.o $(SPIOBJS) -o $@
+	@chmod +x $@
+	
 #fwserial.o: fwserial.c
 #	$(CC) -c $(DFLAGS2)  $< -o $@
 
-fwserial: fwserial.o armutil.o
-	$(CC) $+ $(LDFLAGS) -o "../bin/fwserial"
-	chmod +x "../bin/fwserial"
+$(DSTDIR)/fwserial: fwserial.o armutil.o
+	$(CC) $+ $(LDFLAGS) -o $@
+	@chmod +x $@
 
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT

@@ -39,7 +39,6 @@
 #include <sys/epoll.h>
 
 #include "armspi.h"
-#include "armpty.h"
 #include "nb_modbus.h"
 
 

@@ -368,7 +368,7 @@ void nb_modbus_free(nb_modbus_t*  nb_ctx)
 }
 
 
-int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, const char* gpio)
+int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed)
 {
     if (index >= MAX_ARMS) 		// Too many devices
         return -1;
@@ -379,7 +379,7 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
     if (arm == NULL) // Allocation failed
         return -1;
 
-    if (arm_init(arm, device, speed, index, gpio) == 0) {
+    if (arm_init(arm, device, speed, index) == 0) {
         nb_ctx->arm[index] = arm;
     } else {
         free(arm);
@@ -387,7 +387,7 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
     }
 }
 
-
+/*
 char* _firmware_name(arm_handle* arm, const char* fwdir, const char* ext)
 {
     const char* armname = arm_name(arm->bv.hw_version);
@@ -400,9 +400,9 @@ char* _firmware_name(arm_handle* arm, const char* fwdir, const char* ext)
 }
 
 
-int arm_flash_file(void* fwctx, const char* fwname)
+int _arm_flash_file(void* fwctx, const char* fwname)
 {
-    /* Firmware programming */
+    // Firmware programming 
     int fd, ret;
     void * data;
     int min_len = 1024;
@@ -427,12 +427,13 @@ int arm_flash_file(void* fwctx, const char* fwname)
     } else {
         vprintf("Error opening firmware file %s\n", fwname);
     }
+    return 0;
 }
 
 
-int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000, uint16_t* buffer)
+int _arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000, uint16_t* buffer)
 {
-    /* Nvram programming */
+    // Nvram programming 
     int fd, ret;
     void * data;
     int min_len = 6;
@@ -442,7 +443,7 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
         if((ret=fstat(fd,&st)) >= 0) {
             size_t len_file = st.st_size;
             vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
-            if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) { 
+            if ((len_file > min_len)&&(len_file < 2*128)) { 
                 if ((n2000 > 0)|| overwrite) {
                     if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
                         if (overwrite) {
@@ -467,6 +468,7 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
         vprintf("Error opening nvram file %s\n", fwname);
     }
 }
+*/
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
@@ -480,7 +482,7 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     red = fread(prog_data, 1, MAX_FW_SIZE, fd);
-    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
+    //printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
     fclose(fd);
     return red;
 }

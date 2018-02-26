@@ -86,20 +86,6 @@ LDFLAGS = $(LIBDIR) $(LIB)
 #
 # makefile rules
 #
-.PHONY: fwspi neuron_tcp_server fwserial
-
-neuron_tcp_server:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
-
-fwspi:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
-
-fwserial:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
-
 all: $(OBJS) $(DSTDIR)/neuron_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial
 
 %.o: %.c
@@ -109,8 +95,8 @@ $(DSTDIR)/neuron_tcp_server: neuron_tcp_server.o $(OBJS)
 	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 
-$(DSTDIR)/fwspi:  fwspi.o $(SPIOBJS)
-	$(CC) fwspi.o $(SPIOBJS) -o $@
+$(DSTDIR)/fwspi:  fwspi.o $(OBJS)
+	$(CC) fwspi.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 	
 #fwserial.o: fwserial.c
@@ -131,6 +117,21 @@ endif
 
 bandwidth-client: bandwidth-client.o
 	$(CC) bandwidth-client.o $(LDFLAGS) -o $@
+
+.PHONY: fwspi neuron_tcp_server fwserial
+
+neuron_tcp_server:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
+fwspi:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
+fwserial:
+	@rm -f $(DSTDIR)/$@
+	$(MAKE) $(DSTDIR)/$@
+
 
 clean:
 	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o

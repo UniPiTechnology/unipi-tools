@@ -85,7 +85,7 @@ typedef struct {
 }  arm_handle;
 
 
-int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, const char* gpio);
+int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index);
 int idle_op(arm_handle* arm);
 int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);

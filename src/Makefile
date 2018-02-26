@@ -91,24 +91,25 @@ endif
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuronspi fwspi fwserial
+all: $(OBJS) $(PROJECT) neuron_tcp_server fwspi fwserial
 
 %.o: %.c
 	$(CC) -c $(DFLAGS2) -I . $(INCDIR) $< -o $@
 
-$(PROJECT): $(PROJECT).o $(OBJS)
-	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
-	chmod +x $(PROJECT)
+neuron_tcp_server: neuron_tcp_server.o $(OBJS)
+	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o "../bin/neuron_tcp_server"
+	chmod +x "../bin/neuron_tcp_server"
 
 fwspi:  fwspi.o $(SPIOBJS)
-	$(CC) fwspi.o $(SPIOBJS) -o $@
+	$(CC) fwspi.o $(SPIOBJS) -o "../bin/fwspi" 
+	chmod +x "../bin/fwspi"
 
 fwserial.o: fwserial.c
 	$(CC) -c $(DFLAGS2)  $< -o $@
 
 fwserial: fwserial.o armutil.o
-	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
-	chmod +x fwserial
+	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o "../bin/fwserial"
+	chmod +x "../bin/fwserial"
 
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT

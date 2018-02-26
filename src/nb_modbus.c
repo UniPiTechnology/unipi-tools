@@ -26,6 +26,11 @@
 #include "armspi.h"
 #include "armutil.h"
 
+#include <modbus-version.h>
+#if LIBMODBUS_VERSION_CHECK(3,1,4) != 1
+//Library_error "YOU NEED libmodbus version min 3.1.4"
+#endif
+
 int verbose = 0;
 int deferred_op = DFR_NONE;
 arm_handle*  deferred_arm;

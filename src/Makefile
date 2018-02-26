@@ -47,7 +47,7 @@ DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/includ
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
-SRC = $(SPISRC) nb_modbus.c #armpty.c
+SRC = $(SPISRC) nb_modbus.c
 
 # List all directories here
 #INCDIRS = /usr/local/include/modbus
@@ -68,12 +68,6 @@ LIBS = util modbus
 INCDIR  = $(patsubst %,-I%, $(INCDIRS))
 LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
 LIB     = $(patsubst %,-l%, $(LIBS))
-##reference only flags for run from ram...not used here
-##DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
-
-#DEFS    = $(DDEFS) -DRUN_FROM_FLASH=1 -DHSE_VALUE=12000000
-
-.PHONY += neuronspi
 
 OBJS  = $(SRC:.c=.o)
 SPIOBJS  = $(SPISRC:.c=.o)
@@ -91,7 +85,7 @@ endif
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuron_tcp_server fwspi fwserial
+all: $(OBJS) neuron_tcp_server fwspi fwserial
 
 %.o: %.c
 	$(CC) -c $(DFLAGS2) -I . $(INCDIR) $< -o $@
@@ -124,7 +118,7 @@ bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o armspi.o armutil.o neuronspi.o bandwidth-client.o win32_serial.o
+	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o fwspi.o fwserial.o win32_serial.o bandwidth-client.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex

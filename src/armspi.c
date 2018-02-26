@@ -58,7 +58,7 @@
 #define NSS_PAUSE_DEFAULT  10
 
 //static int be_quiet = 0;
-int arm_verbose = 1;
+int arm_verbose = 0;
 int nss_pause = NSS_PAUSE_DEFAULT;
 static void pabort(const char *s)
 {
@@ -120,7 +120,7 @@ void queue_uart(uart_queue* queue, uint8_t chr1, uint8_t len)
 int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8_t do_lock)
 {
     int ret;
-    if (arm_verbose) printf("Neuron TCP Server: One Phase Op\n");
+    if (arm_verbose>1) printf("Neuron TCP Server: One Phase Op\n");
     arm->tx1.op = op;
     arm->tx1.len = value;
     arm->tx1.reg = reg;
@@ -144,14 +144,14 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
         return -1;
     }
     uint16_t crc = SpiCrcString(char_package, SIZEOF_HEADER, 0);
-    if (arm_verbose) printf("One Phase Op: %x %x\n", crc, arm->rx1.crc);
+    if (arm_verbose>1) printf("One Phase Op: %x %x\n", crc, arm->rx1.crc);
     if (crc != arm->rx1.crc) {
         pabort("Bad crc in one-phase operation");
         return -1;
     }
 
     if ((*((uint32_t*)&arm->rx1) & 0xffff00ff) == IDLE_PATTERN) {
-    	if (arm_verbose) printf("One Phase Op successful!\n");
+    	if (arm_verbose>1) printf("One Phase Op successful!\n");
         return 0;
     }
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
@@ -161,7 +161,7 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
         return 0;
     }
     if (ret == total) {
-    	if (arm_verbose) printf("One Phase Op successful!\n");
+    	if (arm_verbose>1) printf("One Phase Op successful!\n");
     	return 0;
     }
     pabort("Unexpected reply in one-phase operation");
@@ -174,17 +174,17 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     int ret;
     uint16_t tr_len2;
     uint16_t crc;
-    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op\n");
+    if (arm_verbose>1) printf("Neuron TCP Server: Two Phase Op\n");
     // Prepare chunk1
     if (arm == NULL) {
-    	if (arm_verbose) printf("Invalid Arm Device\n");
+    	if (arm_verbose>1) printf("Invalid Arm Device\n");
     	return -1;
     }
     arm->tx1.op = op;
     arm->tx1.reg = reg;
     arm->tx1.len = len2 & 0xff;        //set len in chunk1 to length of chunk2 (without crc)
     arm->tr[1].delay_usecs = 25;              // set delay after first phase
-    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op1-b\n");
+    if (arm_verbose>1) printf("Neuron TCP Server: Two Phase Op1-b\n");
     if (op != ARM_OP_WRITE_STR) {
         ac_header(arm->tx2)->op  = op;  // op and reg in chunk2 is the same
         ac_header(arm->tx2)->reg = reg;
@@ -195,7 +195,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
     tr_len2 = (len2 & 1) ? len2+1 : len2;         //transaction length must be even
 
-    if (arm_verbose) printf("Neuron TCP Server: Two Phase Op 2\n");
+    if (arm_verbose>1) printf("Neuron TCP Server: Two Phase Op 2\n");
     ac_header(arm->rx2)->op  = op;                // 'destroy' content of receiving buffer
     uint32_t total = SIZEOF_HEADER + CRC_SIZE + tr_len2 + CRC_SIZE;
     uint8_t char_package[total + 10];
@@ -221,7 +221,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         pabort("Can't send two-phase spi message\n");
         return ret;
     }
-    if (arm_verbose) printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
+    if (arm_verbose>1) printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
 
     crc = SpiCrcString(char_package, SIZEOF_HEADER, 0);
     memcpy(&arm->rx1, char_package, SNIPLEN1);
@@ -231,7 +231,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         pabort("Bad 1.crc in two phase operation\n");
         return -1;
     }
-    if (arm_verbose) printf("Read phase 1 finished: %x %x\n", crc, arm->rx1.crc);
+    if (arm_verbose>1) printf("Read phase 1 finished: %x %x\n", crc, arm->rx1.crc);
     crc = SpiCrcString(&(char_package[SNIPLEN1]), tr_len2, crc);
     memcpy(arm->rx2,&(char_package[SNIPLEN1]), tr_len2);
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
@@ -248,15 +248,15 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         pabort("Bad 2.crc in two phase operation\n");
         return -3;
     }
-    if (arm_verbose) printf("Read phase 2 finished: %x %x\n", crc, ((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1]);
+    if (arm_verbose>1) printf("Read phase 2 finished: %x %x\n", crc, ((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1]);
 
     if ((*((uint32_t*)&arm->rx1) & 0xffff00ff) == IDLE_PATTERN) {
-    	if (arm_verbose) printf("Read successful!\n");
+    	if (arm_verbose>1) printf("Read successful!\n");
         return 0;
     }
 
     if (ret == total) {
-    	if (arm_verbose) printf("Read successful!\n");
+    	if (arm_verbose>1) printf("Read successful!\n");
     	return 0;
     }
 
@@ -304,7 +304,7 @@ int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
     }
     uint16_t len2 = SIZEOF_HEADER + sizeof(uint16_t) * cnt;
     if (arm == NULL) {
-    	if (arm_verbose) printf("Invalid Arm Device\n");
+    	if (arm_verbose>1) printf("Invalid Arm Device\n");
     	return -1;
     }
     ac_header(arm->tx2)->len = cnt;
@@ -547,7 +547,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
             speed = START_SPI_SPEED;
         }
     }
-    printf("ARM Init finished pt1:%x\n", arm->bv.sw_version);
+    if (arm_verbose) printf("ARM Init finished pt1:%x\n", arm->bv.sw_version);
     arm_verbose = backup;
     if (arm->bv.sw_version) {
         if (arm_verbose) 
@@ -578,7 +578,6 @@ typedef struct {
 
 int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr, uint8_t do_lock)
 {
-	printf ("Bytes 54:%x, 55:%x, 56: %x, 57: %x, 58: %x, 59: %x, 60: %x, 61: %x, 62: %x, 63: %x\n", tx->data[54], tx->data[55], tx->data[56], tx->data[57], tx->data[58], tx->data[59], tx->data[60], tx->data[61], tx->data[62], tx->data[63]);
     tx->crc = SpiCrcString((uint8_t*)tx, sizeof(arm_comm_firmware) - sizeof(tx->crc), 0);
     uint8_t char_package[sizeof(arm_comm_firmware) + 10];
     memset(char_package, 0, sizeof(arm_comm_firmware) + 10);
@@ -586,7 +585,7 @@ int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, i
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 0;
     char_package[7] = do_lock;
-    printf("FW-OP package len:%d: %x %x %x %x %x \t %x %x %x %x %x\n", sizeof(arm_comm_firmware), char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
+    if (arm_verbose>1) printf("FW-OP package len:%d: %x %x %x %x %x \t %x %x %x %x %x\n", sizeof(arm_comm_firmware), char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
     int ret = write(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     if (ret == sizeof(arm_comm_firmware) + 10) {
     	ret = read(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
@@ -687,9 +686,9 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
     int prev_addr = -1;
     int len = datalen;
     uint32_t address = start_address;
-    printf("Starting to send at %x\n", start_address);
+    if (arm_verbose>1) printf("Starting to send at %x\n", start_address);
     while (len >= 0) {
-    	printf("Sending len = %d\n", len);
+    	//printf("Sending len = %d\n", len);
         fwctx->tx->address = address;
         if (len >= ARM_PAGE_SIZE) {
             memcpy(fwctx->tx->data, data + (address - start_address), ARM_PAGE_SIZE);  // read page from file
@@ -697,7 +696,7 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
         } else if (len != 0) {
         	memset(fwctx->tx->data+len, 0xff, ARM_PAGE_SIZE - len);
             memcpy(fwctx->tx->data, data + (address - start_address), len);            // read  page (part) from file
-            printf("MEMCPY LEN: %d", len);
+            //printf("MEMCPY LEN: %d", len);
             len = 0;
         } else {
             address = 0xF400;   // read-only page; operation is performed only for last page confirmation
@@ -723,7 +722,7 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
         prev_addr = address;
         address = address + ARM_PAGE_SIZE;
     }
-    printf("Finished sending at %x\n", address);
+    if (arm_verbose>1) printf("Finished sending at %x\n", address);
     return 0;
 }
 

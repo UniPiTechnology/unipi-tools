@@ -63,7 +63,7 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     memset(prog_data, 0xff, len);
 
     red = fread(prog_data, 1, MAX_FW_SIZE, fd);
-    printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
+    //printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
     fclose(fd);
     return red;
 }

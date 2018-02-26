@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
         if ((dev != NULL) && (strlen(dev)>0)) {
             int speed = spi_speed[ai];
             if (!(speed > 0)) speed = spi_speed[0];
-            add_arm(nb_ctx, ai, dev, speed, gpio_int[ai]);
+            add_arm(nb_ctx, ai, dev, speed);
             if (nb_ctx->arm[ai] && do_check_fw) {
                 arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);
             }

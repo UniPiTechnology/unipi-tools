@@ -13,12 +13,13 @@
 #include <getopt.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 
 #include "armspi.h"
 #include "armutil.h"
+#include "nb_modbus.h"
 
 
 /* Hardware constants */
@@ -40,108 +41,21 @@ char* firmwaredir = "/opt/fw";
 #endif
 int device_index;
 int upboard;
-int verbose = 0;
+//int verbose = 0;
 int do_verify = 0;
 int do_prog   = 0;
 int do_resetrw= 0;
 int do_calibrate= 0;
 int do_final= 0;
+int do_auto= 0;
 
 
 #define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
 #define vvprintf( ... ) if (verbose > 1) printf( __VA_ARGS__ )
 
-int load_fw(char *path, uint8_t* prog_data, const size_t len)
-{
-    FILE* fd;
-    int red, i;
-    fd = fopen(path, "rb");
-    if (!fd) {
-        printf("error opening firmware file \"%s\"\n", path);
-        return -1;
-    }
-    memset(prog_data, 0xff, len);
-
-    red = fread(prog_data, 1, MAX_FW_SIZE, fd);
-    //printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
-    fclose(fd);
-    return red;
-}
-
-
-int arm_flash_file(void* fwctx, const char* fwname)
-{
-    /* Firmware programming */
-    int fd, ret;
-    void * data;
-    int min_len = 1024;
-
-    if((fd = open(fwname, O_RDONLY)) >= 0) {
-        struct stat st;
-        if((ret=fstat(fd,&st)) >= 0) {
-            size_t len_file = st.st_size;
-            vprintf("Sending firmware file %s length=%d\n", fwname, len_file);
-            if (len_file > min_len) { 
-                if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
-                    send_firmware(fwctx, (uint8_t*) data, len_file, 0);
-                    munmap(data, len_file);
-                } else {
-                    vprintf("Error mapping firmware file %s to memory\n", fwname);
-                }
-            } else {
-                vprintf("Damaged firmware file %s\n", fwname);
-            }
-        }
-        close(fd);
-    } else {
-        vprintf("Error opening firmware file %s\n", fwname);
-    }
-    return 0;
-}
-
-int arm_flash_rw_file(arm_handle* arm, void* fwctx, const char* fwname, int overwrite)
-{
-    /* Nvram programming */
-    int fd, ret;
-    void * data;
-    int min_len = 6;
-    uint16_t buffer[128];
-
-    if((fd = open(fwname, O_RDONLY)) >= 0) {
-        struct stat st;
-        if((ret=fstat(fd,&st)) >= 0) {
-            size_t len_file = st.st_size;
-            vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
-            if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) { 
-                int n2000 = read_regs(arm, 2000, len_file/2 ,buffer);
-                if ((n2000 > 0)|| overwrite) {
-                    if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
-                        if (overwrite) {
-                            send_firmware(fwctx, (uint8_t*) data, len_file,0xe000);
-                        } else {
-                            memcpy(buffer+n2000-1, ((uint8_t*) data) + 2*(n2000-1), len_file - 2*(n2000-1));
-                            send_firmware(fwctx, (uint8_t*) buffer, len_file,0xe000);
-                        }
-                        munmap(data, len_file);
-                    } else {
-                        vprintf("Error mapping nvram file %s to memory\n", fwname);
-                    }
-                } else {
-                    vprintf("Can't read original nvram\n");
-                }
-            } else {
-                vprintf("Damaged nvram file %s\n", fwname);
-            }
-        }
-        close(fd);
-    } else {
-        vprintf("Error opening nvram file %s\n", fwname);
-    }
-    return 0;
-}
-
 
 static struct option long_options[] = {
+  {"auto", no_argument,         0, 'a'},
   {"verbose", no_argument,      0, 'v'},
   {"programm", no_argument,     0, 'P'},
   {"resetrw", no_argument,      0, 'R'},
@@ -157,8 +71,10 @@ static struct option long_options[] = {
 void print_usage(char *argv0)
 {
     printf("\nUtility for Programming Neuron via ModBus RTU\n");
-    printf("%s [-vPRC] -s <spidevice> -i <index> [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
+    printf("%s [-v] -a [-s <spidevice>] [ -i <index>] [-b <baudrate>] [-d <firmware dir>]\n", argv0);
+    printf("%s [-vPRC] [-s <spidevice>] -i <index> [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
     printf("\n");
+    printf("--auto \t\t autoupdate firmware\n");
     printf("--index <index>\t\t [0...n] device index\n");
     printf("--spidev <spidev>\t\t /dev/neuronspi \n");
     printf("--baud <baudrate>\t default 10000000\n");
@@ -177,6 +93,7 @@ int main(int argc, char **argv)
     uint8_t* rw_data;     // buffer containing firmware rw data
     uint16_t* pd;
     int ret, chunk, page;
+    int max_device_index;
     uint16_t val, reg;
     arm_handle *ctx;
     FILE* fdx;
@@ -186,7 +103,7 @@ int main(int argc, char **argv)
     char *endptr;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vPRCs:b:d:F:i:", long_options, &option_index);
+       c = getopt_long(argc, argv, "avPRCs:b:d:F:i:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -196,6 +113,9 @@ int main(int argc, char **argv)
        }
 
        switch (c) {
+       case 'a':
+           do_auto=1;
+           break;
        case 'v':
            verbose++;
            break;
@@ -240,7 +160,7 @@ int main(int argc, char **argv)
            break;
        }
     }
-    if (INDEX == NULL) {
+    if ((INDEX == NULL) && (do_auto == 0)) {
     	printf("Device index must be specified\n", optarg);
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
@@ -249,16 +169,36 @@ int main(int argc, char **argv)
         PORT = "/dev/neuronspi";
     }
 
+
+    if (do_auto) {
+        if (verbose > 0) arm_verbose = verbose;
+        if (INDEX == NULL) {
+            max_device_index = 2;
+            device_index = 0;
+        } else {
+            max_device_index = device_index;
+        }
+        for (;device_index <= max_device_index; device_index++) {
+    		ctx = malloc(sizeof(arm_handle));
+            if (arm_init(ctx, PORT , BAUD, device_index) >= 0) {
+                arm_firmware(ctx, firmwaredir, FALSE);
+                close(ctx->fd);
+            }
+            free(ctx);
+		}
+		if (verbose) printf("Firmware autoupdate finished\n");
+		return 0;
+    }
+
     // Open port
     ctx = malloc(sizeof(arm_handle));
-
-    if ( arm_init(ctx, PORT , BAUD, device_index, NULL) < 0) {
+    if ( arm_init(ctx, PORT , BAUD, device_index) < 0) {
         fprintf(stderr, "Unable to create the spi context\n");
         free(ctx);
         return -1;
     }
 
-    if (verbose > 1) arm_verbose = verbose;
+    if (verbose > 0) arm_verbose = verbose;
 
     // get FW & HW version
     uint16_t r1000[5];

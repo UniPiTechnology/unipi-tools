@@ -488,7 +488,7 @@ int read_qstring(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
 
 //const char* GPIO_INT[] = { "27", "23", "22" };
 #define START_SPI_SPEED 5000000
-int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, const char* gpio)
+int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
 {
     arm->fd = open(device, O_RDWR);
 
@@ -528,6 +528,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
     arm->tr[6].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*4);
     arm->tr[6].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*4);
     /* Load firmware and hardware versions */
+    arm->bv.sw_version = 0;
     int backup = arm_verbose;
     arm_verbose = 0;
     uint16_t configregs[5];
@@ -537,8 +538,8 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
         uint16_t buf[1024];
         memset(&buf[0], 0, 1024*2);
         outp_l = read_regs(arm, 0, 50, buf);
+        if (backup>1) printf("Config-regs: %x %x %x %x %x\n", configregs[0], configregs[1], configregs[2], configregs[3], configregs[4]);
     }
-    if (arm_verbose) printf("Config-regs: %x %x %x %x %x\n", configregs[0], configregs[1], configregs[2], configregs[3], configregs[4]);
     //arm_version(arm);
     if (speed == 0) {
         speed = get_board_speed(&arm->bv);
@@ -726,9 +727,10 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
     return 0;
 }
 
+/*
 int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
 {
-    /* Alloc Tx Rx buffers */
+    // Alloc Tx Rx buffers 
     arm_comm_firmware* tx = calloc(1, sizeof(arm_comm_firmware)+2);
     if (tx == NULL) return -1;
     arm_comm_firmware* rx = calloc(1, sizeof(arm_comm_firmware)+2);
@@ -736,7 +738,7 @@ int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t star
         free(tx); 
         return -1; 
     }
-    /* Transaction array */
+    // Transaction array 
     int i;
     int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
     struct spi_ioc_transfer* tr = calloc(tr_len, sizeof(struct spi_ioc_transfer));  // Alloc transaction array
@@ -809,3 +811,4 @@ int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t star
     usleep(100000);
     return 0;
 }
+*/

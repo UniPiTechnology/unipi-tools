@@ -24,6 +24,7 @@
 #include <string.h>
 #include "armspi.h"
 #include "armutil.h"
+#include "spicrc.h"
 
 // brain/modbus_prot.h
 #define ARM_OP_READ_BIT   1

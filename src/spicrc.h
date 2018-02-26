@@ -9,11 +9,11 @@
  *
  */
 
-#ifndef __spicrce_h
+#ifndef __spicrc_h
 #define __spicrc_h
 
 #include <stdint.h>
 
-uint16_t SpiCrcString(uint8_t* inputstring, int length, uint16_t initval);
+uint16_t SpiCrcString(void* data, int length, uint16_t initval);
 
 #endif

@@ -9,8 +9,8 @@
  *
  */
 
-#include <stdint.h>
 #include <unistd.h>
+#include "spicrc.h"
 
 
 uint16_t SPI_CRC16TABLE[] = {
@@ -41,7 +41,7 @@ uint16_t SPI_CRC16TABLE[] = {
 };
 
 
-uint16_t SpiCrcString(uint8_t* inputstring, int length, uint16_t initval)
+uint16_t SpiCrcString(void* data, int length, uint16_t initval)
 {
     /*
     Calculate CRC-16 for Spi.
@@ -52,6 +52,7 @@ uint16_t SpiCrcString(uint8_t* inputstring, int length, uint16_t initval)
     */
     // Preload a 16-bit register with 0
     int i;
+    uint8_t *inputstring = data;
     uint16_t result = initval;
     for (i=0; i<length; i++) {
         result = (result >> 8) ^ SPI_CRC16TABLE[(result ^ inputstring[i]) & 0xff];

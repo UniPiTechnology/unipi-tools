@@ -28,9 +28,6 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 # Define project name and Ram/Flash mode here
 PROJECT = neuron_tcp_server
 
-
-
-
 # List C source files here
 LIBSDIRS    = libmodbus-3.1.4/src/.libs
 #CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
@@ -67,7 +64,6 @@ LIBS = util modbus
 # Define optimisation level here
 #OPT = -Ofast
 #OPT = -Os
- 
 
 INCDIR  = $(patsubst %,-I%, $(INCDIRS))
 LIBDIR  = $(patsubst %,-L%, $(LIBDIRS))
@@ -95,24 +91,25 @@ endif
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuronspi fwspi fwserial
+all: $(OBJS) $(PROJECT) neuron_tcp_server fwspi fwserial
 
 %.o: %.c
 	$(CC) -c $(DFLAGS2) -I . $(INCDIR) $< -o $@
 
-$(PROJECT): $(PROJECT).o $(OBJS)
-	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
-	chmod +x $(PROJECT)
+neuron_tcp_server: neuron_tcp_server.o $(OBJS)
+	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o "../bin/neuron_tcp_server"
+	chmod +x "../bin/neuron_tcp_server"
 
 fwspi:  fwspi.o $(SPIOBJS)
-	$(CC) fwspi.o $(SPIOBJS) -o $@
+	$(CC) fwspi.o $(SPIOBJS) -o "../bin/fwspi" 
+	chmod +x "../bin/fwspi"
 
 fwserial.o: fwserial.c
 	$(CC) -c $(DFLAGS2)  $< -o $@
 
 fwserial: fwserial.o armutil.o
-	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
-	chmod +x fwserial
+	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o "../bin/fwserial"
+	chmod +x "../bin/fwserial"
 
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
@@ -122,9 +119,6 @@ win32_serial.o: win32_serial.c
 fwserial-win: win32_serial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(LDFLAGS3) $(DFLAGS2) $(DFLAGS3) -o neuron_fw_utility -lgtk-3-0 -lglib-2.0-0 -lgobject-2.0-0
 endif
-
-neuronspi:
-	$(shell cp neuronspi.* /root/kernel/neuron_spi/) 
 
 bandwidth-client: bandwidth-client.o $(OBJS)
 	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@
@@ -136,6 +130,7 @@ clean:
 	-rm -rf $(PROJECT).hex
 	-rm -rf $(PROJECT).bin
 	-rm -rf $(PROJECT).rw
+	-rm -f ../bin/*
 	-rm -rf $(SRC:.c=.lst)
 	-rm -rf $(ASRC:.s=.lst)
 

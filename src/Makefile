@@ -21,46 +21,47 @@ CC   = $(CCPREFIX)gcc -g
 CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
  
-# List all C defines here
-#DDEFS = -DSTM32F0XX -DUSE_STDPERIPH_DRIVER
-# -Dhw_v_0_4
-#
-# Define project name and Ram/Flash mode here
-PROJECT = neuron_tcp_server
+# we need libmodbus version >= 3.1.4 
+#   - older versions listen on all interface 
+#   - there was problem with tty name length
+MODBUSDIR = libmodbus-3.1.4
+MODBUS_LIBDIR = $(MODBUSDIR)/src/.libs
+INCDIRS       = $(MODBUSDIR)/src\
+                $(MODBUSDIR)
 
-# List C source files here
-LIBSDIRS    = libmodbus-3.1.4/src/.libs
-#CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
+LIBDIRS += $(MODBUS_LIBDIR)
 
-LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
+# List all user libraries here
+LIBS = util modbus
+
+#LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
+
+# SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
-LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
+#LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
+#DFLAGS2  = -Ilibmodbus-3.1.4/src
+  CC += -D OS_WIN32
+  LDFLAGS2 = $(MODBUS_LIBDIR)/libmodbus.dll.a
+  LIBDIRS += c:\MinGW\bin
+  INCDIRS += gtk/include/gtk-3.0\
+             gtk/include/glib-2.0\
+             gtk/lib/glib-2.0/include\
+             gtk/include/pango-1.0\
+             gtk/include/cairo\
+             gtk/include/gdk-pixbuf-2.0\
+             gtk/include/atk-1.0
+  LIBS    += gtk-3-0\
+             glib-2.0-0\
+             gobject-2.0-0
 endif
-DFLAGS2  = -Ilibmodbus-3.1.4/src
-
-LDFLAGS3 = -L c:\MinGW\bin
-DFLAGS3 = -Igtk/include/gtk-3.0 -Igtk/include/glib-2.0 -Igtk/lib/glib-2.0/include -Igtk/include/pango-1.0 -Igtk/include/cairo -Igtk/include/gdk-pixbuf-2.0 -Igtk/include/atk-1.0
 
 #list of src files to include in build process
-
-#SRC =  neuronmb.c
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
 SRC = $(SPISRC) nb_modbus.c
 
-# List all directories here
-#INCDIRS = /usr/local/include/modbus
-INCDIRS = libmodbus-3.1.4/src\
-          libmodbus-3.1.4
-          $(CORELIBDIR) \
-          $(STMSPINCDDIR) \
-
-# List the user directory to look for the libraries here
-LIBDIRS += $(LIBSDIRS)
  
-# List all user libraries here
-LIBS = util modbus
 # Define optimisation level here
 #OPT = -Ofast
 #OPT = -Os
@@ -76,11 +77,6 @@ SPIOBJS  = $(SPISRC:.c=.o)
 #LDFLAGS = $(MCFLAGS) -g -gdwarf-3 -mthumb -nostartfiles -T$(LINKER_SCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR) $(LIB)
 LDFLAGS = $(LIBDIR) $(LIB)
 
-# SYSTEMROOT should be defined on windows, so we use it to detect the OS
-ifdef SYSTEMROOT
-   CC += -D OS_WIN32
-endif
-
 #
 # makefile rules
 #
@@ -88,9 +84,9 @@ endif
 all: $(OBJS) neuron_tcp_server fwspi fwserial
 
 %.o: %.c
-	$(CC) -c $(DFLAGS2) -I . $(INCDIR) $< -o $@
+	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
 
-neuron_tcp_server: neuron_tcp_server.o $(OBJS)
+neuron_tcp_server: neuron_tcp_server.o $(OBJS) 
 	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o "../bin/neuron_tcp_server"
 	chmod +x "../bin/neuron_tcp_server"
 
@@ -98,27 +94,27 @@ fwspi:  fwspi.o $(SPIOBJS)
 	$(CC) fwspi.o $(SPIOBJS) -o "../bin/fwspi" 
 	chmod +x "../bin/fwspi"
 
-fwserial.o: fwserial.c
-	$(CC) -c $(DFLAGS2)  $< -o $@
+#fwserial.o: fwserial.c
+#	$(CC) -c $(DFLAGS2)  $< -o $@
 
 fwserial: fwserial.o armutil.o
-	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o "../bin/fwserial"
+	$(CC) $+ $(LDFLAGS) -o "../bin/fwserial"
 	chmod +x "../bin/fwserial"
 
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
 win32_serial.o: win32_serial.c
-	$(CC) -Wno-deprecated-declarations -c $(DFLAGS2) $(DFLAGS3)  $< -o $@
+	$(CC) -Wno-deprecated-declarations -c $(LDFLAGS) -I . $(INCDIR)  $< -o $@
 	
 fwserial-win: win32_serial.o armutil.o
-	$(CC) $+ $(LDFLAGS2) $(LDFLAGS3) $(DFLAGS2) $(DFLAGS3) -o neuron_fw_utility -lgtk-3-0 -lglib-2.0-0 -lgobject-2.0-0
+	$(CC) $+ $(LDFLAGS2) $(LDFLAGS) -o neuron_fw_utility
 endif
 
-bandwidth-client: bandwidth-client.o $(OBJS)
-	$(CC) bandwidth-client.o $(OBJS) $(PKGC_FLAGS) $(LDFLAGS) -o $@
+bandwidth-client: bandwidth-client.o
+	$(CC) bandwidth-client.o $(LDFLAGS) -o $@
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o fwspi.o fwserial.o win32_serial.o bandwidth-client.o
+	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex
@@ -126,9 +122,8 @@ clean:
 	-rm -rf $(PROJECT).rw
 	-rm -f ../bin/*
 	-rm -rf $(SRC:.c=.lst)
-	-rm -rf $(ASRC:.s=.lst)
 
-install:
-	mkdir -p $(DESTDIR)/opt/neurontcp
-	install -m 0755 neuron_tcp_server $(DESTDIR)/opt/neurontcp
+#install:
+#	mkdir -p $(DESTDIR)/opt/neurontcp
+#	install -m 0755 neuron_tcp_server $(DESTDIR)/opt/neurontcp
 # *** EOF ***

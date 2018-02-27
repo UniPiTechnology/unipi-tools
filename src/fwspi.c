@@ -275,12 +275,10 @@ int main(int argc, char **argv)
         }
 
         if (do_prog || do_calibrate) {
-            void * fwctx = start_firmware(ctx);
-            if (fwctx != NULL) {
-                send_firmware(fwctx, prog_data, red, 0);
-                if (do_resetrw) send_firmware(fwctx, rw_data, rwlen, 0xe000);
-                finish_firmware(fwctx);
-            }
+            start_firmware(ctx);
+            send_firmware(ctx, prog_data, red, 0);
+            if (do_resetrw) send_firmware(ctx, rw_data, rwlen, 0xe000);
+            finish_firmware(ctx);
         }
     }
     close(ctx->fd);

@@ -103,7 +103,7 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {11, 11,0, "E-4Ai4Ao"},
     {12, 11,4, "E-4Ai4Ao_P-6Di5Ro",},         //"E-4Ai4Ao_P-6Di5Ro"},
     {13, 0,13, "B-485"},
-    {14, 14,0, "E-4Dali"},
+    {14, 14,0, "E-4Light"},
     {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
 };
 

@@ -170,6 +170,7 @@ int main(int argc, char **argv)
     }
 
 
+    // autoupdate 
     if (do_auto) {
         if (verbose > 0) arm_verbose = verbose;
         if (INDEX == NULL) {
@@ -179,7 +180,7 @@ int main(int argc, char **argv)
             max_device_index = device_index;
         }
         for (;device_index <= max_device_index; device_index++) {
-    		ctx = malloc(sizeof(arm_handle));
+    		ctx = calloc(1,sizeof(arm_handle));
             if (arm_init(ctx, PORT , BAUD, device_index) >= 0) {
                 arm_firmware(ctx, firmwaredir, FALSE);
                 close(ctx->fd);

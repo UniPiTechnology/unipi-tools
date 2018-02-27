@@ -358,8 +358,6 @@ void nb_modbus_free(nb_modbus_t*  nb_ctx)
         for (i=0; i<MAX_ARMS; i++) {
             if (nb_ctx->arm[i] != NULL) {
                 close(nb_ctx->arm[i]->fd);
-                if (nb_ctx->arm[i]->fdint >= 0) 
-                    close(nb_ctx->arm[i]->fdint);
                 free(nb_ctx->arm[i]);
             }
         }
@@ -387,88 +385,6 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed)
     }
 }
 
-/*
-char* _firmware_name(arm_handle* arm, const char* fwdir, const char* ext)
-{
-    const char* armname = arm_name(arm->bv.hw_version);
-    char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2);
-    strcpy(fwname, fwdir);
-    if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-    strcat(fwname, armname);
-    strcat(fwname, ext);
-    return fwname;
-}
-
-
-int _arm_flash_file(void* fwctx, const char* fwname)
-{
-    // Firmware programming 
-    int fd, ret;
-    void * data;
-    int min_len = 1024;
-
-    if((fd = open(fwname, O_RDONLY)) >= 0) {
-        struct stat st;
-        if((ret=fstat(fd,&st)) >= 0) {
-            size_t len_file = st.st_size;
-            vprintf("Sending firmware file %s length=%d\n", fwname, len_file);
-            if (len_file > min_len) { 
-                if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
-                    send_firmware(fwctx, (uint8_t*) data, len_file, 0);
-                    munmap(data, len_file);
-                } else {
-                    vprintf("Error mapping firmware file %s to memory\n", fwname);
-                }
-            } else {
-                vprintf("Damaged firmware file %s\n", fwname);
-            }
-        }
-        close(fd);
-    } else {
-        vprintf("Error opening firmware file %s\n", fwname);
-    }
-    return 0;
-}
-
-
-int _arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000, uint16_t* buffer)
-{
-    // Nvram programming 
-    int fd, ret;
-    void * data;
-    int min_len = 6;
-
-    if((fd = open(fwname, O_RDONLY)) >= 0) {
-        struct stat st;
-        if((ret=fstat(fd,&st)) >= 0) {
-            size_t len_file = st.st_size;
-            vprintf("Sending nvram file %s length=%d\n", fwname, len_file);
-            if ((len_file > min_len)&&(len_file < 2*128)) { 
-                if ((n2000 > 0)|| overwrite) {
-                    if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
-                        if (overwrite) {
-                            send_firmware(fwctx, (uint8_t*) data, len_file,0xe000);
-                        } else {
-                            memcpy(buffer+n2000-1, ((uint8_t*) data) + 2*(n2000-1), len_file - 2*(n2000-1));
-                            send_firmware(fwctx, (uint8_t*) buffer, len_file,0xe000);
-                        }
-                        munmap(data, len_file);
-                    } else {
-                        vprintf("Error mapping nvram file %s to memory\n", fwname);
-                    }
-                } else {
-                    vprintf("Can't read original nvram\n");
-                }
-            } else {
-                vprintf("Damaged nvram file %s\n", fwname);
-            }
-        }
-        close(fd);
-    } else {
-        vprintf("Error opening nvram file %s\n", fwname);
-    }
-}
-*/
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
@@ -487,22 +403,24 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     return red;
 }
 
+#define MAX_R2000  64
 int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
 {
     /* Check version */
     uint8_t *prog_data;   // buffer containing firmware
     uint8_t* rw_data;     // buffer containing firmware rw data
-    char* fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version,
-                                 fwdir, ".rw");
+    int prog_data_len;
+    int rw_data_len;
+    char* fwname;
 
     int fd, ret;
     int min_len = 6;
     uint32_t fwver = 0;
-    uint16_t buffer[64];
+    uint16_t buffer[MAX_R2000];
     void * data;
-    int n2000 = read_regs(arm, 2000, 64, buffer);
+    int n2000;
 
-    vprintf("N2000 = %d\n", n2000);
+    fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".rw");
     vprintf("Checking firmware file: %s\n", fwname);
     if((fd = open(fwname, O_RDONLY)) >= 0) {
         if (lseek(fd, - 4, SEEK_END) >= 0) {
@@ -513,51 +431,44 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
         close(fd);
     }
     free(fwname);
+    n2000 = read_regs(arm, 2000, MAX_R2000, buffer);
+
     vprintf("SW ver: %04x\n", fwver);
     if (fwver > arm->bv.sw_version) {
     	char* fwname_rw = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".rw");
     	char* fwname_bin = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".bin");
         prog_data = malloc(MAX_FW_SIZE);
-        rw_data = malloc(MAX_FW_SIZE);
+        rw_data = malloc(MAX_RW_SIZE);
 
-        int red = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
-        int rwlen = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
-
-        void * fwctx = start_firmware(arm);
-        if (fwctx == NULL)
+        int prog_data_len = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
+        int rw_data_len   = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
+        
+        if ((prog_data_len<=0) || (rw_data_len<=0)) {
+            free(prog_data);
+            free(rw_data);
             return -1;
-
-        send_firmware(fwctx, prog_data, red, 0);
-        if((fd = open(fwname_rw, O_RDONLY)) >= 0) {
-            struct stat st;
-            if((ret=fstat(fd,&st)) >= 0) {
-                size_t len_file = st.st_size;
-                vprintf("Sending nvram file %s length=%d\n", fwname_rw, len_file);
-                if ((len_file > min_len)&&(len_file < 2*128 /*1024*/)) {
-                    if ((n2000 > 0)|| overwrite) {
-                        if((data=mmap(NULL, len_file, PROT_READ,MAP_PRIVATE, fd, 0)) != MAP_FAILED) {
-                            if (overwrite) {
-                                send_firmware(fwctx, (uint8_t*) data, len_file,0xe000);
-                            } else {
-                                memcpy(buffer+n2000-1, ((uint8_t*) data) + 2*(n2000-1), len_file - 2*(n2000-1));
-                                send_firmware(fwctx, (uint8_t*) buffer, len_file,0xe000);
-                            }
-                            munmap(data, len_file);
-                        } else {
-                            vprintf("Error mapping nvram file %s to memory\n", fwname_rw);
-                        }
-                    } else {
-                        vprintf("Can't read original nvram\n");
-                    }
-                } else {
-                    vprintf("Damaged nvram file %s\n", fwname_rw);
-                }
-            }
-            close(fd);
-        } else {
-            vprintf("Error opening nvram file %s\n", fwname_rw);
         }
+        void * fwctx = start_firmware(arm);
+        if (fwctx == NULL) {
+            free(prog_data);
+            free(rw_data);
+            return -1;
+        }
+        send_firmware(fwctx, prog_data, prog_data_len, 0);
 
+        vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
+        vprintf("N2000 = %d\n", n2000);
+        if ((n2000 > MAX_R2000)||(n2000<0)) n2000 = 0;
+        if ((rw_data_len > min_len)&&(rw_data_len < 2*128)) {
+            if ((2*n2000 < rw_data_len) || overwrite) {
+                if (! overwrite) {
+                    memcpy(rw_data, buffer, 2*(n2000-1));
+                }
+                send_firmware(fwctx, (uint8_t*) rw_data, rw_data_len, 0xe000);
+            }
+        } else {
+            vprintf("Damaged nvram file %s\n", fwname_rw);
+        }
         finish_firmware(fwctx);
         free(prog_data);
         free(rw_data);

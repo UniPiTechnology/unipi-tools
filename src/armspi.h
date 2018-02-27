@@ -87,7 +87,7 @@ typedef struct {
 
 
 int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index);
-int idle_op(arm_handle* arm);
+//int idle_op(arm_handle* arm);
 int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);
 int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
@@ -99,9 +99,9 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt);
 
 //const char* arm_name(arm_handle* arm);
 
-void* start_firmware(arm_handle* arm);
-int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_address);
-void finish_firmware(void*  ctx);
+void start_firmware(arm_handle* arm);
+int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
+void finish_firmware(arm_handle* arm);
 
 //int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
 extern int arm_verbose;

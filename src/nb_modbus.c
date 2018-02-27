@@ -440,21 +440,16 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
         prog_data = malloc(MAX_FW_SIZE);
         rw_data = malloc(MAX_RW_SIZE);
 
-        int prog_data_len = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
-        int rw_data_len   = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
+        prog_data_len = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
+        rw_data_len   = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
         
         if ((prog_data_len<=0) || (rw_data_len<=0)) {
             free(prog_data);
             free(rw_data);
             return -1;
         }
-        void * fwctx = start_firmware(arm);
-        if (fwctx == NULL) {
-            free(prog_data);
-            free(rw_data);
-            return -1;
-        }
-        send_firmware(fwctx, prog_data, prog_data_len, 0);
+        start_firmware(arm);
+        send_firmware(arm, prog_data, prog_data_len, 0);
 
         vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
         vprintf("N2000 = %d\n", n2000);
@@ -464,12 +459,12 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
                 if (! overwrite) {
                     memcpy(rw_data, buffer, 2*(n2000-1));
                 }
-                send_firmware(fwctx, (uint8_t*) rw_data, rw_data_len, 0xe000);
+                send_firmware(arm, rw_data, rw_data_len, 0xe000);
             }
         } else {
             vprintf("Damaged nvram file %s\n", fwname_rw);
         }
-        finish_firmware(fwctx);
+        finish_firmware(arm);
         free(prog_data);
         free(rw_data);
         // Reload version

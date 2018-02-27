@@ -61,6 +61,7 @@ typedef struct {
 #define SNIPLEN2       256 // Max size of second chunk - DOCISTIT (255?, 256?, 256 + header!!!)
 #define CRC_SIZE       2
 
+/*
 #define MAX_LOCAL_QUEUE_LEN 256
 typedef struct {
     int index;
@@ -69,19 +70,19 @@ typedef struct {
     int overflow;
     int masterpty;
 } uart_queue;
-
+*/
 
 typedef struct {
     int fd;
-    int fdint;
+//    int fdint;
     int index;
     arm_comm_header_crc tx1;
     arm_comm_header_crc rx1;
     uint8_t tx2[SNIPLEN2 + CRC_SIZE + 40];
     uint8_t rx2[SNIPLEN2 + CRC_SIZE + 40];
-    struct spi_ioc_transfer tr[7];     // Transaction structure for 5 chunks
+    //struct spi_ioc_transfer tr[7];     // Transaction structure for 5 chunks
     Tboard_version bv;
-    uart_queue uart_q[4];              // local queue for uarts on arm
+//    uart_queue uart_q[4];              // local queue for uarts on arm
 }  arm_handle;
 
 

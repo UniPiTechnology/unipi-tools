@@ -60,62 +60,7 @@
 //static int be_quiet = 0;
 int arm_verbose = 0;
 int nss_pause = NSS_PAUSE_DEFAULT;
-static void pabort(const char *s)
-{
-    if (arm_verbose > 0) perror(s);
-    //abort();
-}
 
-
-uint8_t get_spi_mode(int fd)
-{
-    uint8_t mode;
-
-    int ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
-    if (ret >= 0) {
-        return mode;
-    }
-    return ret;
-}
-
-uint32_t get_spi_speed(int fd)
-{
-    uint32_t speed;
-    int ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
-    if (ret >= 0) {
-        return speed;
-    }
-    return ret;
-    //SPI_IOC_RD_BITS_PER_WORD,
-    //SPI_IOC_RD_LSB_FIRST,
-    //SPI_IOC_WR_MODE32,
-}
-
-void set_spi_mode(int fd, uint8_t mode)
-{
-    int ret = ioctl(fd, SPI_IOC_WR_MODE, &mode);
-    if (ret < 0) {
-        pabort("Cannot set mode");
-    }
-}
-
-void set_spi_speed(int fd, uint32_t speed)
-{
-    int ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
-    if (ret < 0) {
-        pabort("Cannot set speed" );
-    }
-}
-
-void queue_uart(uart_queue* queue, uint8_t chr1, uint8_t len)
-{
-    queue->remain = (len==0) ? 255 : len - 1;  // len==0 means 256 bytes in remote queue
-    if (queue->index < MAX_LOCAL_QUEUE_LEN) {
-        queue->buffer[queue->index++] = chr1;
-    } else {
-        queue->overflow++;
-    }
-}
 
 int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8_t do_lock)
 {
@@ -134,19 +79,17 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
     char_package[3] = 1;
     char_package[7] = do_lock;
     //memcpy(char_package+16, &arm->tx2, tr_len2 + CRC_SIZE);
-    //int fd = open("/dev/neuronspi", O_RDWR);
     ret = write(arm->fd, char_package, total+10);
     if (ret == total+10) ret = read(arm->fd, char_package, total+10);
-    //close(fd);
     memcpy(&arm->rx1, char_package, SNIPLEN1);
     if (ret < 1) {
-        pabort("Can't send one-phase spi message");
+        if (arm_verbose) printf("Can't send one-phase spi message");
         return -1;
     }
     uint16_t crc = SpiCrcString(char_package, SIZEOF_HEADER, 0);
     if (arm_verbose>1) printf("One Phase Op: %x %x\n", crc, arm->rx1.crc);
     if (crc != arm->rx1.crc) {
-        pabort("Bad crc in one-phase operation");
+        if (arm_verbose) printf("Bad crc in one-phase operation");
         return -1;
     }
 
@@ -155,16 +98,14 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
         return 0;
     }
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
-        // we received character from UART
-        // doplnit adresaci uartu &arm->uart_q[0..4]
-        queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
+        // we received character from UART, resolved by kernel
         return 0;
     }
     if (ret == total) {
     	if (arm_verbose>1) printf("One Phase Op successful!\n");
     	return 0;
     }
-    pabort("Unexpected reply in one-phase operation");
+    if (arm_verbose) printf("Unexpected reply in one-phase operation");
     return -1;
 }
 
@@ -174,6 +115,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     int ret;
     uint16_t tr_len2;
     uint16_t crc;
+    uint16_t delay_usecs = 25; // set delay after first phase
     if (arm_verbose>1) printf("Neuron TCP Server: Two Phase Op\n");
     // Prepare chunk1
     if (arm == NULL) {
@@ -183,13 +125,13 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     arm->tx1.op = op;
     arm->tx1.reg = reg;
     arm->tx1.len = len2 & 0xff;        //set len in chunk1 to length of chunk2 (without crc)
-    arm->tr[1].delay_usecs = 25;              // set delay after first phase
+    //arm->tr[1].delay_usecs = 25;              // set delay after first phase
     if (arm_verbose>1) printf("Neuron TCP Server: Two Phase Op1-b\n");
     if (op != ARM_OP_WRITE_STR) {
         ac_header(arm->tx2)->op  = op;  // op and reg in chunk2 is the same
         ac_header(arm->tx2)->reg = reg;
         if (len2 > 60) {
-            arm->tr[1].delay_usecs += (len2-60)/2;  // add more delay
+            delay_usecs += (len2-60)/2;  // add more delay
         }
     }
 
@@ -211,14 +153,14 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     char_package[0] = (uint8_t)arm->index;
 
     char_package[3] = 1;
-    char_package[6] = arm->tr[1].delay_usecs;
+    char_package[6] = delay_usecs;
     *((uint16_t *)&char_package[1]) = reg;
     ret = write(arm->fd, char_package, total+10);
-    if (arm_verbose) printf("WRITE RET:%d TOT:%d\n", ret, total);
+    if (arm_verbose>1) printf("WRITE RET:%d TOT:%d\n", ret, total);
     if (ret == total+10) ret = read(arm->fd, char_package, total+10);
 
     if (ret < 1) {
-        pabort("Can't send two-phase spi message\n");
+        if (arm_verbose) printf("Can't send two-phase spi message\n");
         return ret;
     }
     if (arm_verbose>1) printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
@@ -228,7 +170,6 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
 
     if (crc != arm->rx1.crc) {
     	if (arm_verbose) printf("Bad 1.crc in two phase operation %x %x\n", crc, arm->rx1.crc);
-        pabort("Bad 1.crc in two phase operation\n");
         return -1;
     }
     if (arm_verbose>1) printf("Read phase 1 finished: %x %x\n", crc, arm->rx1.crc);
@@ -236,16 +177,15 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     memcpy(arm->rx2,&(char_package[SNIPLEN1]), tr_len2);
     if (arm->rx1.op == ARM_OP_WRITE_CHAR) { 
         // we received a character from UART
-        queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
+        // queue_uart(arm->uart_q, ach_header(&arm->rx1)->ch1, ach_header(&arm->rx1)->len);
         if (((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1] != crc) {
         	if (arm_verbose) printf("Bad 2.crc in two phase operation %x %x\n", crc, ((uint16_t*)arm->rx2)[tr_len2>>1]);
-            pabort("Bad 2.crc in two phase operation\n");
             return -2;
         }
         return 0;
     }
     if (((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1] != crc) {
-        pabort("Bad 2.crc in two phase operation\n");
+        if (arm_verbose) printf("Bad 2.crc in two phase operation\n");
         return -3;
     }
     if (arm_verbose>1) printf("Read phase 2 finished: %x %x\n", crc, ((uint16_t*)char_package)[tr_len2+SNIPLEN1>>1]);
@@ -260,9 +200,8 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     	return 0;
     }
 
-    sprintf(errmsg,"Unexpected reply in two phase operation %02x %02x %04x %04x\n",
+    if (arm_verbose) printf(errmsg,"Unexpected reply in two phase operation %02x %02x %04x %04x\n",
             arm->rx1.op, arm->rx1.len, arm->rx1.reg, arm->rx1.crc);
-    pabort(errmsg);
     return -1;
 }
 
@@ -282,24 +221,24 @@ int read_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result)
     if (ret < 0) {
         return ret;
     }
-    /*
+    
     if ((ac_header(arm->rx2)->op != ARM_OP_READ_REG) || 
         (ac_header(arm->rx2)->len > cnt) ||
         (ac_header(arm->rx2)->reg != reg)) {
-            pabort("Unexpected reply in READ_REG");
+            if (arm_verbose) printf("Unexpected reply in READ_REG");
             return -1;
     }
     cnt =  ac_header(arm->rx2)->len;
-    */
+    
     memmove(result, arm->rx2+SIZEOF_HEADER, cnt * sizeof(uint16_t));
-    if (arm_verbose) printf("CNT: %d %d %x %x %x %x %x\n", cnt, ret, result[0], result[1], result[2], result[3], result[4]);
+    if (arm_verbose>1) printf("CNT: %d %d %x %x %x %x %x\n", cnt, ret, result[0], result[1], result[2], result[3], result[4]);
     return cnt;
 }
 
 int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
 {
     if (cnt > 126) {
-        pabort("Too many registers in WRITE_REG");
+        if (arm_verbose) printf("Too many registers in WRITE_REG");
         return -1;
     }
     uint16_t len2 = SIZEOF_HEADER + sizeof(uint16_t) * cnt;
@@ -316,7 +255,7 @@ int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
     }
 
     if (ac_header(arm->rx2)->op != ARM_OP_WRITE_REG) {
-        pabort("Unexpected reply in WRITE_REG");
+        if (arm_verbose) printf("Unexpected reply in WRITE_REG");
         return -1;
     }
     cnt =  ac_header(arm->rx2)->len;
@@ -327,7 +266,7 @@ int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result)
 {
     uint16_t len2 = SIZEOF_HEADER + (((cnt+15) >> 4) << 1);  // trunc to 16bit in bytes
     if (len2 > 256){
-        pabort("Too many registers in READ_BITS");
+        if (arm_verbose) printf("Too many registers in READ_BITS");
         return -1;
     }
     int ret = two_phase_op(arm, ARM_OP_READ_BIT, reg, len2);
@@ -337,7 +276,7 @@ int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result)
 
     if ((ac_header(arm->rx2)->op != ARM_OP_READ_BIT) || 
         (ac_header(arm->rx2)->reg != reg)) {
-            pabort("Unexpected reply in READ_BIT");
+            if (arm_verbose) printf("Unexpected reply in READ_BIT");
             return -1;
     }
     cnt = ac_header(arm->rx2)->len;
@@ -358,7 +297,7 @@ int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values)
 {
     uint16_t len2 = SIZEOF_HEADER + (((cnt+15) >> 4) << 1);  // trunc to 16bit in bytes
     if (len2 > 256) {
-        pabort("Too many registers in WRITE_BITS");
+        if (arm_verbose) printf("Too many registers in WRITE_BITS");
         return -1;
     }
 
@@ -371,7 +310,7 @@ int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values)
     }
 
     if (ac_header(arm->rx2)->op != ARM_OP_WRITE_BITS) {
-        pabort("Unexpected reply in WRITE_REG");
+        if (arm_verbose) printf("Unexpected reply in WRITE_REG");
         return -1;
     }
     if (cnt > ac_header(arm->rx2)->len)
@@ -380,138 +319,21 @@ int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values)
 }
 
 
-int write_char(arm_handle* arm, uint8_t uart, uint8_t c)
-{
-    int ret = one_phase_op(arm, ARM_OP_WRITE_CHAR, uart, c, 0);
-    if (ret < 0) {
-        return ret;
-    }
-    return 1;
-}
-
-int write_string(arm_handle* arm, uint8_t uart, uint8_t* str, int len)
-{
-
-    if ((len > 256) || (len<=0)) {
-        pabort("Bad string length(1..256)");
-        return -1;
-    }
-    uint16_t len2 = len;
-
-    memmove(arm->tx2, str, len2);
-
-    int ret = two_phase_op(arm, ARM_OP_WRITE_STR, uart, len2);
-
-    if (ac_header(arm->rx2)->op != ARM_OP_WRITE_STR) {
-        pabort("Unexpected reply in WRITE_STR");
-        return -1;
-    }
-    return ac_header(arm->rx2)->len;
-    //return cnt;
-}
-
-int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
-{
-    if (uart > 0) {
-        pabort("Bad parameter uart");
-        return -1;
-    }
-    uart_queue* queue = &arm->uart_q[uart];
-    uint16_t len2 = cnt;
-
-    if (len2 % 2) len2++;
-    if (len2 > SPI_STR_MAX) len2 = SPI_STR_MAX;
-    len2 = len2 + SIZEOF_HEADER;
-
-    int ret =  two_phase_op(arm, ARM_OP_READ_STR, uart, len2);
-    if (ret < 0) {
-        if (arm_verbose) printf("Error read str %d %d\n", cnt, len2);
-        return ret;
-    }
-
-    if (ac_header(arm->rx2)->op != ARM_OP_READ_STR) {
-        //if (arm_rx2_str.len > cnt):
-        pabort("Unexpected reply in READ_STR");
-        return -1;
-    }
-    uint16_t rcnt = acs_header(arm->rx2)->len;    // length of received string
-    queue->remain = acs_header(arm->rx2)->remain; // remains in remote queue
-    // join uart_queue and rcnt chars
-    int n = queue->index < cnt ? queue->index : cnt;
-    if (n > 0) {
-        memmove(str, queue->buffer, n);
-        if (n < queue->index) {  // str is too short for import local queue
-            memmove(queue->buffer, queue->buffer + n, queue->index - n);
-            queue->index -= n;
-            if (queue->index + rcnt > MAX_LOCAL_QUEUE_LEN) 
-                rcnt = MAX_LOCAL_QUEUE_LEN - queue->index;
-            memmove(queue->buffer+queue->index, arm->rx2 + SIZEOF_HEADER, rcnt);
-            queue->index += rcnt;
-            return n;
-        }
-        queue->index = 0;
-        cnt -= n;
-    }
-    int n2 = rcnt < cnt ? rcnt : cnt;
-    memmove(str+n, arm->rx2 + SIZEOF_HEADER, n2);
-    if (rcnt > cnt) { // str is too short,  move rest of string to local queue
-        queue->index = rcnt - cnt;
-        if (queue->index > MAX_LOCAL_QUEUE_LEN) queue->index = MAX_LOCAL_QUEUE_LEN;
-        memmove(queue->buffer, arm->rx2 + SIZEOF_HEADER+cnt, queue->index);
-    }
-    return n+n2;
-}
-
-int read_qstring(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt)
-{
-    if (uart > 0) {
-        pabort("Bad parameter uart");
-        return -1;
-    }
-    uart_queue* queue = &arm->uart_q[uart];
-    
-    // join uart_queue and rcnt chars
-    int n = queue->index < cnt ? queue->index : cnt;
-    if (n > 0) {
-        memmove(str, queue->buffer, n);
-        if (n < queue->index) {  // str is too short for import local queue
-            memmove(queue->buffer, queue->buffer + n, queue->index - n);
-            queue->index -= n;
-            return n;
-        }
-        queue->index = 0;
-        return n;
-    }
-    return 0;
-}
-
-
-//const char* GPIO_INT[] = { "27", "23", "22" };
 #define START_SPI_SPEED 5000000
 int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
 {
     arm->fd = open(device, O_RDWR);
 
     if (arm->fd < 0) {
-        pabort("Cannot open device");
+        if (arm_verbose) printf("Cannot open device");
         return -1;
     }
 
-    //set_spi_mode(fd,0);
-    //if (speed==0) {
-    //    set_spi_speed(arm->fd, START_SPI_SPEED);
-    //} else {
-    //    set_spi_speed(arm->fd, speed);
-    //}
     arm->index = index;
 
     int i;
-    for (i=0; i< 4; i++) {
-       arm->uart_q[i].masterpty = -1;
-       arm->uart_q[i].remain = 0;
-       arm->uart_q[i].index = 0;
-    }
     // Prepare transactional structure
+    /*
     memset(arm->tr, 0, sizeof(arm->tr));
     arm->tr[0].delay_usecs = nss_pause;    // starting pause between NSS and SCLK
     arm->tr[1].tx_buf = (unsigned long) &arm->tx1;
@@ -527,6 +349,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
     arm->tr[5].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*3);
     arm->tr[6].tx_buf = (unsigned long) arm->tx2 + (_MAX_SPI_RX*4);
     arm->tr[6].rx_buf = (unsigned long) arm->rx2 + (_MAX_SPI_RX*4);
+    */
     /* Load firmware and hardware versions */
     arm->bv.sw_version = 0;
     int backup = arm_verbose;
@@ -543,12 +366,12 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
     //arm_version(arm);
     if (speed == 0) {
         speed = get_board_speed(&arm->bv);
-        set_spi_speed(arm->fd, speed);
+        //set_spi_speed(arm->fd, speed);
         if (read_regs(arm, 1000, 5, configregs) != 5) {
             speed = START_SPI_SPEED;
         }
     }
-    if (arm_verbose) printf("ARM Init finished pt1:%x\n", arm->bv.sw_version);
+    if (arm_verbose>1) printf("ARM Init finished pt1:%x\n", arm->bv.sw_version);
     arm_verbose = backup;
     if (arm->bv.sw_version) {
         if (arm_verbose) 
@@ -561,9 +384,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
         return -1;
     }
 
-    /* Open fdint for interrupt catcher */
-    arm->fdint = -1;
-    if (arm_verbose) printf("ARM Init finished!\n");
+    if (arm_verbose>1) printf("ARM Init finished!\n");
 
     return 0;
 }
@@ -576,6 +397,7 @@ typedef struct {
     arm_comm_firmware* tx;
     arm_comm_firmware* rx;
 } Tfirmware_context;
+
 
 int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr, uint8_t do_lock)
 {
@@ -592,22 +414,19 @@ int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, i
     	ret = read(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     	memcpy(rx, char_package, sizeof(arm_comm_firmware) + 10);
     } else {
-    	printf("Invalid length written: %d, exp: %d\n", ret, sizeof(arm_comm_firmware) + 10);
-        pabort("Invalid length written");
+    	if (arm_verbose) printf("Invalid length written: %d, exp: %d\n", ret, sizeof(arm_comm_firmware) + 10);
         return -1;
     }
 
     //int ret = ioctl(arm->fd, SPI_IOC_MESSAGE(tr_len), tr);
     if (ret < 1) {
-    	printf("Can't send firmware-op spi message\n");
-        pabort("Can't send firmware-op spi message");
+    	if (arm_verbose) printf("Can't send firmware-op spi message\n");
         return -2;
     }
     uint16_t crc = SpiCrcString((uint8_t*)rx, sizeof(arm_comm_firmware) - sizeof(rx->crc),0);
     //printf("a=%0x d=%x crc=%x\n", rx->address, rx->data[0], rx->crc);
     if (crc != rx->crc && do_lock != 255) {
-    	printf("Bad crc in firmware operation RET:%d CRC:%x RX-CRC:%x\n", ret, crc, rx->crc);
-        pabort("Bad crc in firmware operation");
+    	if (arm_verbose) printf("Bad crc in firmware operation RET:%d CRC:%x RX-CRC:%x\n", ret, crc, rx->crc);
         return -3;
     }
     return 0;
@@ -705,7 +524,7 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
         }
         firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr, (fwctx->arm->index) + 1);
         if (fwctx->rx->address != ARM_FIRMWARE_KEY) {
-        	printf("Address %x does not equal %x\n", fwctx->rx->address, ARM_FIRMWARE_KEY);
+        	if (arm_verbose) printf("Address %x does not equal %x\n", fwctx->rx->address, ARM_FIRMWARE_KEY);
             if ((address == prev_addr)||(prev_addr == -1)) { 
                 // double error or start error
                 usleep(100000);
@@ -727,88 +546,3 @@ int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_addre
     return 0;
 }
 
-/*
-int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
-{
-    // Alloc Tx Rx buffers 
-    arm_comm_firmware* tx = calloc(1, sizeof(arm_comm_firmware)+2);
-    if (tx == NULL) return -1;
-    arm_comm_firmware* rx = calloc(1, sizeof(arm_comm_firmware)+2);
-    if (rx == NULL) { 
-        free(tx); 
-        return -1; 
-    }
-    // Transaction array 
-    int i;
-    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
-    struct spi_ioc_transfer* tr = calloc(tr_len, sizeof(struct spi_ioc_transfer));  // Alloc transaction array
-    if (tr == NULL) {
-        free(rx); 
-        free(tx); 
-        return -1; 
-    } 
-    tr[0].delay_usecs = 5;                                                          // first transaction has no data
-    for (i=0; i < tr_len-1; i++) {
-        tr[i+1].len = _MAX_SPI_RX;
-        tr[i+1].tx_buf = (unsigned long) tx + (_MAX_SPI_RX*i);
-        tr[i+1].rx_buf = (unsigned long) rx + (_MAX_SPI_RX*i);
-    }
-    tr[tr_len-1].len = ((sizeof(arm_comm_firmware) - 1) % _MAX_SPI_RX) + 1;       // last transaction is shorter
-
-    int prog_bit = 1004;
-    if (arm->bv.sw_version <= 0x400) prog_bit = 104;
-    write_bit(arm, prog_bit, 1, (arm->index) + 1);                                                   // start programming in ARM
-    usleep(100000);
-
-    int prev_addr = -1;
-    int len = datalen;
-    uint32_t address = start_address;
-
-    while (len >= 0) {
-        tx->address = address;
-        if (len >= ARM_PAGE_SIZE) {
-            memcpy(tx->data, data + (address-start_address), ARM_PAGE_SIZE);  // read page from file
-            len = len - ARM_PAGE_SIZE;
-        } else if (len != 0) {
-            memcpy(tx->data, data + (address-start_address), len);            // read  page (part) from file
-            memset(tx->data+len, 0xff, ARM_PAGE_SIZE-len);  
-            len = 0;
-        } else {
-            address = 0xF400;   // read-only page; operation is performed only for last page confirmation
-            len = -1;
-        }
-        firmware_op(arm, tx, rx, tr_len, tr, (arm->index) + 1);
-        if (rx->address != ARM_FIRMWARE_KEY) {
-            if ((address == prev_addr)||(prev_addr == -1)) { 
-                // double error or start error
-                usleep(100000);
-                break;
-            }
-            address = prev_addr;
-            len = datalen - (address-start_address);
-            usleep(100000);
-            continue;
-        }
-        if (prev_addr != -1) if (arm_verbose) printf("%04x OK\n", prev_addr);
-        usleep(100000);
-        prev_addr = address;
-        address = address + ARM_PAGE_SIZE;
-    } 
-
-    tx->address = ARM_FIRMWARE_KEY;  // finish transfer
-    firmware_op(arm, tx, rx, tr_len, tr, (arm->index) + 1);
-    if (rx->address != ARM_FIRMWARE_KEY) {
-        if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
-    } else {
-        if (arm_verbose) printf("REBOOTING...\n");
-    }
-    firmware_op(arm, tx, rx, tr_len, tr, 255);
-
-    // dealloc
-    free(tr); 
-    free(rx); 
-    free(tx);
-    usleep(100000);
-    return 0;
-}
-*/

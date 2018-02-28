@@ -404,72 +404,62 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
 }
 
 #define MAX_R2000  64
-int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
+int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
 {
-    /* Check version */
+
     uint8_t *prog_data;   // buffer containing firmware
     uint8_t* rw_data;     // buffer containing firmware rw data
     int prog_data_len;
     int rw_data_len;
-    char* fwname;
-
-    int fd, ret;
-    int min_len = 6;
-    uint32_t fwver = 0;
     uint16_t buffer[MAX_R2000];
-    void * data;
     int n2000;
 
-    fwname = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".rw");
-    vprintf("Checking firmware file: %s\n", fwname);
-    if((fd = open(fwname, O_RDONLY)) >= 0) {
-        if (lseek(fd, - 4, SEEK_END) >= 0) {
-            if (read(fd, &fwver, 4) == 4) {
-                if (fwver & 0xff000000) fwver = fwver >> 16;
-            } else fwver = 0; 
-        }
-        close(fd);
+
+    rw_data = load_fw_file(&arm->bv, fwdir, TRUE, &rw_data_len);
+    if (rw_data == NULL) {
+        return -1;
     }
-    free(fwname);
-    n2000 = read_regs(arm, 2000, MAX_R2000, buffer);
-
-    vprintf("SW ver: %04x\n", fwver);
-    if (fwver > arm->bv.sw_version) {
-    	char* fwname_rw = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".rw");
-    	char* fwname_bin = firmware_name(arm->bv.hw_version, arm->bv.base_hw_version, fwdir, ".bin");
-        prog_data = malloc(MAX_FW_SIZE);
-        rw_data = malloc(MAX_RW_SIZE);
-
-        prog_data_len = load_fw(fwname_bin, prog_data, MAX_FW_SIZE);
-        rw_data_len   = load_fw(fwname_rw, rw_data, MAX_RW_SIZE);
-        
-        if ((prog_data_len<=0) || (rw_data_len<=0)) {
-            free(prog_data);
-            free(rw_data);
-            return -1;
-        }
-        start_firmware(arm);
-        send_firmware(arm, prog_data, prog_data_len, 0);
-
-        vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
-        vprintf("N2000 = %d\n", n2000);
-        if ((n2000 > MAX_R2000)||(n2000<0)) n2000 = 0;
-        if ((rw_data_len > min_len)&&(rw_data_len < 2*128)) {
-            if ((2*n2000 < rw_data_len) || overwrite) {
-                if (! overwrite) {
-                    memcpy(rw_data, buffer, 2*(n2000-1));
-                }
-                send_firmware(arm, rw_data, rw_data_len, 0xe000);
-            }
-        } else {
-            vprintf("Damaged nvram file %s\n", fwname_rw);
-        }
-        finish_firmware(arm);
-        free(prog_data);
+    prog_data = load_fw_file(&arm->bv, fwdir, FALSE, &prog_data_len);
+    if (prog_data == NULL) {
         free(rw_data);
-        // Reload version
-        uint16_t configregs[5];
-        if (read_regs(arm, 1000, 5, configregs) == 5)
-            parse_version(&arm->bv, configregs);
+        return -1;
+    }
+
+    if (!overwrite) {
+        n2000 = read_regs(arm, 2000, MAX_R2000, buffer);
+        vprintf("N2000 = %d\n", n2000);
+        if (n2000 > 1) {
+            n2000 = 2*(n2000);
+            if (n2000 >= rw_data_len) n2000 = rw_data_len-2;
+            memcpy(rw_data, buffer, n2000);
+            overwrite = 1;
+        }
+    }
+    start_firmware(arm);
+    send_firmware(arm, prog_data, prog_data_len, 0);
+/*
+    vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
+*/
+    if (overwrite)  {
+        vprintf("\n");
+        send_firmware(arm, rw_data, rw_data_len, 0xe000);
+    }
+    finish_firmware(arm);
+    free(prog_data);
+    free(rw_data);
+    // Reload version
+    uint16_t configregs[5];
+    if (read_regs(arm, 1000, 5, configregs) == 5)
+        parse_version(&arm->bv, configregs);
+}
+
+int arm_firmware(arm_handle* arm, const char* fwdir)
+{
+    /* Check version */
+    uint32_t fwver;
+
+    if (fwver=check_new_rw_version(&arm->bv, fwdir)) {
+        vprintf("NEW firmware=%d.%d found\n", fwver>>8, fwver & 0xff);
+        return arm_firmware_do(arm, fwdir, FALSE);
     }
 }

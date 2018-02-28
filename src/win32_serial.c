@@ -611,7 +611,6 @@ int main(int argc, char **argv)
 	// Parse command line options
 	int c;
 	char *endptr;
-	//while (1) {
 	int option_index = 0;
 	c = getopt_long(argc, argv, "vVPRCp:b:u:d:F:", long_options, &option_index);
 	if (c == -1) {
@@ -620,142 +619,8 @@ int main(int argc, char **argv)
 		   exit(EXIT_FAILURE);
 		}
 	}
-/*
-       switch (c) {
-       case 'v':
-           verbose++;
-           break;
-       case 'V':
-           do_verify = 1;
-           break;
-       case 'P':
-           do_prog = 1;
-           break;
-       case 'R':
-           do_resetrw = 1;
-           break;
-       case 'C':
-           do_calibrate = 1; do_prog = 1; do_resetrw = 1;
-           break;
-       case 'F':
-           upboard = strtol(optarg, &endptr, 10);
-           if ((endptr==optarg) || (!upboard_exists(upboard))) {
-               printf("Available upper board ids:\n");
-               print_upboards(-1);
-               exit(EXIT_FAILURE);
-           }
-           do_final = 1; do_prog = 1; do_resetrw = 1;
-           break;
-       case 'p':
-           PORT = strdup(optarg);
-           break;
-       case 'b':
-           BAUD = atoi(optarg);
-           if (BAUD==0) {
-               printf("Baud must be non-zero integer (given %s)\n", optarg);
-               exit(EXIT_FAILURE);
-           }
-           break;
-       case 'u':
-           DEVICE_ID = atoi(optarg);
-           if (DEVICE_ID==0) {
-               printf("Unit must be non-zero integer (given %s)\n", optarg);
-               exit(EXIT_FAILURE);
-           }
-           break;
-       case 'd':
-           firmwaredir = strdup(optarg);
-           break;
-
-       default:
-           print_usage(argv[0]);
-           exit(EXIT_FAILURE);
-           break;
-       }
-    }
-*/
-    //}
     setup_gui(argc, argv);
 
-/*
-    if (do_prog || do_verify) {
-        // FW manipulation
-        if (do_calibrate) {
-            bv.hw_version = bv.base_hw_version | 0x8;
-            do_resetrw = 1;
-        } else if (do_final) {
-            if (!IS_CALIB(bv.hw_version)) {
-                fprintf(stderr, "Only calibrating version can be reprogrammed to final\n");
-                modbus_free(ctx);
-                return -1;
-            }
-            bv.hw_version = check_compatibility(bv.base_hw_version, upboard);
-            if (bv.hw_version == 0) {
-                fprintf(stderr, "Incompatible base and upper boards. Use one of:\n");
-                print_upboards(bv.base_hw_version);
-                modbus_free(ctx);
-                return -1;
-            }
-        }
-        // load firmware file
-        char* fwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".bin");
-        prog_data = malloc(MAX_FW_SIZE);
-        if (verbose) printf("Opening firmware file: %s\n", fwname);
-        int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
-        int rwred = RW_START_PAGE;
-        free(fwname);
-        if (red <= 0) {
-            if (red == 0) {
-                fprintf(stderr, "Firmware file is empty!\n");
-            }
-            free(prog_data);
-            modbus_free(ctx);
-            return -1;
-        }
-        red = (red + (PAGE_SIZE - 1)) / PAGE_SIZE;
-        if (verbose) printf("Program pages: %d\n", red);
-
-        if (do_resetrw) {
-            // load rw consts file
-            rw_data = malloc(MAX_RW_SIZE);
-            char* rwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
-            if (verbose) printf("Opening RW settings file: %s\n", rwname);
-            int rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
-            free(rwname);
-            // calc page count of firmware file
-            rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
-            if (verbose) printf("Final page: %d\n", rwred);
-        }
-
-        // init FW programmer
-        if (modbus_write_bit(ctx, 1006, 1, 0) != 1) {
-            fprintf(stderr, "Program mode setting failed: %s\n", modbus_strerror(errno));
-            modbus_free(ctx);
-            return -1;
-        }
-        /*
-        if (modbus_read_registers(ctx, 1000, 5, version) == 5) {
-        if (modbus_read_registers(ctx, 1000, 5, r1000) == 5) {
-            parse_version(&xbv, r1000);
-            if (xbv.hw_version != 0xffff) {
-                printf("Boot boardset:   %3d (v%d.%d%s)\n", xhw_version >> 8, (xhw_version & 0xff)>>4, xhw_version & 0x7, (xhw_version & 0x8)?" CAL":"");
-            } else {
-                printf("Boot boardset:   Undefined\n");
-            }
-            printf("Boot baseboard:  %3d (v%d.%d)\n", xbase_version>> 8, (xbase_version & 0xff)>>4, xbase_version & 0x7);
-            printf("Boot firmware:  v%d.%d\n", xsw_version >> 8, xsw_version & 0xff);
-        }
-
-        if (do_prog || do_calibrate) {
-            flashit(ctx,prog_data, rw_data, red, rwred);
-        }
-        if (do_verify) {
-            verify(ctx,prog_data, rw_data, red, rwred);
-        }
-        modbus_write_register(ctx, 0x7707, 3); // reboot
-        free(prog_data);
-    }
-    */
     modbus_free(ctx);
     gtk_widget_destroy (GTK_WIDGET (dialog));
     return 0;

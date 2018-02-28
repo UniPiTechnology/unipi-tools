@@ -22,14 +22,6 @@
 #include "nb_modbus.h"
 
 
-/* Hardware constants */
-#define PAGE_SIZE   1024            
-#define REG_SIZE    64
-
-#define MAX_FW_SIZE (64*PAGE_SIZE)
-#define MAX_RW_SIZE (PAGE_SIZE)
-#define RW_START_PAGE ((0xE000) / PAGE_SIZE)
-
 /* Default parameters */
 char* PORT = NULL;
 char* INDEX = NULL;
@@ -95,7 +87,7 @@ int main(int argc, char **argv)
     int ret, chunk, page;
     int max_device_index;
     uint16_t val, reg;
-    arm_handle *ctx;
+    arm_handle *arm;
     FILE* fdx;
     
     // Parse command line options
@@ -165,14 +157,13 @@ int main(int argc, char **argv)
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
     }
-    if (PORT == NULL) {
-        PORT = "/dev/neuronspi";
-    }
+    if (PORT == NULL) PORT = "/dev/neuronspi";
 
+    if (verbose > 0) arm_verbose = verbose;
 
+    arm = malloc(sizeof(arm_handle));
     // autoupdate 
     if (do_auto) {
-        if (verbose > 0) arm_verbose = verbose;
         if (INDEX == NULL) {
             max_device_index = 2;
             device_index = 0;
@@ -180,108 +171,61 @@ int main(int argc, char **argv)
             max_device_index = device_index;
         }
         for (;device_index <= max_device_index; device_index++) {
-    		ctx = calloc(1,sizeof(arm_handle));
-            if (arm_init(ctx, PORT , BAUD, device_index) >= 0) {
-                arm_firmware(ctx, firmwaredir, FALSE);
-                close(ctx->fd);
+    		//arm = calloc(1,sizeof(arm_handle));
+            if (arm_init(arm, PORT , BAUD, device_index) >= 0) {
+                arm_firmware(arm, firmwaredir);
+                close(arm->fd);
             }
-            free(ctx);
 		}
+        free(arm);
 		if (verbose) printf("Firmware autoupdate finished\n");
 		return 0;
     }
 
-    if (verbose > 0) arm_verbose = verbose;
-    // Open port
-    ctx = malloc(sizeof(arm_handle));
-    if ( arm_init(ctx, PORT , BAUD, device_index) < 0) {
+    //arm = malloc(sizeof(arm_handle));
+    if ( arm_init(arm, PORT , BAUD, device_index) < 0) {
         fprintf(stderr, "Unable to create the arm[%d] context\n", device_index);
-        free(ctx);
+        free(arm);
         return -1;
     }
 
-
-    // get FW & HW version
-    uint16_t r1000[5];
-    Tboard_version bv;
-    //int hw_version, sw_version, base_version;
-    if (read_regs(ctx, 1000, 5, r1000) == 5) {
-        parse_version(&bv, r1000);
-        printf("Boardset:   %3d %-30s (v%d.%d%s)\n",
-               HW_BOARD(bv.hw_version), arm_name(bv.hw_version),
-               HW_MAJOR(bv.hw_version), HW_MINOR(bv.hw_version),
-               IS_CALIB(bv.hw_version)?" CAL":"");
-        printf("Baseboard:  %3d %-30s (v%d.%d)\n",
-               HW_BOARD(bv.base_hw_version),  arm_name(bv.base_hw_version),
-               HW_MAJOR(bv.base_hw_version), HW_MINOR(bv.base_hw_version));
-        printf("Firmware: v%d.%d\n", SW_MAJOR(bv.sw_version), SW_MINOR(bv.sw_version));
-    } else {
-        fprintf(stderr, "Read version failed\n");
-        close(ctx->fd);
-        free(ctx);
-        return -1;
-    }
+    Tboard_version *bv = &(arm->bv);
+    printf("Boardset:   %3d %-30s (v%d.%d%s)\n",
+               HW_BOARD(bv->hw_version), arm_name(bv->hw_version),
+               HW_MAJOR(bv->hw_version), HW_MINOR(bv->hw_version),
+               IS_CALIB(bv->hw_version)?" CAL":"");
+    printf("Baseboard:  %3d %-30s (v%d.%d)\n",
+               HW_BOARD(bv->base_hw_version),  arm_name(bv->base_hw_version),
+               HW_MAJOR(bv->base_hw_version), HW_MINOR(bv->base_hw_version));
+    printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
 
     
     if (do_prog) {
         // FW manipulation
         if (do_calibrate) {
-            bv.hw_version = bv.base_hw_version | 0x8;
+            arm->bv.hw_version = arm->bv.base_hw_version | 0x8;
             do_resetrw = 1;
         } else if (do_final) {
-            if (!(bv.hw_version & 0x8)) {
+            if (!(arm->bv.hw_version & 0x8)) {
                 fprintf(stderr, "Only calibrating version can be reprogrammed to final\n");
-                close(ctx->fd);
-                free(ctx);
+                close(arm->fd);
+                free(arm);
                 return -1;
             }
-            bv.hw_version = check_compatibility(bv.base_hw_version, upboard);
-            if (bv.hw_version == 0) {
+            arm->bv.hw_version = check_compatibility(arm->bv.base_hw_version, upboard);
+            if (arm->bv.hw_version == 0) {
                 fprintf(stderr, "Incompatible base and upper boards. Use one of:\n");
-                print_upboards(bv.base_hw_version);
-                close(ctx->fd);
-                free(ctx);
+                print_upboards(arm->bv.base_hw_version);
+                close(arm->fd);
+                free(arm);
                 return -1;
             }
         }
-        // load firmware file
-        char* fwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".bin");
-        prog_data = malloc(MAX_FW_SIZE);
-        if (verbose) printf("Opening firmware file: %s\n", fwname);
-        int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
-        int rwred = RW_START_PAGE;
-        int rwlen = 0;
-        free(fwname);
-        if (red <= 0) {
-            if (red == 0) {
-                fprintf(stderr, "Firmware file is empty!\n");
-            } 
-            free(prog_data);
-            close(ctx->fd);
-            free(ctx);
-            return -1;
-        }
-        if (verbose) printf("Program size: %d\n", red);
-        if (do_resetrw) {
-            // load rw consts file
-            rw_data = malloc(MAX_RW_SIZE);
-            char* rwname = firmware_name( bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
-            if (verbose) printf("Opening RW settings file: %s\n", rwname);
-            rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
-            free(rwname);
-            // calc page count of firmware file
-            rwred += ((rwlen + (PAGE_SIZE - 1)) / PAGE_SIZE);
-            if (verbose) printf("Final page: %d\n", rwred);
-        }
-
         if (do_prog || do_calibrate) {
-            start_firmware(ctx);
-            send_firmware(ctx, prog_data, red, 0);
-            if (do_resetrw) send_firmware(ctx, rw_data, rwlen, 0xe000);
-            finish_firmware(ctx);
+            arm_firmware_do(arm, firmwaredir, do_resetrw);
         }
     }
-    close(ctx->fd);
-    //free(ctx);
+    close(arm->fd);
+    free(arm);
     return 0;
 }

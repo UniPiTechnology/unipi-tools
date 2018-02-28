@@ -51,10 +51,6 @@
 #define acs_header(buf) ((arm_comm_str_header*)(buf))
 
 #define IDLE_PATTERN 0x0e5500fa
-// hodnota 240 znaku by pravdepodobne mela byt spise 
-//    255 - sizeof(arm_comm_header) = 251 -> 250(even number) characters
-// vyzkouset jestli neni problem v firmware
-#define SPI_STR_MAX 240
 #define NSS_PAUSE_DEFAULT  10
 
 //static int be_quiet = 0;
@@ -65,10 +61,10 @@ int nss_pause = NSS_PAUSE_DEFAULT;
 int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8_t do_lock)
 {
     int ret;
-
     uint32_t total = SIZEOF_HEADER + CRC_SIZE;
     uint8_t char_package[total + 10];
-    memset(char_package, 0, 10);//sizeof(char_package));
+
+    memset(char_package, 0, 10);
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 1;
     char_package[7] = do_lock;
@@ -82,16 +78,16 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
     if (ret == total+10) 
         ret = read(arm->fd, char_package, total+10);
     if (ret < 1) {
-        if (arm_verbose) printf("Ph1OP(%x): Error sending spi message", op);
+        if (arm_verbose) printf("Ph1-OP(%x): Error sending spi message", op);
         return -1;
     }
 
     if (((*((uint32_t*)char_package) & 0xffff00ff) == IDLE_PATTERN) ||
        (char_package[0] == ARM_OP_WRITE_CHAR)) {
-    	if (arm_verbose>1) printf("Ph1OP(%x): Success!\n",op);
+    	if (arm_verbose>1) printf("Ph1-OP(%x): Success!\n",op);
         return 0;
     }
-    if (arm_verbose) printf("Ph1OP(%x): Unexpected reply :%x\n",op, char_package[0]);
+    if (arm_verbose) printf("Ph1-OP(%x): Unexpected reply :%x\n",op, char_package[0]);
     return -1;
 }
 
@@ -102,9 +98,9 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     uint16_t tr_len2;
     uint16_t crc;
     uint16_t delay_usecs = 25; // set delay after first phase
-    if (arm_verbose>1) printf("Ph2OP(%x): \n", op);
+    if (arm_verbose>1) printf("Ph2-OP(%x): \n", op);
     if (arm == NULL) {
-        if (arm_verbose>1) printf("Ph2OP(%x): Invalid device (NULL)\n", op);
+        if (arm_verbose>1) printf("Ph2-OP(%x): Invalid device (NULL)\n", op);
     	return -1;
     }
 
@@ -135,7 +131,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     char_package[6] = delay_usecs;
     *((uint16_t *)&char_package[1]) = reg;
 
-    if (arm_verbose>1) printf("Ph2OP: send package len:%d: %x %x %x %x \t%x %x %x %x %x %x\n", total+10, char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
+    if (arm_verbose>1) printf("Ph2-OP: send package len:%d: %x %x %x %x \t%x %x %x %x %x %x\n", total+10, char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
 
     ret = write(arm->fd, char_package, total+10);
     if (arm_verbose>1) printf("WRITE RET:%d TOT:%d\n", ret, total);
@@ -291,7 +287,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
     /* Load firmware and hardware versions */
     arm->bv.sw_version = 0;
     int backup = arm_verbose;
-//    arm_verbose = 0;
+    arm_verbose = 0;
     uint16_t configregs[5];
     if (read_regs(arm, 1000, 5, configregs) == 5) {
         parse_version(&arm->bv, configregs);
@@ -403,7 +399,7 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
     int prev_addr = -1;
     int len = datalen;
     uint32_t address = start_address;
-    if (arm_verbose>1) printf("Starting to send at %x\n", start_address);
+    if (arm_verbose>1) printf("Starting to send %d byte at %x\n", datalen, start_address);
     while (len >= 0) {
         if (len >= ARM_PAGE_SIZE) {
             rx_result = firmware_op(arm, address, data + (address - start_address), ARM_PAGE_SIZE);
@@ -440,7 +436,6 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
         prev_addr = address;
         address = address + ARM_PAGE_SIZE;
     }
-    if (arm_verbose>1) printf("Finished sending at %x\n", address);
     return 0;
 }
 

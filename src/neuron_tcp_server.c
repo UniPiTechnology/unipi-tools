@@ -363,6 +363,7 @@ int main(int argc, char *argv[])
     struct epoll_event event;
     struct epoll_event *events;
     mb_event_data_t*  event_data;
+    uint32_t fwver;
 
      // Options
     int c;
@@ -457,7 +458,7 @@ int main(int argc, char *argv[])
             if (!(speed > 0)) speed = spi_speed[0];
             add_arm(nb_ctx, ai, dev, speed);
             if (nb_ctx->arm[ai] && do_check_fw) {
-                arm_firmware(nb_ctx->arm[ai], firmwaredir, FALSE);
+                arm_firmware(nb_ctx->arm[ai], firmwaredir);
             }
         }
     }
@@ -520,7 +521,7 @@ int main(int argc, char *argv[])
 
         if (deferred_op == DFR_OP_FIRMWARE) {
             deferred_op = DFR_NONE;
-            arm_firmware(deferred_arm, firmwaredir, FALSE);
+            arm_firmware(deferred_arm, firmwaredir);
         }
 
         int n, i;

@@ -5,6 +5,18 @@
  extern "C" {
 #endif
 
+/* Hardware constants */
+#define PAGE_SIZE   1024
+#define REG_SIZE    64
+
+#define MAX_FW_SIZE (64*PAGE_SIZE)
+#define MAX_RW_SIZE (PAGE_SIZE)
+#define MIN_FW_SIZE (2*PAGE_SIZE)
+#define MIN_RW_SIZE (8)
+
+#define RW_START_PAGE ((0xE000) / PAGE_SIZE)
+
+
 #define IS_CALIB(hw)  (((hw) & 0x8) != 0)
 #define HW_BOARD(hw)  ((hw) >> 8)
 #define HW_MAJOR(hw)  (((hw) & 0xf0) >> 4)
@@ -52,6 +64,11 @@ void print_upboards(int filter);
 int upboard_exists(int board);
 int check_compatibility(int hw_base, int upboard);
 int get_board_speed(Tboard_version* bv);
+
+char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext);
+uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir);
+uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen);
+
 Textension_map* get_extension_map(int board);
 
 

@@ -1,8 +1,4 @@
 
-
-
-
-//#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -10,24 +6,6 @@
 
 #include "armutil.h"
 
-/*
-const char* hwnames[HW_COUNT] = {
-    "B-1000-1",
-    "E-8Di8Ro-1",
-    "E-14Ro-1",
-    "E-16Di-1",
-    "E-8Di8Ro-1_P-11DiMb485",
-    "E-14Ro-1_P-11DiR485-1",
-    "E-16Di-1_P-11DiR485-1",
-    "E-14Ro-1_U-14Ro-1",
-    "E-16Di-1_U-14Ro-1",
-    "E-14Ro-1_U-14Di-1",
-    "E-16Di-1_U-14Di-1",
-    "E-4Ai4Ao-1",
-    "E-4Ai4Ao-1_P-6Di5Ro-1",
-    "B-485-1",
-};
-*/
 
 typedef struct {
   uint8_t board;
@@ -57,14 +35,6 @@ Textension_map extension_boards[] = {
 	{11, 12, "xS50-CAL"},
 	{12, 12, "xS50"}
 };
-
-/*char* base_boards[] {
-    {0, "B-1000"},
-    {1, "E-8Di8Ro"},
-    {2, "E-14Ro"},
-    {3, "E-16Di"},
-    {11,"E-4Ai4Ao"},
-};*/
 
 Textension_map* get_extension_map(int board) {
     int i;
@@ -231,4 +201,77 @@ int parse_version(Tboard_version* bv, uint16_t *r1000)
         }
     }
     if ((HW_BOARD(bv->base_hw_version) == 0x0b) && (HW_MAJOR(bv->base_hw_version) <= 1)) bv->int_mask_register = 0;   // 4Ai4Ao has not interrupt
+}
+
+/*******************
+ function checks if firmware in file is newer then firmware in Tboard_version
+    - file firmware version is written in last four bytes in .rw file
+    - return 0 or file firmware version
+*/
+uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir)
+{
+    FILE* fd;
+    char* fwname;
+    uint32_t fwver;
+    uint32_t ret = 0;
+
+    fwname = firmware_name(bv->hw_version, bv->base_hw_version, fwdir, ".rw");
+
+    if (fd = fopen(fwname, "rb")) {
+        if (fseek(fd, -4, SEEK_END) >= 0) {
+            if (fread(&fwver, 1, 4, fd) == 4) {
+                if (fwver & 0xff000000) fwver = fwver >> 16;
+                if (fwver > bv->sw_version) ret = fwver;
+            } 
+        }
+        fclose(fd);
+    }
+    free(fwname);
+    return ret;
+}
+
+
+/*******************
+ function load firmware file into new allocated memory
+    - rw (bool) if rw==0 load .bin file else load .rw file
+    - return pointer to new buffer containing data from file
+    - in case of error returns NULL
+    - in datalen is returned length of data
+*/
+
+uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen)
+{
+    FILE* fd;
+    char* fwname;
+    int red, i;
+    uint8_t* data;
+    size_t maxdatalen;
+
+    fwname = firmware_name(bv->hw_version, bv->base_hw_version, fwdir, rw ? ".rw" : ".bin" );
+
+    fd = fopen(fwname, "rb");
+    if (!fd) {
+        printf("LOAD_FW: Error opening firmware file \"%s\"\n", fwname);
+        free(fwname);
+        return NULL;
+    }
+    maxdatalen = rw ? MAX_RW_SIZE : MAX_FW_SIZE;
+    data = malloc(maxdatalen);
+    memset(data, 0xff, maxdatalen);
+
+    *datalen = fread(data, 1, maxdatalen, fd);
+    //printf("Bytes 58: %d,59: %d,60: %d,61: %d,62: %d,63: %d,64: %d\n", prog_data[58], prog_data[59], prog_data[60], prog_data[61], prog_data[62], prog_data[63]);
+
+    if (*datalen < (rw ? MIN_RW_SIZE : MIN_FW_SIZE)) {
+        if (*datalen < 0) {
+            printf("LOAD_FW: Error reading firmware file \"%s\"\n", fwname);
+        } else {
+            printf("LOAD_FW: Firmware file \"%s\" is short(%dB)\n", fwname, *datalen);
+        }
+        free(data);
+        data = NULL;
+    }
+    free(fwname);
+    fclose(fd);
+    return data;
 }

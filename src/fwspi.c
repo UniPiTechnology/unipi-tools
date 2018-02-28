@@ -191,15 +191,15 @@ int main(int argc, char **argv)
 		return 0;
     }
 
+    if (verbose > 0) arm_verbose = verbose;
     // Open port
     ctx = malloc(sizeof(arm_handle));
     if ( arm_init(ctx, PORT , BAUD, device_index) < 0) {
-        fprintf(stderr, "Unable to create the spi context\n");
+        fprintf(stderr, "Unable to create the arm[%d] context\n", device_index);
         free(ctx);
         return -1;
     }
 
-    if (verbose > 0) arm_verbose = verbose;
 
     // get FW & HW version
     uint16_t r1000[5];

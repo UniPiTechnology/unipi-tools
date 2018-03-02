@@ -119,46 +119,46 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 {
     uint16_t* pd;
     int ret, chunk, page;
-            // Programming
-            //modbus_set_response_timeout(ctx, 1, 0);
-            page = 0;
-            int errors = 0;
-            while (page < last_page) {
-                printf("Programming page %.2d ...", page);
-                fflush(stdout);
-                if (page < last_prog_page) {
-                    pd = (uint16_t*) (prog_data + page*PAGE_SIZE);
-                } else {
-                    pd = (uint16_t*) (rw_data + ((page-RW_START_PAGE)*PAGE_SIZE));
-                }
-                if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in Neuron
-                    for (chunk=0; chunk < 8; chunk++) {
-                    	int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
-                        if (retval == -1) { // send chunk of data (64*2 B)
-                            errors++;
-                        }
-                        fprintf(stderr, "Finished programming chunk %d, ret: %d err: %d\n", chunk, retval, errors);
-                        pd += REG_SIZE;
-                    }
-                    if (modbus_write_register(ctx, 0x7707, 1) == 1) {  // write page to flash
-                        printf("Page written OK.\n\n");
-                        page++;
-                        if (page == last_prog_page) {
-                            page = RW_START_PAGE;
-                        }
-                        //sleep(1);
-                    } else {
-                        errors++;
-                        printf(" Trying again.\n");
-                        fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
-                    }
-                } else {
-                    errors++;
-                    printf(" Trying again.\n");
-                }
-                if (errors > 200) break;
-            }
-    
+	// Programming
+	//modbus_set_response_timeout(ctx, 1, 0);
+	page = 0;
+	int errors = 0;
+	while (page < last_page) {
+		printf("Programming page %.2d ...", page);
+		fflush(stdout);
+		if (page < last_prog_page) {
+			pd = (uint16_t*) (prog_data + page*PAGE_SIZE);
+		} else {
+			pd = (uint16_t*) (rw_data + ((page-RW_START_PAGE)*PAGE_SIZE));
+		}
+		if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in Neuron
+			for (chunk=0; chunk < 8; chunk++) {
+				int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
+				if (retval == -1) { // send chunk of data (64*2 B)
+					errors++;
+				}
+				fprintf(stderr, "Finished programming chunk %d, ret: %d err: %d\n", chunk, retval, errors);
+				pd += REG_SIZE;
+			}
+			if (modbus_write_register(ctx, 0x7707, 1) == 1) {  // write page to flash
+				printf("Page written OK.\n\n");
+				page++;
+				if (page == last_prog_page) {
+					page = RW_START_PAGE;
+				}
+				//sleep(1);
+			} else {
+				errors++;
+				printf(" Trying again.\n");
+				fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
+			}
+		} else {
+			errors++;
+			printf(" Trying again.\n");
+		}
+		if (errors > 200) break;
+	}
+    return 0;
 }
 
 

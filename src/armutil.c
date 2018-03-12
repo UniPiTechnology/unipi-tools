@@ -1,7 +1,3 @@
-
-
-
-
 //#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -203,7 +199,7 @@ int upboard_exists(int board)
     return get_umap(board) != NULL;
 }
 
-int parse_version(Tboard_version* bv, uint16_t *r1000)
+void parse_version(Tboard_version* bv, uint16_t *r1000)
 {
     bv->sw_version = r1000[0];
     bv->hw_version = r1000[3];

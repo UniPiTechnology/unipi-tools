@@ -77,42 +77,41 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
 }
 
 
-int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_page, int last_page)
+void verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_page, int last_page)
 {
     uint16_t* pd;
     int ret, chunk, page;
     uint16_t val, reg;
-
-            //modbus_set_response_timeout(ctx, 2, 999999);
-            pd = (uint16_t*) prog_data;
-            for (page=0; page < last_page; page++) {
-                printf("Verifying page %.2d ...", page);
-                fflush(stdout);
-                if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in Neuron
-                    fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
-                    break;
-                }
-                for (chunk=0; chunk < 8; chunk++) {
-                    if (modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd) != REG_SIZE) {; // send chunk of data
-                        fprintf(stderr, "Sending data failed: %s\n", modbus_strerror(errno));
-                    }
-                    pd += REG_SIZE;
-                }
-                if (modbus_read_registers(ctx, 0x7707, 1, &val) == 1) {
-                    if (val == 0x100) {
-                        printf(" OK\n");
-                    } else {
-                        printf(" NOT OK. errors = %d.\n", 0x100-val);
-                    }
-                } else {
-                    fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
-                    break;
-                }
-                if (page == last_prog_page-1) {
-                    page = RW_START_PAGE-1;
-                    pd = (uint16_t*) rw_data;
-                }
-            }
+	//modbus_set_response_timeout(ctx, 2, 999999);
+	pd = (uint16_t*) prog_data;
+	for (page=0; page < last_page; page++) {
+		printf("Verifying page %.2d ...", page);
+		fflush(stdout);
+		if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in Neuron
+			fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
+			break;
+		}
+		for (chunk=0; chunk < 8; chunk++) {
+			if (modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd) != REG_SIZE) {; // send chunk of data
+				fprintf(stderr, "Sending data failed: %s\n", modbus_strerror(errno));
+			}
+			pd += REG_SIZE;
+		}
+		if (modbus_read_registers(ctx, 0x7707, 1, &val) == 1) {
+			if (val == 0x100) {
+				printf(" OK\n");
+			} else {
+				printf(" NOT OK. errors = %d.\n", 0x100-val);
+			}
+		} else {
+			fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
+			break;
+		}
+		if (page == last_prog_page-1) {
+			page = RW_START_PAGE-1;
+			pd = (uint16_t*) rw_data;
+		}
+	}
 }
 
 int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_page, int last_page)
@@ -203,7 +202,7 @@ int main(int argc, char **argv)
     uint16_t val, reg;
     modbus_t *ctx;
     FILE* fdx;
-    
+
     // Parse command line options
     int c;
     char *endptr;

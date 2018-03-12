@@ -139,6 +139,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
 	}
 	snprintf(output_string, sizeof(output_string), "Verification Passed!\n");
 	gtk_label_set_text(GTK_LABEL(output_label), output_string);
+	return 0;
 }
 
 int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_page, int last_page)
@@ -200,6 +201,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 	}
 	snprintf(output_string, sizeof(output_string), "Flashing Successful!! Power-cycle your target device");
 	gtk_label_set_text(GTK_LABEL(output_label), output_string);
+	return 0;
 }
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)

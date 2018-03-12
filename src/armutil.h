@@ -45,7 +45,7 @@ typedef struct {
 } Textension_map;
 #endif
 
-int parse_version(Tboard_version* bv, uint16_t *r1000);
+void parse_version(Tboard_version* bv, uint16_t *r1000);
 const char* arm_name(uint16_t hw_version);//int sw_version, int hw_version);
 char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext);
 void print_upboards(int filter);

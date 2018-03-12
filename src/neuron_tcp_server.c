@@ -39,7 +39,6 @@
 #include <sys/epoll.h>
 
 #include "armspi.h"
-#include "armpty.h"
 #include "nb_modbus.h"
 
 
@@ -582,7 +581,6 @@ int main(int argc, char *argv[])
                     }
                     if (rc == 0) { /* All data from buffer was sent */
                         buffer = event_data->wr_buffer;
-                        event_data->wr_buffer == buffer->next;
                         buffer->next = NULL;
                         repool_buffer(buffer);
                         if (event_data->wr_buffer == NULL) {

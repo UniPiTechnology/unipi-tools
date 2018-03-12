@@ -379,6 +379,7 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed, 
         free(arm);
         return -1;
     }
+    return 0;
 }
 
 
@@ -421,6 +422,7 @@ int arm_flash_file(void* fwctx, const char* fwname)
     } else {
         vprintf("Error opening firmware file %s\n", fwname);
     }
+    return 0;
 }
 
 
@@ -460,6 +462,7 @@ int arm_flash_rw_file(void* fwctx, const char* fwname, int overwrite, int n2000,
     } else {
         vprintf("Error opening nvram file %s\n", fwname);
     }
+    return 0;
 }
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
@@ -558,4 +561,5 @@ int arm_firmware(arm_handle* arm, const char* fwdir, int overwrite)
         if (read_regs(arm, 1000, 5, configregs) == 5)
             parse_version(&arm->bv, configregs);
     }
+    return 0;
 }

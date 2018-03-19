@@ -67,6 +67,10 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
     memset(char_package, 0, 10);
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 1;
+    if (arm->speed) {
+        char_package[4] = arm->speed >> 8;
+        char_package[5] = arm->speed & 0xff;
+    }
     char_package[7] = do_lock;
 
     char_package[10] = op;
@@ -128,6 +132,10 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     memcpy(char_package+16, &arm->tx2, tr_len2 + CRC_SIZE);
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 1;
+    if (arm->speed) {
+        char_package[4] = arm->speed >> 8;
+        char_package[5] = arm->speed & 0xff;
+    }
     char_package[6] = delay_usecs;
     *((uint16_t *)&char_package[1]) = reg;
 
@@ -288,6 +296,7 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
     arm->bv.sw_version = 0;
     int backup = arm_verbose;
     arm_verbose = 0;
+    arm->speed=speed / 1000;
     uint16_t configregs[5];
     if (read_regs(arm, 1000, 5, configregs) == 5) {
         parse_version(&arm->bv, configregs);

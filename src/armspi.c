@@ -120,6 +120,10 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
 {
     int ret;
     if (arm_verbose) printf("Neuron TCP Server: One Phase Op\n");
+    if (arm == NULL) {
+    	if (arm_verbose) printf("Invalid Arm Device\n");
+    	return -1;
+    }
     arm->tx1.op = op;
     arm->tx1.len = value;
     arm->tx1.reg = reg;

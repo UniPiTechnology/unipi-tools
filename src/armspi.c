@@ -63,6 +63,10 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
     int ret;
     uint32_t total = SIZEOF_HEADER + CRC_SIZE;
     uint8_t char_package[total + 10];
+    if (arm == NULL) {
+        if (arm_verbose>1) printf("Ph2-OP(%x): Invalid device (NULL)\n", op);
+    	return -1;
+    }
 
     memset(char_package, 0, 10);
     char_package[0] = (uint8_t)arm->index;

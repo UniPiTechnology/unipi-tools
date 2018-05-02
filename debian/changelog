@@ -1,0 +1,5 @@
+neuron-modbus-tools (1.0.0) unstable; urgency=medium
+
+  * Initial Release.
+
+ -- Miroslav Ondra <info@unipi.technology>  Thu, 29 Mar 2018 15:51:08 +0200

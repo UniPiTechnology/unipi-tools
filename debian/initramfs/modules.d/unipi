@@ -1,0 +1,16 @@
+# List of modules that you want to include in your initramfs.
+# They will be loaded at boot time in the order below.
+#
+# Syntax:  module_name [args ...]
+#
+# You must run update-initramfs(8) to effect this change.
+#
+# Examples:
+#
+# raid1
+# sd_mod
+i2c-bcm2835
+i2c:24c02
+i2c:24c01
+i2c:mcp7941x
+i2c-dev

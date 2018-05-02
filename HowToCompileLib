@@ -13,3 +13,14 @@ ac_cv_func_malloc_0_nonnull=yes ./configure --host=armv7 --enable-static --enabl
 make clean
 make
 cd ..
+
+PACKAGE BUILDING
+# REQ: 
+# dpkg --add-architecture  arm64
+# dpkg --add-architecture  armhf
+# apt-get update
+# apt-get install libc6:arm64 libc6:armhf
+# apt-get install linux-libc-dev:arm64 linux-libc-dev:armhf
+
+# dpkg-buildpackage --target-type=arm-linux-gnueabihf -t arm-linux-gnueabihf -aarmhf -uc -us -b
+# dpkg-buildpackage --target-type=aarch64-linux-gnu -t aarch64-linux-gnu -aarm64 -uc -us -b

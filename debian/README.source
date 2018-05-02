@@ -1,0 +1,21 @@
+neuron-modbus-tools for Debian
+-----------------------------
+
+# you need libmodbus min version 3.1.4
+
+
+# use it in case of cross compiling
+export CROSS_COMPILE=arm-linux-gnueabi-
+export CC=${CROSS_COMPILE}gcc
+
+git clone git://github.com/stephane/libmodbus
+cd libmodbus
+./autogen.sh
+ac_cv_func_malloc_0_nonnull=yes ./configure --host=armv7 --enable-static --enable-shared=n
+o --disable-tests
+make clean
+make
+cd ..
+
+ -- Miroslav Ondra <info@unipi.technology>  Thu, 29 Mar 2018 15:51:08 +0200
+

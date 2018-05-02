@@ -1,0 +1,15 @@
+[Unit]
+Description=Set default hostname on Neuron
+#After=local-fs.target
+Before=evok.service
+Before=mervisrt.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/neuron-bin/neuronhost unipi
+ExecStartPost=/bin/sh -c 'grep "`hostname`" /etc/hosts || echo "127.0.1.1  `hostname`" >> /etc/hosts || /bin/true'
+RemainAfterExit=yes
+
+[Install]
+#WantedBy=multi-user.target
+WantedBy=neuron.target

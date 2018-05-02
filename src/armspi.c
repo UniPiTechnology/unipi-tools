@@ -64,7 +64,7 @@ int one_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint8_t value, uint8
     uint32_t total = SIZEOF_HEADER + CRC_SIZE;
     uint8_t char_package[total + 10];
     if (arm == NULL) {
-        if (arm_verbose>1) printf("Ph2-OP(%x): Invalid device (NULL)\n", op);
+        if (arm_verbose>1) printf("Ph1-OP(%x): Invalid device (NULL)\n", op);
     	return -1;
     }
 
@@ -371,11 +371,12 @@ uint32_t firmware_op(arm_handle* arm, uint32_t address, uint8_t* tx_data, int tx
     }
 
     if (arm_verbose>1) printf("FW-OP recv len:%d: repl:%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x\n", sizeof(arm_comm_firmware), char_package[3], char_package[2], char_package[1], char_package[0], char_package[4], char_package[5], char_package[6], char_package[7], char_package[8], char_package[9], char_package[10]);
-    crc = SpiCrcString((uint8_t*)(char_package), sizeof(arm_comm_firmware), 0);// calculate crc INCLUDING crc
-    if (crc != 0) {
-    	if (arm_verbose) printf("FW-OP bad crc RET:%d CRC(0):%x \n", ret, crc);
-        return 0xffffffff;
-    }
+    // On Ai4Ao doesn't work crc
+    //crc = SpiCrcString((uint8_t*)(char_package), sizeof(arm_comm_firmware), 0);// calculate crc INCLUDING crc
+    //if (crc != 0) {
+    //	if (arm_verbose) printf("FW-OP bad crc RET:%d CRC(0):%x \n", ret, crc);
+    //    return 0xffffffff;
+    //}
     memcpy(&rx_result, char_package, sizeof(rx_result));				// result from last fw operation
     return rx_result;
 }

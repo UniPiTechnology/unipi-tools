@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Unipi/Neuron version
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'if [ -r /sys/class/i2c-dev/i2c-1/subsystem/i2c-1/device/1-0050/eeprom ]; then systemctl --no-block start unipi1.target ; elif [ -r /sys/class/i2c-dev/i2c-1/subsystem/i2c-1/device/1-0057/eeprom ]; then systemctl --no-block start neuron.target; fi'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

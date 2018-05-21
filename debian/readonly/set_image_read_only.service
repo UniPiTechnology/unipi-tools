@@ -1,0 +1,13 @@
+[Unit]
+Description=Switch rootfs and bootfs to readonly mode
+After=regenerate_ssh_host_keys.service regenerate_nginx_mervis_keys.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sh -c 'while systemctl -q is-enabled regenerate_ssh_host_keys.service; do sleep 5; done'
+ExecStartPre=/bin/sh -c 'while systemctl -q is-enabled regenerate_nginx_mervis_keys.service; do sleep 5; done'
+ExecStart=/usr/bin/remount ro --permanent
+ExecStartPost=/bin/sh -c 'remount rw; /bin/systemctl disable set_image_read_only.service; remount'
+
+[Install]
+WantedBy=multi-user.target

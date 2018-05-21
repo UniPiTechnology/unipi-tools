@@ -38,7 +38,8 @@ LIBDIRS += $(MODBUS_LIBDIR)
 DSTDIR = ../bin
 
 # List all user libraries here
-LIBS = util modbus
+#LIBS = util modbus
+LIBS = modbus
 
 #LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
 
@@ -86,7 +87,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 #
 # makefile rules
 #
-all: $(OBJS) $(DSTDIR)/neuron_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial
+all: $(DSTDIR)/neuron_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial $(DSTDIR)/neuronhost
 
 %.o: %.c
 	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
@@ -106,6 +107,10 @@ $(DSTDIR)/fwserial: fwserial.o armutil.o
 	$(CC) $+ $(LDFLAGS) -o $@
 	@chmod +x $@
 
+$(DSTDIR)/neuronhost:  neuronhost.o $(OBJS)
+	$(CC) neuronhost.o $(OBJS) $(LDFLAGS) -o $@
+	@chmod +x $@
+	
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
 win32_serial.o: win32_serial.c
@@ -134,7 +139,7 @@ fwserial:
 
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o
+	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o neuronhost.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex
@@ -146,4 +151,5 @@ clean:
 #install:
 #	mkdir -p $(DESTDIR)/opt/neurontcp
 #	install -m 0755 neuron_tcp_server $(DESTDIR)/opt/neurontcp
+
 # *** EOF ***

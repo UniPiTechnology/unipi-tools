@@ -1,0 +1,15 @@
+#! /usr/bin/dh-exec
+
+debian/systemd/unipicheck.service lib/systemd/system
+debian/systemd/neuron.target lib/systemd/system
+debian/systemd/unipi1.target lib/systemd/system
+debian/systemd/unipi.conf lib/systemd/system.conf.d
+debian/udev/* lib/udev/rules.d
+debian/initramfs/hooks/* etc/initramfs-tools/hooks
+debian/initramfs/scripts/* etc/initramfs-tools/scripts
+debian/initramfs/modules.d/* usr/share/initramfs-tools/modules.d
+debian/initramfs/postinst/* etc/kernel/postinst.d
+debian/overlays/* boot/overlays
+
+debian/readonly/remount usr/bin
+debian/readonly/set_image_read_only.service lib/systemd/system

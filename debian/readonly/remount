@@ -1,0 +1,129 @@
+#!/bin/bash
+
+
+function set_mode_fstab()
+{
+tmpname=`tempfile`
+cat /etc/fstab |  while read dev mountpoint type opts rest; do
+    if [ ${mountpoint} = "/" -o ${mountpoint} = "/boot" ]; then 
+    	opts=`echo ${opts} | sed 's/^r[ow],//;s/,r[ow],/,/;s/,r[ow]$//'`
+    	opts="${opts},$1"
+    fi
+    echo ${dev} ${mountpoint} ${type} ${opts} ${rest}
+done > ${tmpname}
+if ! grep -qe ' /tmp ' ${tmpname}; then echo "tmpfs /tmp tmpfs nodev,size=150m 0 0" >> ${tmpname}; fi
+chmod 644 ${tmpname}
+chown root:root ${tmpname}
+mv /etc/fstab /etc/fstab.$$
+mv ${tmpname} /etc/fstab
+rm /etc/fstab.$$
+}
+
+function set_mode_cmdline()
+{
+  tmpname=`tempfile`
+  sed 's/[[:blank:]]r[ow]$//;s/[[:blank:]]r[ow][[:blank:]]//;s/$/ '$1'/' /boot/cmdline.txt > ${tmpname}
+  mv /boot/cmdline.txt /boot/cmdline.$$
+  mv ${tmpname} /boot/cmdline.txt
+  rm /boot/cmdline.$$
+}
+
+function link_file()
+{
+    if [ ! -L "$1" ]; then
+       if [ -f "$1" ]; then
+           mkdir -p /var/lib/misc
+           fname=`basename "$1"`
+           mv "$1" /var/lib/misc
+           ln -s /var/lib/misc/${fname} /etc
+       fi
+    fi
+}
+
+function resolv_conf()
+{
+  tmpname=`tempfile`
+  grep -q -e '^resolv_conf=/var/lib/misc/resolv.conf' /etc/resolvconf.conf && return 0
+  (
+    sed 's/^[[:blank:]]*resolv_conf[[:blank:]]*=/#resolv_conf=/' /etc/resolvconf.conf
+    echo "# Read-only mode diverts resolv.conf to /var"
+    echo "resolv_conf=/var/lib/misc/resolv.conf"
+  ) > ${tmpname}
+  chmod 644 ${tmpname}
+  chown root:root ${tmpname}
+  mv /etc/resolvconf.conf /etc/resolvconf.$$
+  mv ${tmpname} /etc/resolvconf.conf
+  rm /etc/resolvconf.$$
+}
+
+function apt_cont()
+{
+  echo '
+DPkg::Pre-Invoke {"remount rw";};
+DPkg::Post-Invoke {"remount";};' > /etc/apt/apt.conf.d/10-remount
+}
+
+function help()
+{
+	echo "
+usage: "`basename $0`" [ro|rw] [--perm] [-p]
+           remount root and boot filesystem to default(onboot) mode
+    ro     mount root and boot filesystem read-only
+    rw     mount root and boot filesystem read-write
+    -p
+    --perm modify config files to set ro/rw mode permanent
+" >&2
+exit 1
+}
+
+function bad_fstab()
+{
+	echo "
+Your system is not properly configured for read-only mode.
+There must be /boot and /var mounted as separate filesystem.
+" >&2
+exit 1
+}
+
+while [ -n "$1" ]; do
+  case "$1" in
+		-p* | --perm*)
+			permanent=1
+			;;
+		ro | rw)
+			mode=$1
+			;;
+		*)
+			help
+			;;
+	esac
+	shift
+done
+
+mount | grep -q -e ' /boot ' || bad_fstab
+mount | grep -q -e ' /var '  || bad_fstab
+
+[ -z "${mode}" ] && {
+    mount / -o remount
+    mount /boot -o remount
+    exit 0
+}
+
+if [ "${permanent}" = 1 ]; then
+    mount / -o remount,rw
+    mount /boot -o remount,rw
+    set_mode_fstab ${mode}
+    set_mode_cmdline ${mode}
+    if [ "${mode}" = "ro" ]; then
+        link_file /etc/hosts
+        link_file /etc/fake-hwclock.data
+        link_file /etc/resolv.conf
+        resolv_conf
+        apt_cont
+    fi
+    mount / -o remount
+    mount /boot -o remount
+else
+    mount / -o remount,${mode}
+    mount /boot -o remount,${mode}
+fi

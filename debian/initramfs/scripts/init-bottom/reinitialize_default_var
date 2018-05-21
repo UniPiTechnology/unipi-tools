@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# Recreate f2fs filesystem on /dev/mmcblk0p3 
+# Reinitialize on new fs content of /var
+
+#rootmnt=/mnt/root
+
+[ -f ${rootmnt}/FACTORY_RESET ] || exit 0
+
+VARDEV=/dev/mmcblk0p3
+
+copy_fs () {
+  BASEMNT=/mnt
+  MNT=${BASEMNT}/var
+  mkdir -p ${MNT}
+  if mount ${VARDEV} -t ext4 ${MNT}; then
+    #cd /var
+    #tar c . | ( cd /mnt; tar x 2> reinit.log;)
+    cd ${BASEMNT}; tar xzf ${rootmnt}/var/init_var_data.tgz 2> ${MNT}/reinit.log
+    #r=$?
+    cd /
+    umount $MNT
+    return $?
+  fi
+  return 1
+}
+
+create_fs () {
+#  if /sbin/mkfs.f2fs ${VARDEV}; then
+  if /sbin/mke2fs -t ext4 -m 2 -F ${VARDEV}; then
+      if copy_fs; then
+        mount ${rootmnt} -o remount,rw
+        rm ${rootmnt}/FACTORY_RESET
+        mount ${rootmnt} -o remount,ro
+      fi
+  fi
+}
+
+
+create_fs
+
+## Create new ssh server keys
+#mount ${rootmnt} -o remount,rw
+#rm ${rootmnt}/etc/ssh/ssh_host_*_key*
+#dpkg-reconfigure openssh-server
+#mount ${rootmnt}/ -o remount,ro
+## create new certificate
+#openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -subj "/C=eu/CN=mervis" -keyout ${rootmnt}/etc/nginx/selfsigned.key -out ${rootmnt}/etc/nginx/selfsigned.crt
+

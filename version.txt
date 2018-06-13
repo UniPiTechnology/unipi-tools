@@ -1,0 +1,1 @@
+Repository:neuron-modbus-tools ActiveBranch:[master] PrecedingRevision:90(9f80632) LatestCommit:Tue May 22 16:28:50 CEST 2018

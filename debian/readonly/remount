@@ -21,11 +21,11 @@ rm /etc/fstab.$$
 
 function set_mode_cmdline()
 {
-  tmpname=`tempfile`
-  sed 's/[[:blank:]]r[ow]$//;s/[[:blank:]]r[ow][[:blank:]]//;s/$/ '$1'/' /boot/cmdline.txt > ${tmpname}
-  mv /boot/cmdline.txt /boot/cmdline.$$
-  mv ${tmpname} /boot/cmdline.txt
-  rm /boot/cmdline.$$
+    tmpname=`tempfile`
+    sed 's/[[:blank:]]r[ow]$//;s/[[:blank:]]r[ow][[:blank:]]//;s/$/ '$1'/' /boot/cmdline.txt > ${tmpname}
+    mv /boot/cmdline.txt /boot/cmdline.$$
+    mv ${tmpname} /boot/cmdline.txt
+    rm /boot/cmdline.$$
 }
 
 function link_file()
@@ -42,18 +42,21 @@ function link_file()
 
 function resolv_conf()
 {
-  tmpname=`tempfile`
-  grep -q -e '^resolv_conf=/var/lib/misc/resolv.conf' /etc/resolvconf.conf && return 0
-  (
-    sed 's/^[[:blank:]]*resolv_conf[[:blank:]]*=/#resolv_conf=/' /etc/resolvconf.conf
-    echo "# Read-only mode diverts resolv.conf to /var"
-    echo "resolv_conf=/var/lib/misc/resolv.conf"
-  ) > ${tmpname}
-  chmod 644 ${tmpname}
-  chown root:root ${tmpname}
-  mv /etc/resolvconf.conf /etc/resolvconf.$$
-  mv ${tmpname} /etc/resolvconf.conf
-  rm /etc/resolvconf.$$
+
+  if ! [ "$(readlink /etc/resolv.conf)" = /etc/resolvconf/run/resolv.conf ]; then
+    tmpname=`tempfile`
+    grep -q -e '^resolv_conf=/var/lib/misc/resolv.conf' /etc/resolvconf.conf && return 0
+    (
+      sed 's/^[[:blank:]]*resolv_conf[[:blank:]]*=/#resolv_conf=/' /etc/resolvconf.conf
+      echo "# Read-only mode diverts resolv.conf to /var"
+      echo "resolv_conf=/var/lib/misc/resolv.conf"
+    ) > ${tmpname}
+    chmod 644 ${tmpname}
+    chown root:root ${tmpname}
+    mv /etc/resolvconf.conf /etc/resolvconf.$$
+    mv ${tmpname} /etc/resolvconf.conf
+    rm /etc/resolvconf.$$
+  fi
 }
 
 function apt_cont()

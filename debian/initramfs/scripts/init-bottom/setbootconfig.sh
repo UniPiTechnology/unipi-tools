@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# exit if Axon platform
+grep -q 'Hardware[[:blank:]]*:[[:blank:]]*BCM' /proc/cpuinfo || exit 0
+
 [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c01@57 ] && NEURONEE=1
 [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c02@50 ] && UNIPIEE=1
 [ -d /sys/firmware/devicetree/base/soc/spi@7e204000/neuronspi@0 ] && NEURONDRV=1
@@ -22,7 +25,7 @@ if [ -n "$I2C" -a -n "$NEURONEE" -a -n "$UNIPIEE" ]; then
 fi
 
 ##mount boot
-mkdir /tmp/boot
+mkdir -p /tmp/boot
 mount /dev/mmcblk0p1 /tmp/boot
 (
 #[ "`tail -c1 /tmp/boot/config.txt`" != "" ] && echo ""
@@ -43,6 +46,8 @@ mv /tmp/boot/config.new /tmp/boot/config.txt
 
 ## umount boot
 umount /tmp/boot
+rmdir  /tmp/boot
 sync
 ## reboot
 [ -z "$1" ] && reboot -f -n
+exit 0

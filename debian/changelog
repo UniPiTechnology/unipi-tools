@@ -1,3 +1,16 @@
+neuron-modbus-tools (1.1.1) UNRELEASED; urgency=medium
+
+  * fixed setbootconfig script
+  * add more names in neuronhost calling (unipi and raspberry)
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Wed, 13 Jun 2018 21:25:53 +0200
+
+neuron-modbus-tools (1.1.0) unstable; urgency=medium
+
+  * add support for Axon with H5  processor
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Wed, 13 Jun 2018 21:21:41 +0200
+
 neuron-modbus-tools (1.0.1) unstable; urgency=medium
 
   * add /usr/bin/remount to switching ro/rw image mode

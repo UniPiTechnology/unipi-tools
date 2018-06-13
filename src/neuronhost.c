@@ -20,19 +20,30 @@ int main(int argc, char** argv)
 {
    int res;
    int do_set = 0;
+   int i;
    unipiversion ver;
    char hostname[256];
 
    if (argc > 1) {
       if (gethostname(hostname, sizeof(hostname))) return 1;
       //printf("%s\n", hostname);
-      if (strcmp(hostname, argv[1]) != 0) return 0;
-      do_set = 1;
+      i = 1;
+      while (i < argc) {
+          if (strcmp(hostname, argv[i]) == 0) {
+              do_set = 1;
+              break;
+          }
+          i++;
+      }
+      if (do_set == 0) return 0;
    }
 
-   int f = open("/sys/class/i2c-adapter/i2c-1/1-0057/eeprom", O_RDONLY);
+   int f = open("/sys/bus/i2c/devices/1-0057/eeprom", O_RDONLY);
    if (f < 0) {
-      return 1;
+      f = open("/sys/bus/i2c/devices/0-0057/eeprom", O_RDONLY);
+      if (f < 0) {
+         return 1;
+      }
    }
    res = lseek(f, 0x60, 0);
    if (res < 0) goto err;

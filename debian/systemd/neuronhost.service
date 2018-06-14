@@ -6,7 +6,7 @@ Before=mervisrt.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/neuron-bin/neuronhost unipi raspberry
+ExecStart=/opt/neuron-bin/neuronhost unipi raspberrypi raspberry
 ExecStartPost=/bin/sh -c 'grep "`hostname`" /etc/hosts || echo "127.0.1.1  `hostname`" >> /etc/hosts || /bin/true'
 RemainAfterExit=yes
 

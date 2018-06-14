@@ -5,6 +5,7 @@ grep -q 'Hardware[[:blank:]]*:[[:blank:]]*BCM' /proc/cpuinfo || exit 0
 
 [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c01@57 ] && NEURONEE=1
 [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c02@50 ] && UNIPIEE=1
+[ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/mcp7941x@6f ] && RTC=1
 [ -d /sys/firmware/devicetree/base/soc/spi@7e204000/neuronspi@0 ] && NEURONDRV=1
 grep -q okay /sys/firmware/devicetree/base/soc/spi@7e204000/status && SPI=1
 grep -q okay /sys/firmware/devicetree/base/soc/i2c@7e804000/status && I2C=1
@@ -31,6 +32,7 @@ mount /dev/mmcblk0p1 /tmp/boot
 #[ "`tail -c1 /tmp/boot/config.txt`" != "" ] && echo ""
 [ -z "$I2C" ] && echo "dtparam=i2c_arm=on"
 [ -z "$NEURONEE" ] && echo "dtoverlay=neuronee"
+[ -z "$RTC" ] && echo "dtoverlay=i2c-rtc,mcp7941x"
 [ -z "$UNIPIEE" ] && echo "dtoverlay=unipiee"
 if [ -n "$IS_UNIPI1" ]; then
   sed 's/^[[:blank:]]*\(dtoverlay[[:blank:]]*=[[:blank:]]*neuron-spi-new\)/#\1/' /tmp/boot/config.txt

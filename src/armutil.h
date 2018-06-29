@@ -5,6 +5,10 @@
  extern "C" {
 #endif
 
+#define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
+#define vvprintf( ... ) if (verbose > 1) printf( __VA_ARGS__ )
+extern int verbose;
+
 /* Hardware constants */
 #define PAGE_SIZE   1024
 #define REG_SIZE    64

@@ -1,9 +1,16 @@
-neuron-modbus-tools (1.1.1) UNRELEASED; urgency=medium
+neuron-modbus-tools (1.1.2) unstable; urgency=medium
+
+  * add virtual registers 3000-3005 for float AO AI on brains
+  * fixed verbose logging
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Fri, 29 Jun 2018 12:25:53 +0200
+
+neuron-modbus-tools (1.1.1) unstable; urgency=medium
 
   * fixed setbootconfig script
   * add more names in neuronhost calling (unipi and raspberry)
 
- -- Miroslav Ondra <bokula@bokula.faster.cz>  Wed, 13 Jun 2018 21:25:53 +0200
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Thu, 14 Jun 2018 08:46:06 +0200
 
 neuron-modbus-tools (1.1.0) unstable; urgency=medium
 

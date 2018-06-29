@@ -6,6 +6,7 @@
 
 #include "armutil.h"
 
+int verbose = 0;
 
 typedef struct {
   uint8_t board;
@@ -33,7 +34,8 @@ Textension_map extension_boards[] = {
 	{5, 5, "xS40"},
 	{6, 6, "xS30"},
 	{11, 12, "xS50-CAL"},
-	{12, 12, "xS50"}
+	{12, 12, "xS50"},
+	{16, 16, "X-1Ir"}
 };
 
 Textension_map* get_extension_map(int board) {
@@ -57,7 +59,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 16
+#define HW_COUNT 17
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -75,6 +77,7 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {13, 0,13, "B-485"},
     {14, 14,0, "E-4Light"},
     {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
+    {16, 16,0, "X-1Ir"},
 };
 
 Tcompatibility_map* get_map(int board)

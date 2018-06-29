@@ -39,7 +39,7 @@ DSTDIR = ../bin
 
 # List all user libraries here
 #LIBS = util modbus
-LIBS = modbus
+LIBS = modbus m
 
 #LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
 
@@ -66,7 +66,7 @@ endif
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
-SRC = $(SPISRC) nb_modbus.c
+SRC = $(SPISRC) nb_modbus.c virtual_regs.c
 
  
 # Define optimisation level here
@@ -139,7 +139,7 @@ fwserial:
 
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o neuronhost.o
+	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o neuronhost.o  virtual_regs.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex

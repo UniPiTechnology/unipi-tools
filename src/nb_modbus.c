@@ -25,18 +25,16 @@
 #include "nb_modbus.h"
 #include "armspi.h"
 #include "armutil.h"
+#include "virtual_regs.h"
 
 #include <modbus-version.h>
 #if LIBMODBUS_VERSION_CHECK(3,1,4) != 1
 //Library_error "YOU NEED libmodbus version min 3.1.4"
 #endif
 
-int verbose = 0;
 int deferred_op = DFR_NONE;
 arm_handle*  deferred_arm;
 
-#define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
-#define vvprintf( ... ) if (verbose > 1) printf( __VA_ARGS__ )
 
 /* Internal use */
 #define MSG_LENGTH_UNDEFINED -1
@@ -65,7 +63,7 @@ static int nb_response_exception(modbus_t *ctx, int exception_code, uint8_t *rsp
         va_list ap;
 
         va_start(ap, template);
-        vfprintf(stderr, template, ap);
+        vfprintf(stderr, template, ap);                
         va_end(ap);
     }
     //int offset = ctx->backend->header_length;
@@ -96,6 +94,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     int offset;
     int slave;
     int function;
+    int n;
     uint16_t address;
     uint8_t* rsp = req;
     arm_handle* arm;
@@ -114,6 +113,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     }
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
+
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;
     if (slave == 0) {
         if (address < 1000) {
@@ -169,6 +169,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     case MODBUS_FC_READ_HOLDING_REGISTERS:
     case MODBUS_FC_READ_INPUT_REGISTERS: {
         int nb = (req[offset + 3] << 8) + req[offset + 4];
+ 
         if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
             rsp_length = nb_response_exception(
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, 
@@ -178,7 +179,12 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             uint8_t c;
 
             rsp[rsp_length++] = nb << 1;
-            int n = read_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
+            if ((address >= 3000) && (address < 4000)) {
+                printf("reg %d count %d\n", address, nb);
+                n = read_virtual_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
+            } else {
+                n = read_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
+            }
             if (n == nb) {
                 for (i = address; i < address + nb; i++) {
                     c = rsp[rsp_length++];
@@ -188,11 +194,11 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             } else if (n < 0) {
             	rsp_length = nb_response_exception(
                         nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                        "Illegal data value 0x%0X in read_bits\n", address);
+                        "Illegal data value 0x%0X in read_registers\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
-                    "Illegal data address 0x%0X in read_register\n", address);
+                    "Illegal data address 0x%0X in read_registers\n", address);
             }
         }
         break;
@@ -205,7 +211,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, FALSE,
                 "Illegal data value 0x%0X in write_bit request at address %0X\n", data, address);
         } else {
-            int n;
+            n;
             if (address == 1004) { // exception for firmware
                 //arm_firmware(arm, nb_ctx->fwdir, data ? 1 : 0);
                 deferred_op = DFR_OP_FIRMWARE;
@@ -218,11 +224,11 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             } else if (n < 0) {
             	rsp_length = nb_response_exception(
                         nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                        "Illegal data value 0x%0X in read_bits\n", address);
+                        "Illegal data value 0x%0X in write_coil\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                    "Illegal data address 0x%0X in write_bit\n", address);
+                    "Illegal data address 0x%0X in write_coil\n", address);
             }
         }
         break;
@@ -230,13 +236,20 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     case MODBUS_FC_WRITE_SINGLE_REGISTER: {
         uint16_t data = (req[offset + 3] << 8) + req[offset + 4];
 
-        int n = write_regs(arm, address, 1, &data);
+        if ((address >= 3000) && (address < 4000)) {
+            n = write_virtual_regs(arm, address, 1, &data);
+        } else {
+            n = write_regs(arm, address, 1, &data);
+        }
         if (n == 1) {
             rsp_length += 4; // = req_length;
+            if ((address == 1019) || (address==1024)) {    // monitoring register changes
+                monitor_virtual_regs(arm, address, &data); 
+            }
         } else if (n < 0) {
         	rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                    "Illegal data value 0x%0X in read_bits\n", address);
+                    "Illegal data value 0x%0X in write_single_register\n", address);
         } else {
             rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
@@ -254,17 +267,17 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
         } else if (address < 0 ) {
         } else {
             /* 6 = byte count */
-            int n = write_bits(arm, address, nb, rsp+rsp_length + 5);
+            n = write_bits(arm, address, nb, rsp+rsp_length + 5);
             if ( n == nb ) {
                 rsp_length += 4;
             } else if (n < 0) {
             	rsp_length = nb_response_exception(
                         nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                        "Illegal data value 0x%0X in read_bits\n", address);
+                        "Illegal data value 0x%0X in write_coils\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
-                    "Illegal data address 0x%0X in write_bits\n",  address);
+                    "Illegal data address 0x%0X in write_coils\n",  address);
             }
         }
     }
@@ -286,8 +299,18 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                 rsp[j+1] = c;
             }
 
-            int n = write_regs(arm, address, nb, (uint16_t*)(rsp + rsp_length + 5));
+            if ((address >= 3000) && (address < 4000)) {
+                n = write_virtual_regs(arm, address, nb, (uint16_t*)(rsp + rsp_length + 5));
+            } else {
+                n = write_regs(arm, address, nb, (uint16_t*)(rsp + rsp_length + 5));
+            }
             if (n == nb) {
+                if ((address <= 1019)&&(address+nb>1019)) {
+                    monitor_virtual_regs(arm, 1019, (uint16_t*)(rsp + rsp_length + 5 + (1019-address))); // monitoring register changes
+                }
+                if ((address <= 1024)&&(address+nb>1024)) {
+                    monitor_virtual_regs(arm, 1024, (uint16_t*)(rsp + rsp_length + 5 + (1024-address))); // monitoring register changes
+                }
                 rsp_length += 4; // = req_length;
             } else if (n < 0) {
             	rsp_length = nb_response_exception(

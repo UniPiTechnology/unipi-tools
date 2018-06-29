@@ -38,7 +38,7 @@ char* firmwaredir = "./fw";
 char* firmwaredir = "/opt/fw";
 #endif
 int upboard;
-int verbose = 0;
+//int verbose = 0;
 int do_verify = 0;
 int do_prog   = 0;
 int do_resetrw= 0;

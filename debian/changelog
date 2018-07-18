@@ -1,3 +1,9 @@
+neuron-modbus-tools (1.1.3) unstable; urgency=medium
+
+  * changed using board hw version, try using base_hw_version, the hw_ver
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Thu, 12 Jul 2018 14:34:33 +0200
+
 neuron-modbus-tools (1.1.2) unstable; urgency=medium
 
   * add virtual registers 3000-3005 for float AO AI on brains

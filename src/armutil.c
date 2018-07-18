@@ -18,12 +18,12 @@ typedef struct {
 #define UP_COUNT 7
 Tboards_map up_boards[] = {
     {0, 0, ""},
-    {1, 16, "P-11DiR485"},
-    {2, 16, "U-14Ro"},
-    {3, 16, "U-14Di"},
-    {4, 16, "P-6Di5Ro"},
-    {5, 16, "U-6Di5Ro"},
-    {13,16, "B-485"},
+    {1, 16, "P-11DiR485-1"},
+    {2, 16, "U-14Ro-1"},
+    {3, 16, "U-14Di-1"},
+    {4, 16, "P-6Di5Ro-1"},
+    {5, 16, "U-6Di5Ro-1"},
+    {13,16, "B-485-1"},
 };
 
 Textension_map extension_boards[] = {
@@ -104,24 +104,26 @@ const char* arm_name(uint16_t hw_version)
     return map->name;
 }
 
-char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext)
+char* _firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext, int use_base_revision)
 {
     uint8_t calibrate = IS_CALIB(hw_version);
     uint8_t board_version = HW_MAJOR(hw_version);
+    uint8_t used_board_version = use_base_revision ? HW_MAJOR(hw_base) : board_version;
     Tcompatibility_map* map = get_map(HW_BOARD(hw_version));
     if (map  == NULL) return NULL;
+    
     if (map->baseboard == map->board) {
         const char* armname = map->name;
         char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, board_version, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_version, calibrate?"C":"", ext);
         return fwname;
 
     } else {
         Tcompatibility_map* basemap = get_map(HW_BOARD(hw_base));
         if (basemap == NULL) return NULL;
-        uint8_t base_version = HW_MAJOR(hw_base);
+        //uint8_t base_version = HW_MAJOR(hw_base);
         if (basemap->board != map->baseboard) {
             // Incorrent parameters
             return NULL;
@@ -132,9 +134,22 @@ char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* 
         char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d_%s-%d%s%s", basename, base_version, uname, board_version, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_version, uname, calibrate?"C":"", ext);
         return fwname;
     }
+}
+
+
+char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext)
+{
+	char * fname = _firmware_name(hw_version, hw_base, fwdir, ext, 1);
+    FILE* fd = fopen(fname, "r");
+    if (fd != NULL) {
+        fclose(fd);
+        return fname;
+    }
+    free(fname);
+	return _firmware_name(hw_version, hw_base, fwdir, ext, 0);
 }
 
 int check_compatibility(int hw_base, int upboard)

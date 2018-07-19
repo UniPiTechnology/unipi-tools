@@ -1,5 +1,5 @@
 [Unit]
-Description=Unipi Neuron Modbus/Tcp Server
+Description=Unipi Neuron/Axon Modbus/Tcp Server
 Before=mervisrt.service
 Before=evok.service
 

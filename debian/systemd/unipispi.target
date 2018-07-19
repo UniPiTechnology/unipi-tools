@@ -1,3 +1,3 @@
 [Unit]
-Description=Neuron Target
+Description=Neuron/Axon Target
 After=basic.target

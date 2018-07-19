@@ -1,5 +1,5 @@
 /*
- * SPI communication with UniPi Neuron family controllers
+ * SPI communication with UniPi Neuron and Axon families of controllers
  *
  * using epoll pattern 
  *
@@ -47,7 +47,9 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-char* spi_devices[MAX_ARMS] = {"/dev/neuronspi","/dev/neuronspi","/dev/neuronspi"};
+const char* version_string = "Repo:unipi-modbus-tools Release:1.1.4";
+
+char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/fw";
@@ -284,6 +286,7 @@ static struct option long_options[] = {
   {"fwdir", required_argument, 0, 'f'},
   {"check-firmware", no_argument,0, 'c'},
   {"broadcast-address", required_argument, 0, 'a'},
+  {"info", no_argument, 0, 'i'},
   {0, 0, 0, 0}
 };
 
@@ -369,7 +372,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdcl:p:t:s:b:f:n:a:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdicl:p:t:s:b:f:n:a:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -437,6 +440,10 @@ int main(int argc, char *argv[])
     		   exit(EXIT_FAILURE);
     	   }
     	   break;
+       case 'i':
+    	   printf("Version: %s\n", version_string);
+    	   exit(EXIT_FAILURE);
+    	   break;
        default:
            print_usage(argv[0]);
            exit(EXIT_FAILURE);
@@ -464,7 +471,7 @@ int main(int argc, char *argv[])
     }
 
     server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
-    printf("Neuron TCP Listen Connection Established RET:%d\n", server_socket);
+    printf("UniPi TCP Modbus Server: Listening Connection Established RET:%d\n", server_socket);
     if (server_socket == -1) {
         perror ("modbus_tcp_listen");
         abort ();

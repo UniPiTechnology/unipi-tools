@@ -5,8 +5,8 @@
  *      Author: Tom Knot <knot@faster.cz>
  */
 
-#ifndef NEURON_TCP_SERVER_WIN32_SERIAL_H_
-#define NEURON_TCP_SERVER_WIN32_SERIAL_H_
+#ifndef UNIPI_TCP_SERVER_WIN32_SERIAL_H_
+#define UNIPI_TCP_SERVER_WIN32_SERIAL_H_
 
 
 

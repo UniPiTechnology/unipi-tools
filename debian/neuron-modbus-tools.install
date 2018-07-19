@@ -1,6 +1,5 @@
 #! /usr/bin/dh-exec
 
-
-debian/systemd/neurontcp.service lib/systemd/system
-debian/systemd/neuronhost.service lib/systemd/system
+debian/systemd/unipitcp.service lib/systemd/system
+debian/systemd/unipihost.service lib/systemd/system
 debian/tmp/opt/*	opt

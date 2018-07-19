@@ -1,7 +1,7 @@
 #! /usr/bin/dh-exec
 
 debian/systemd/unipicheck.service lib/systemd/system
-debian/systemd/neuron.target lib/systemd/system
+debian/systemd/unipispi.target lib/systemd/system
 debian/systemd/unipi1.target lib/systemd/system
 debian/systemd/unipi.conf lib/systemd/system.conf.d
 debian/udev/* lib/udev/rules.d

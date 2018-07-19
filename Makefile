@@ -1,5 +1,5 @@
 
-BINFILES = neuron_tcp_server fwspi fwserial neuronhost
+BINFILES = unipi_tcp_server fwspi fwserial unipihost
 #ETCFILES = dnsmasq.conf  hostapd.conf  interfaces  
 #SYSFILES = neurontcp.service neuronhost.service
 INSTALL=install
@@ -34,8 +34,8 @@ clean:
 	cd src; make clean; cd ..
 
 install-bin:	$(BINPATH)
-	@$(INSTALL) -d $(DESTDIR)/opt/neuron-bin
-	@cp $(BINPATH) $(DESTDIR)/opt/neuron-bin
+	@$(INSTALL) -d $(DESTDIR)/opt/unipi-bin
+	@cp $(BINPATH) $(DESTDIR)/opt/unipi-bin
 
 #install-etc:	$(ETCPATH)
 #	@$(INSTALL) -d $(DESTDIR)/opt/unipiap/etc

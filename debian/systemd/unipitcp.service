@@ -1,0 +1,20 @@
+[Unit]
+Description=Unipi Neuron Modbus/Tcp Server
+Before=mervisrt.service
+Before=evok.service
+
+[Service]
+Type=simple
+Environment="FIRMWARE_UPDATE=1"
+EnvironmentFile=-/etc/default/unipi-modbus-tools
+ExecStartPre=/bin/sh -c 'if [ "${FIRMWARE_UPDATE}" = "1" ]; then /opt/unipi-bin/fwspi --auto; fi'
+ExecStart=/opt/unipi-bin/unipi_tcp_server -p 502
+TimeoutStopSec=3
+SyslogLevel=debug
+SyslogIdentifier=unipi
+WorkingDirectory=/opt/unipi-bin
+
+Restart=always
+
+[Install]
+WantedBy=unipispi.target

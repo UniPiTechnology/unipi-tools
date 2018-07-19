@@ -1,8 +1,8 @@
 unipi-modbus-tools (1.1.4) unstable; urgency=medium
 
- * changed the system to conform to the new UniPi naming scheme
- 
- -- Tomas Knot <knot@unipi.technology>  Thu, 19 Jul 2018 11:50:00 + 0200
+  * changed the system to conform to the new UniPi naming scheme
+
+ -- Tomas Knot <knot@unipi.technology>  Thu, 19 Jul 2018 11:16:41 +0200
 
 neuron-modbus-tools (1.1.3) unstable; urgency=medium
 

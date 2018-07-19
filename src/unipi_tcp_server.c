@@ -47,7 +47,7 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-const char* version_string = "Repo:unipi-modbus-tools Release:1.1.4";
+const char* version_string = "Version 1.14:2018:07:19";
 
 char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};

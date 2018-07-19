@@ -6,8 +6,8 @@ Uploaders: Tomas Knot <knot@unipi.technology>
 Build-Depends: debhelper (>= 9)
 Standards-Version: 3.9.8
 Homepage: http://www.unipi.technology
-Vcs-Git: http://git.unipi.technology:3000/UniPi/unipi-modbus-tools/unipi-modbus-tools.git
-Vcs-Browser: http://git.unipi.technology:3000/UniPi/unipi-modbus-tools/
+Vcs-Git: http://git.unipi.technology/UniPi/unipi-modbus-tools/unipi-modbus-tools.git
+Vcs-Browser: http://git.unipi.technology/UniPi/unipi-modbus-tools/
 
 Package: unipi-common
 Architecture: any
@@ -17,9 +17,16 @@ Description: Common utilities for Unipi/Neuron/Axon
 
 Package: unipi-modbus-tools
 Architecture: any
-Replaces: neuron-modbus-tools
-Breaks: neuron-modbus-tools
 Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-common
-Description: Modbus server for UniPi Neuron controllers. Firmware utility.
+Replaces: neuron-modbus-tools (<= 1.1.3)
+Breaks: neuron-modbus-tools (<= 1.1.3)
+Provides: neuron-modbus-tools
+Description: Modbus server for UniPi Neuron/Axon controllers. Firmware utility.
  Modbus server for UniPi Neuron controllers. Firmware utility.
+
+Package: neuron-modbus-tools
+Architecture: all
+Depends: unipi-modbus-tools
+Description: transitional package
+ This is a transitional package. It can safely be removed.
 

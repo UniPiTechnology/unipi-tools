@@ -1,6 +1,10 @@
-The Debian Package neuron-modbus-tools
+The Debian Package unipi-modbus-tools
 ----------------------------
 
 Comments regarding the Package
+
+This package has been created as a replacement for the neuron-modbus-tools package
+
+ -- Tomas Knot <into@unipi.technology> Thu, 19 Jul 2018 11:52:26 +0200
 
  -- Miroslav Ondra <info@unipi.technology>  Thu, 29 Mar 2018 15:51:08 +0200

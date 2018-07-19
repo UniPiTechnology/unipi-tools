@@ -1,6 +1,6 @@
-# Defaults for neuron-modbus-tools initscript
-# sourced by /etc/init.d/neuron-modbus-tools
-# installed at /etc/default/neuron-modbus-tools by the maintainer scripts
+# Defaults for unipi-modbus-tools initscript
+# sourced by /etc/init.d/unipi-modbus-tools
+# installed at /etc/default/unipi-modbus-tools by the maintainer scripts
 
 #
 # This is a POSIX shell fragment

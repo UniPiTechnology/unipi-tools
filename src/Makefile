@@ -87,13 +87,13 @@ LDFLAGS = $(LIBDIR) $(LIB)
 #
 # makefile rules
 #
-all: $(DSTDIR)/neuron_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial $(DSTDIR)/neuronhost
+all: $(DSTDIR)/unipi_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial $(DSTDIR)/unipihost
 
 %.o: %.c
 	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
 
-$(DSTDIR)/neuron_tcp_server: neuron_tcp_server.o $(OBJS) 
-	$(CC) neuron_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
+$(DSTDIR)/unipi_tcp_server: unipi_tcp_server.o $(OBJS) 
+	$(CC) unipi_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 
 $(DSTDIR)/fwspi:  fwspi.o $(OBJS)
@@ -107,8 +107,8 @@ $(DSTDIR)/fwserial: fwserial.o armutil.o
 	$(CC) $+ $(LDFLAGS) -o $@
 	@chmod +x $@
 
-$(DSTDIR)/neuronhost:  neuronhost.o $(OBJS)
-	$(CC) neuronhost.o $(OBJS) $(LDFLAGS) -o $@
+$(DSTDIR)/unipihost:  unipihost.o $(OBJS)
+	$(CC) unipihost.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 	
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
@@ -123,9 +123,9 @@ endif
 bandwidth-client: bandwidth-client.o
 	$(CC) bandwidth-client.o $(LDFLAGS) -o $@
 
-.PHONY: fwspi neuron_tcp_server fwserial
+.PHONY: fwspi unipi_tcp_server fwserial
 
-neuron_tcp_server:
+unipi_tcp_server:
 	@rm -f $(DSTDIR)/$@
 	$(MAKE) $(DSTDIR)/$@
 
@@ -139,7 +139,7 @@ fwserial:
 
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) neuron_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o neuronhost.o  virtual_regs.o
+	-rm -rf $(OBJS) $(SPIOBJS) unipi_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o unipihost.o virtual_regs.o
 	-rm -rf $(PROJECT).elf
 	-rm -rf $(PROJECT).map
 	-rm -rf $(PROJECT).hex

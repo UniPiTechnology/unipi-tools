@@ -88,7 +88,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
             for (page=0; page < last_page; page++) {
                 printf("Verifying page %.2d ...", page);
                 fflush(stdout);
-                if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in Neuron
+                if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in the target device
                     fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
                     break;
                 }
@@ -131,7 +131,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
                 } else {
                     pd = (uint16_t*) (rw_data + ((page-RW_START_PAGE)*PAGE_SIZE));
                 }
-                if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in Neuron
+                if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in the target device
                     for (chunk=0; chunk < 8; chunk++) {
                     	int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
                         if (retval == -1) { // send chunk of data (64*2 B)
@@ -178,7 +178,7 @@ static struct option long_options[] = {
 
 void print_usage(char *argv0)
 {
-    printf("\nUtility for Programming Neuron via ModBus RTU\n");
+    printf("\nUtility for Programming UniPi devices via ModBus RTU\n");
     printf("%s [-vVPRC] -p <port> [-u <mb address>] [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
     printf("\n");
     printf("--port <port>\t\t /dev/extcomm/1/0 or COM3\n");

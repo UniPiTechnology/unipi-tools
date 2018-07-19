@@ -107,7 +107,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
 		if (page > 0) printf("TO RECOVER POWER-CYCLE YOUR TARGET DEVICE\n");
 		printf("Verifying page %.2d out of %.2d ...", page + 1, last_page);
 		fflush(stdout);
-		if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in Neuron
+		if (modbus_write_register(ctx, 0x7705, page) != 1) {   // set page address in the target device
 			fprintf(stderr, "Verifying failed: %s\n", modbus_strerror(errno));
 			break;
 		}
@@ -166,7 +166,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 		} else {
 			pd = (uint16_t*) (rw_data + ((page-RW_START_PAGE)*PAGE_SIZE));
 		}
-		if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in Neuron
+		if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in the target device
 			for (chunk=0; chunk < 8; chunk++) {
 				int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
 				if (retval == -1) { // send chunk of data (64*2 B)
@@ -488,7 +488,7 @@ static struct option long_options[] = {
 
 void print_usage(char *argv0)
 {
-    printf("\nUtility for Programming Neuron via ModBus RTU\n");
+    printf("\nUtility for Programming UniPi devices via ModBus RTU\n");
     printf("%s [-vVPRC] -p <port> [-u <mb address>] [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
     printf("\n");
     printf("--port <port>\t\t /dev/extcomm/1/0 or COM3\n");
@@ -517,7 +517,7 @@ void setup_gui(int argc, char **argv) {
     //gtk_widget_set_size_request(dialog_window, 400, 280);
     dialog = gtk_dialog_new_with_buttons("PLEASE READ - IMPORTANT INFORMATION", GTK_WINDOW(main_window), GTK_DIALOG_MODAL, "I Understand", GTK_RESPONSE_DELETE_EVENT, NULL);
     dialog_content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
-    dialog_label = gtk_label_new("In order to correctly flash an updated firmware to your UniPi Neuron extension device, ensure the following:\n\n\t - Have a properly configured (1 stop bit, no parity, 19200/9600 baud) serial adapter device plugged into your computer\n\t - Turn on the termination resistors (pin 1) on your Neuron extension and use a twisted-pair cable to connect it to your PC adapter\n\t - Set your Neuron Serial device to the default address (address 15)\n\n Note also the following:\n\n\t - New firmware is only loaded into the Neuron upon restart (power cycle)\n\t - Following an unsuccessful flashing session you need to power cycle your Neuron as well (no new firmware will be written)\n\t - This utility operates in 19200 baud mode by default, to switch to 9600 select \"9600 baud\" in the drop-down menu\n\n!!! To recover from an unfinished flashing session please power-cycle your Neuron extension !!!\n\nUNIPI TECHNOLOGIES ACCEPTS NO LIABILITY ARISING FROM INCORRECT USE OF THIS TOOL\n");
+    dialog_label = gtk_label_new("In order to correctly flash an updated firmware to your UniPi extension device, ensure the following:\n\n\t - Have a properly configured (1 stop bit, no parity, 19200/9600 baud) serial adapter device plugged into your computer\n\t - Turn on the termination resistors (pin 1) on your UniPi extension and use a twisted-pair cable to connect it to your PC adapter\n\t - Set your UniPi Serial device to the default address (address 15)\n\n Note also the following:\n\n\t - New firmware is only loaded into the UniPi device upon restart (power cycle)\n\t - Following an unsuccessful flashing session you need to power cycle your UniPi device as well (no new firmware will be written)\n\t - This utility operates in 19200 baud mode by default, to switch to 9600 select \"9600 baud\" in the drop-down menu\n\n!!! To recover from an unfinished flashing session please power-cycle your UniPi extension !!!\n\nUNIPI TECHNOLOGIES ACCEPTS NO LIABILITY ARISING FROM INCORRECT USE OF THIS TOOL\n");
 
     button_hbox = gtk_hbox_new(FALSE, 15);
     label_hbox = gtk_hbox_new(FALSE, 15);
@@ -547,7 +547,7 @@ void setup_gui(int argc, char **argv) {
     gtk_window_set_resizable(GTK_WINDOW(main_window), FALSE);
     gtk_widget_set_size_request(main_window, 600, 280);
     gtk_container_set_border_width(GTK_CONTAINER(main_window), 15);
-    gtk_window_set_title(GTK_WINDOW(main_window), "Neuron Serial Port Firmware Flasher v.1.2");
+    gtk_window_set_title(GTK_WINDOW(main_window), "Unipi Serial Port Firmware Flasher v.1.2");
 
     gtk_widget_set_margin_left(flash_button, 85);
     gtk_widget_set_margin_top(flash_button, 20);

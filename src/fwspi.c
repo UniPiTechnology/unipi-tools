@@ -62,13 +62,13 @@ static struct option long_options[] = {
 
 void print_usage(char *argv0)
 {
-    printf("\nUtility for Programming Neuron via ModBus RTU\n");
+    printf("\nUtility for Programming UniPi devices via ModBus RTU\n");
     printf("%s [-v] -a [-s <spidevice>] [ -i <index>] [-b <baudrate>] [-d <firmware dir>]\n", argv0);
     printf("%s [-vPRC] [-s <spidevice>] -i <index> [-b <baudrate>] [-d <firmware dir>] [-F <upper board id>]\n", argv0);
     printf("\n");
     printf("--auto \t\t autoupdate firmware\n");
     printf("--index <index>\t\t [0...n] device index\n");
-    printf("--spidev <spidev>\t\t /dev/neuronspi \n");
+    printf("--spidev <spidev>\t\t /dev/unipispi \n");
     printf("--baud <baudrate>\t default 10000000\n");
     printf("--dir <firmware dir>\t default /opt/fw\n");
     printf("--verbose\t show more messages\n");
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
     }
-    if (PORT == NULL) PORT = "/dev/neuronspi";
+    if (PORT == NULL) PORT = "/dev/unipispi";
 
     if (verbose > 0) arm_verbose = verbose;
 

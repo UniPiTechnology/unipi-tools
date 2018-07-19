@@ -1,5 +1,5 @@
 /*
- * SPI communication with UniPi Neuron family controllers
+ * SPI communication with UniPi Neuron and Axon families of controllers
  *
  * Copyright (c) 2016  Faster CZ, ondra@faster.cz
  * Copyright (c) 2007  MontaVista Software, Inc.
@@ -154,7 +154,7 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
         if (arm_verbose) printf("Can't send two-phase spi message\n");
         return ret;
     }
-    if (arm_verbose>1) printf("Read %d from /dev/neuronspi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
+    if (arm_verbose>1) printf("Read %d from /dev/unipispi: %x %x %x %x %x %x\n", ret, char_package[0], char_package[1], char_package[2], char_package[3], char_package[4], char_package[5]);
 
     memcpy(arm->rx2,&(char_package[SNIPLEN1]), tr_len2);
 

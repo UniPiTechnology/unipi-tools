@@ -26,14 +26,12 @@ AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 # -Dhw_v_0_4
 #
 # Define project name and Ram/Flash mode here
-PROJECT        = neuron_tcp_server
+PROJECT        = unipispi
  
 # List C source files here
-#LIBSDIRS    = libmodbus-master/src/.libs
-#CORELIBDIR = $(LIBSDIRS)/CMSIS/Include
 
-LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a
-DFLAGS2  = -Ilibmodbus-master/src
+#LDFLAGS2 = -Llibmodbus-master/src/.libs libmodbus-master/src/.libs/libmodbus.a
+#DFLAGS2  = -Ilibmodbus-master/src
 
 
 #list of src files to include in build process
@@ -42,7 +40,8 @@ DFLAGS2  = -Ilibmodbus-master/src
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
-SRC = $(SPISRC) nb_modbus.c armpty.c
+SRC = $(SPISRC)
+# nb_modbus.c armpty.c
 
 # List all directories here
 #INCDIRS = /usr/local/include/modbus
@@ -55,7 +54,7 @@ SRC = $(SPISRC) nb_modbus.c armpty.c
 LIBDIRS += $(LIBSDIRS)
  
 # List all user libraries here
-LIBS = modbus util
+#LIBS = modbus util
  
 # Define optimisation level here
 #OPT = -Ofast
@@ -81,7 +80,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 # makefile rules
 #
 
-all: $(OBJS) $(PROJECT) neuronspi bandwidth-client
+all: $(OBJS) $(PROJECT)
 
 %.o: %.c
 	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@
@@ -89,22 +88,6 @@ all: $(OBJS) $(PROJECT) neuronspi bandwidth-client
 $(PROJECT): $(PROJECT).o $(OBJS)
 	$(CC) $(PROJECT).o $(OBJS) $(LDFLAGS) -o $@
 
-fwspi:  fwspi.o $(SPIOBJS)
-	$(CC) fwspi.o $(SPIOBJS) -o $@
-
-fwserial.o: fwserial.c
-	$(CC) -c $(DFLAGS2)  $< -o $@
-
-fwserial: fwserial.o armutil.o
-	$(CC) $+ $(LDFLAGS2) $(DFLAGS2) -o fwserial
-	chmod +x fwserial
-
-
-neuronspi: neuronspi.o $(SPIOBJS)
-	$(CC) neuronspi.o $(SPIOBJS) -o $@
-
-bandwidth-client: bandwidth-client.o $(OBJS)
-	$(CC) bandwidth-client.o $(OBJS) $(LDFLAGS) -o $@
 
 clean:
 	-rm -rf $(OBJS) $(SPIOBJS) $(PROJECT).o neuronspi.o bandwidth-client.o

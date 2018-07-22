@@ -24,7 +24,6 @@
 #include <string.h>
 #include "armspi.h"
 #include "armutil.h"
-#include "spicrc.h"
 
 // brain/modbus_prot.h
 #define ARM_OP_READ_BIT   1
@@ -553,3 +552,211 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index, con
 
 /***************************************************************************************/
 
+typedef struct {
+    arm_handle* arm;
+    struct spi_ioc_transfer* tr;
+    arm_comm_firmware* tx;
+    arm_comm_firmware* rx;
+} Tfirmware_context;
+
+int firmware_op(arm_handle* arm, arm_comm_firmware* tx, arm_comm_firmware* rx, int tr_len, struct spi_ioc_transfer* tr)
+{
+    tx->crc = SpiCrcString((uint8_t*)tx, sizeof(arm_comm_firmware) - sizeof(tx->crc), 0);
+    int ret = ioctl(arm->fd, SPI_IOC_MESSAGE(tr_len), tr);
+    if (ret < 1) {
+        pabort("Can't send firmware-op spi message");
+        return -1;
+    }
+    uint16_t crc = SpiCrcString((uint8_t*)rx, sizeof(arm_comm_firmware) - sizeof(rx->crc),0);
+    //printf("a=%0x d=%x crc=%x\n", rx->address, rx->data[0], rx->crc);
+    if (crc != rx->crc) {
+        pabort("Bad crc in firmware operation");
+        return -1;
+    }
+}
+
+void* start_firmware(arm_handle* arm)
+{
+    Tfirmware_context* fwctx = calloc(1, sizeof(Tfirmware_context));
+    if (fwctx == NULL) return NULL;
+    fwctx->arm = arm;
+    /* Alloc Tx Rx buffers */
+    fwctx->tx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (fwctx->tx == NULL) {
+        free(fwctx);
+        return NULL;
+    }
+    fwctx->rx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (fwctx->rx == NULL) { 
+        free(fwctx->tx); 
+        free(fwctx);
+        return NULL; 
+    }
+    /* Transaction array */
+    int i;
+    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+    fwctx->tr = calloc(tr_len, sizeof(struct spi_ioc_transfer));  // Alloc transaction array
+    if (fwctx->tr == NULL) {
+        free(fwctx->rx); 
+        free(fwctx->tx); 
+        free(fwctx);
+        return NULL; 
+    } 
+    fwctx->tr[0].delay_usecs = 5;                                                          // first transaction has no data
+    for (i=0; i < tr_len-1; i++) {
+        fwctx->tr[i+1].len = _MAX_SPI_RX;
+        fwctx->tr[i+1].tx_buf = (unsigned long) fwctx->tx + (_MAX_SPI_RX*i);
+        fwctx->tr[i+1].rx_buf = (unsigned long) fwctx->rx + (_MAX_SPI_RX*i);
+    }
+    fwctx->tr[tr_len-1].len = ((sizeof(arm_comm_firmware) - 1) % _MAX_SPI_RX) + 1;       // last transaction is shorter
+
+    int prog_bit = 1004;
+    if (arm->bv.sw_version <= 0x400) prog_bit = 104;
+    write_bit(arm, prog_bit, 1);                                                   // start programming in ARM
+    usleep(100000);
+    return (void*) fwctx;
+}
+
+
+void finish_firmware(void*  ctx)
+{
+    Tfirmware_context* fwctx = (Tfirmware_context*) ctx;
+    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+
+    fwctx->tx->address = ARM_FIRMWARE_KEY;  // finish transfer
+    firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr);
+    if (fwctx->rx->address != ARM_FIRMWARE_KEY) {
+        if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
+    } else {
+        if (arm_verbose) printf("REBOOTING...\n");
+    }
+
+    // dealloc
+    free(fwctx->tr); 
+    free(fwctx->rx); 
+    free(fwctx->tx);
+    free(fwctx); 
+    usleep(100000);
+}
+
+int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_address)
+{
+    Tfirmware_context* fwctx = (Tfirmware_context*) ctx;
+    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+
+    int prev_addr = -1;
+    int len = datalen;
+    uint32_t address = start_address;
+    while (len >= 0) {
+        fwctx->tx->address = address;
+        if (len >= ARM_PAGE_SIZE) {
+            memcpy(fwctx->tx->data, data + (address-start_address), ARM_PAGE_SIZE);  // read page from file
+            len = len - ARM_PAGE_SIZE;
+        } else if (len != 0) {
+            memcpy(fwctx->tx->data, data + (address-start_address), len);            // read  page (part) from file
+            memset(fwctx->tx->data+len, 0xff, ARM_PAGE_SIZE-len);  
+            len = 0;
+        } else {
+            address = 0xF400;   // read-only page; operation is performed only for last page confirmation
+            len = -1;
+        }
+        firmware_op(fwctx->arm, fwctx->tx, fwctx->rx, tr_len, fwctx->tr);
+        if (fwctx->rx->address != ARM_FIRMWARE_KEY) {
+            if ((address == prev_addr)||(prev_addr == -1)) { 
+                // double error or start error
+                usleep(100000);
+                break;
+            }
+            address = prev_addr;
+            len = datalen - (address-start_address);
+            usleep(100000);
+            continue;
+        }
+        if (prev_addr != -1) if (arm_verbose) printf("%04x OK\n", prev_addr);
+        usleep(100000);
+        prev_addr = address;
+        address = address + ARM_PAGE_SIZE;
+    } 
+}
+
+int _send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
+{
+    /* Alloc Tx Rx buffers */
+    arm_comm_firmware* tx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (tx == NULL) return -1;
+    arm_comm_firmware* rx = calloc(1, sizeof(arm_comm_firmware)+2);
+    if (rx == NULL) { 
+        free(tx); 
+        return -1; 
+    }
+    /* Transaction array */
+    int i;
+    int tr_len = ((sizeof(arm_comm_firmware) - 1) / _MAX_SPI_RX) + 2;               // Transaction array length 
+    struct spi_ioc_transfer* tr = calloc(tr_len, sizeof(struct spi_ioc_transfer));  // Alloc transaction array
+    if (tr == NULL) {
+        free(rx); 
+        free(tx); 
+        return -1; 
+    } 
+    tr[0].delay_usecs = 5;                                                          // first transaction has no data
+    for (i=0; i < tr_len-1; i++) {
+        tr[i+1].len = _MAX_SPI_RX;
+        tr[i+1].tx_buf = (unsigned long) tx + (_MAX_SPI_RX*i);
+        tr[i+1].rx_buf = (unsigned long) rx + (_MAX_SPI_RX*i);
+    }
+    tr[tr_len-1].len = ((sizeof(arm_comm_firmware) - 1) % _MAX_SPI_RX) + 1;       // last transaction is shorter
+
+    int prog_bit = 1004;
+    if (arm->bv.sw_version <= 0x400) prog_bit = 104;
+    write_bit(arm, prog_bit, 1);                                                   // start programming in ARM
+    usleep(100000);
+
+    int prev_addr = -1;
+    int len = datalen;
+    uint32_t address = start_address;
+
+    while (len >= 0) {
+        tx->address = address;
+        if (len >= ARM_PAGE_SIZE) {
+            memcpy(tx->data, data + (address-start_address), ARM_PAGE_SIZE);  // read page from file
+            len = len - ARM_PAGE_SIZE;
+        } else if (len != 0) {
+            memcpy(tx->data, data + (address-start_address), len);            // read  page (part) from file
+            memset(tx->data+len, 0xff, ARM_PAGE_SIZE-len);  
+            len = 0;
+        } else {
+            address = 0xF400;   // read-only page; operation is performed only for last page confirmation
+            len = -1;
+        }
+        firmware_op(arm, tx, rx, tr_len, tr);
+        if (rx->address != ARM_FIRMWARE_KEY) {
+            if ((address == prev_addr)||(prev_addr == -1)) { 
+                // double error or start error
+                usleep(100000);
+                break;
+            }
+            address = prev_addr;
+            len = datalen - (address-start_address);
+            usleep(100000);
+            continue;
+        }
+        if (prev_addr != -1) if (arm_verbose) printf("%04x OK\n", prev_addr);
+        usleep(100000);
+        prev_addr = address;
+        address = address + ARM_PAGE_SIZE;
+    } 
+
+    tx->address = ARM_FIRMWARE_KEY;  // finish transfer
+    firmware_op(arm, tx, rx, tr_len, tr);
+    if (rx->address != ARM_FIRMWARE_KEY) {
+        if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
+    } else {
+        if (arm_verbose) printf("REBOOTING...\n");
+    }
+
+    // dealloc
+    free(tr); 
+    free(rx); 
+    free(tx);
+    usleep(100000);
+}

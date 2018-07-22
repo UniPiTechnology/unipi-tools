@@ -46,14 +46,6 @@ typedef struct {
     uint8_t  remain;
 } __attribute__((packed)) arm_comm_str_header;
 
-#define ARM_PAGE_SIZE      1024
-#define ARM_FIRMWARE_KEY   0xAA99FF33
-typedef struct {
-    uint32_t  address;
-    uint8_t   data[ARM_PAGE_SIZE];
-    uint16_t  crc;
-} __attribute__((packed)) arm_comm_firmware;
-
 
 // STATIC BUFFERS
 #define SIZEOF_HEADER  sizeof(arm_comm_header)     // Header size without CRC
@@ -96,11 +88,6 @@ int write_char(arm_handle* arm, uint8_t uart, uint8_t c);
 int write_string(arm_handle* arm, uint8_t uart, uint8_t* str, int len);
 int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt);
 
-//const char* arm_name(arm_handle* arm);
-
-void* start_firmware(arm_handle* arm);
-int send_firmware(void* ctx, uint8_t* data, size_t datalen, uint32_t start_address);
-void finish_firmware(void*  ctx);
 
 //int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
 extern int arm_verbose;

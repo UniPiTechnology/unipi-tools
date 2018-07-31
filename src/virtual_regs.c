@@ -151,6 +151,7 @@ float aiv2_reg2floatc(uint16_t regvalue)
 void set_fp_by_mode()
 {
     if (calibration.ao_sw == 3) {
+        ao_float2reg = use_calibration ? aov_float2regc : aov_float2reg;
         ai2_reg2float = air2_reg2float;
         ao_reg2float = aor_reg2float;
     } else if (calibration.ao_sw == 1) {
@@ -234,8 +235,13 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
     uint16_t regval;
     if (HW_BOARD(arm->bv.base_hw_version)==0) {
         if ((reg >= 3000) && (reg < 3005+cnt)) {
+            if (! loaded) { 
+                load_calibrating_const(arm);
+                if (! loaded) return -1;
+            }
             if ((reg==3000) && (cnt >=2)) {
                 fval = *((float*)values);
+                vvprintf("VIRTUAL REGS write fval=%f\n",fval);
                 regval = ao_float2reg(fval);
                 if (write_regs(arm, 2, 1, &regval)!=1) return -1;
                 return cnt;

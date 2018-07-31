@@ -1,3 +1,9 @@
+unipi-modbus-tools (1.1.5) unstable; urgency=medium
+
+  * fixed unset function variable in virtual registers
+
+ -- Miroslav Ondra <ondra@faster.cz>  Tue, 31 Jul 2018 15:29:47 +0200
+
 unipi-modbus-tools (1.1.4) unstable; urgency=medium
 
   * changed the system to conform to the new UniPi naming scheme

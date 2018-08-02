@@ -6,10 +6,12 @@ debian/systemd/unipi1.target lib/systemd/system
 debian/systemd/unipi.conf lib/systemd/system.conf.d
 debian/udev/* lib/udev/rules.d
 debian/initramfs/hooks/* etc/initramfs-tools/hooks
-debian/initramfs/scripts/* etc/initramfs-tools/scripts
+debian/initramfs/scripts/init-bottom/hwclock.sh etc/initramfs-tools/scripts/init-bottom
+[linux-armhf] debian/initramfs/scripts/init-bottom/reinitialize_default_var  etc/initramfs-tools/scripts/init-bottom
+[linux-armhf] debian/initramfs/scripts/init-bottom/setbootconfig.sh  etc/initramfs-tools/scripts/init-bottom
 debian/initramfs/modules.d/* usr/share/initramfs-tools/modules.d
-debian/initramfs/postinst/* etc/kernel/postinst.d
-debian/overlays/* boot/overlays
+[linux-armhf] debian/initramfs/postinst/initrd-config etc/kernel/postinst.d
+[linux-armhf] debian/overlays/* boot/overlays
 
 debian/readonly/remount usr/bin
 debian/readonly/set_image_read_only.service lib/systemd/system

@@ -82,7 +82,7 @@ float aoa_reg2float(uint16_t regvalue)
 
 float aor_reg2float(uint16_t regvalue)
 {
-    return fvalues[2];  // return resistance
+    return fvalues[2]/10.0;  // return resistance
 }
 
 float aiv1_reg2float(uint16_t regvalue)
@@ -102,7 +102,7 @@ float aiv2_reg2float(uint16_t regvalue)
 
 float air2_reg2float(uint16_t regvalue)
 {
-    return  regvalue;
+    return  regvalue/10.0;
 }
 
 // WITH CALIBRATION

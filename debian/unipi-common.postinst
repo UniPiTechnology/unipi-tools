@@ -1,30 +1,32 @@
 #!/bin/sh
 set -e
 
-if [ -f /usr/share/rpikernelhack/overlays/ds2482.dtbo ]; then
+if grep -q 'Hardware[[:blank:]]*:[[:blank:]]*BCM' /proc/cpuinfo; then
+	if [ -f /usr/share/rpikernelhack/overlays/ds2482.dtbo ]; then
         rm -f /boot/overlays/ds2482.dtbo
         dpkg-divert --package rpikernelhack --remove --rename /boot/overlays/ds2482.dtbo
         sync
-fi
-if [ -f /usr/share/rpikernelhack/overlays/neuronee.dtbo ]; then
+	fi
+	if [ -f /usr/share/rpikernelhack/overlays/neuronee.dtbo ]; then
         rm -f /boot/overlays/neuronee.dtbo
         dpkg-divert --package rpikernelhack --remove --rename /boot/overlays/neuronee.dtbo
         sync
-fi
-if [ -f /usr/share/rpikernelhack/overlays/neuron-spi-new.dtbo ]; then
+	fi
+	if [ -f /usr/share/rpikernelhack/overlays/neuron-spi-new.dtbo ]; then
         rm -f /boot/overlays/neuron-spi-new.dtbo
         dpkg-divert --package rpikernelhack --remove --rename /boot/overlays/neuron-spi-new.dtbo
         sync
-fi
-if [ -f /usr/share/rpikernelhack/overlays/neuron-spi.dtbo ]; then
+	fi
+	if [ -f /usr/share/rpikernelhack/overlays/neuron-spi.dtbo ]; then
         rm -f /boot/overlays/neuron-spi.dtbo
         dpkg-divert --package rpikernelhack --remove --rename /boot/overlays/neuron-spi.dtbo
         sync
-fi
-if [ -f /usr/share/rpikernelhack/overlays/unipiee.dtbo ]; then
+	fi
+	if [ -f /usr/share/rpikernelhack/overlays/unipiee.dtbo ]; then
         rm -f /boot/overlays/unipiee.dtbo
         dpkg-divert --package rpikernelhack --remove --rename /boot/overlays/unipiee.dtbo
         sync
+	fi
 fi
 
 update_initramfs() {
@@ -32,7 +34,9 @@ update_initramfs() {
     || return 0
   update-initramfs -c -t -k `uname -r` || true
   # set initramfs ...  in /boot/config.txt 
-  /etc/kernel/postinst.d/initrd-config || true
+  if [ -x /etc/kernel/postinst.d/initrd-config ]; then
+	/etc/kernel/postinst.d/initrd-config || true
+  fi
 }
 
 if [ -d /run/systemd/system ]; then
@@ -48,7 +52,9 @@ if [ "$1" = "configure" ]; then
     else
         sed -i 's/^MODULES=most/MODULES=list/' /etc/initramfs-tools/initramfs.conf
 	fi
-    #prepare /boot/config.txt
-    /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh --noreboot
+    if [ -x /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh ]; then
+   		#prepare /boot/config.txt
+	    /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh --noreboot
+	fi
     update_initramfs
 fi

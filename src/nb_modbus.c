@@ -180,7 +180,6 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
 
             rsp[rsp_length++] = nb << 1;
             if ((address >= 3000) && (address < 4000)) {
-                printf("reg %d count %d\n", address, nb);
                 n = read_virtual_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
             } else {
                 n = read_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));

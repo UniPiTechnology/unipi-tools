@@ -1,6 +1,7 @@
 [Unit]
 Description=Set default hostname on Neuron and Axon
 #After=local-fs.target
+Before=avahi-daemon.service
 Before=evok.service
 Before=mervisrt.service
 

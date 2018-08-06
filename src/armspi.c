@@ -260,6 +260,10 @@ int write_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_lock)
 
 int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values)
 {
+    if (arm == NULL) {
+        if (arm_verbose>1) printf("Write Bits: Invalid Arm device (NULL)\n");
+    	return -1;
+    }
     uint16_t len2 = SIZEOF_HEADER + (((cnt+15) >> 4) << 1);  // trunc to 16bit in bytes
     if (len2 > 256) {
         if (arm_verbose) printf("Too many registers in WRITE_BITS");

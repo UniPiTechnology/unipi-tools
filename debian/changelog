@@ -1,3 +1,9 @@
+unipi-modbus-tools (1.1.7) unstable; urgency=medium
+
+  * fixed segfault during write coils call
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Mon, 06 Aug 2018 15:30:36 +0200
+
 unipi-modbus-tools (1.1.6) unstable; urgency=medium
 
   * fixed resistor measurement in virtual registers

@@ -82,7 +82,7 @@ float aoa_reg2float(uint16_t regvalue)
 
 float aor_reg2float(uint16_t regvalue)
 {
-    return fvalues[2]/10.0;  // return resistance
+    return fvalues[2]; //return resistance - must be already calculated!!!
 }
 
 float aiv1_reg2float(uint16_t regvalue)
@@ -256,10 +256,18 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
 int monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
 {
     if (reg == 1019) {
+        if (! loaded) { 
+            load_calibrating_const(arm);
+            if (! loaded) return -1;
+        }
         calibration.ao_sw = *result;
         set_fp_by_mode();
         vvprintf("VIRTUAL REGS ao mode=%d\n",calibration.ao_sw);
     } else if (reg == 1024) {
+        if (! loaded) { 
+            load_calibrating_const(arm);
+            if (! loaded) return -1;
+        }
         calibration.ai_sw = *result;
         set_fp_by_mode();
         vvprintf("VIRTUAL REGS ai mode=%d\n",calibration.ai_sw);

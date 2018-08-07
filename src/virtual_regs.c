@@ -22,7 +22,7 @@
 #include "armutil.h"
 #include "virtual_regs.h"
 
-typedef struct {
+typedef __attribute__ ((__packed__)) struct {
     uint16_t ao_sw;
     uint16_t ao_v_dev;
     uint16_t ao_v_offs;
@@ -184,7 +184,7 @@ void load_calibrating_const(arm_handle* arm)
     vmul2 =  (3.3 * vrefint) / vref /4096;
     vmul0 = vmul1 = vmul2 * 3;
     amul0 = amul1 = vmul2 * 10;
-    use_calibration = (calibration.ao_v_dev!=0) || (calibration.ao_v_offs!=0);
+    use_calibration = (calibration.ao_v_dev != 0xffff) && ((calibration.ao_v_dev!=0) || (calibration.ao_v_offs!=0));
     if (use_calibration) {
         voffs0 = vmul0*(calibration.ao_v_offs)/10000.0;
         vmul0  = vmul0*(1.0+calibration.ao_v_dev/10000.0);
@@ -255,6 +255,8 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
 
 int monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
 {
+    if (HW_BOARD(arm->bv.base_hw_version)!=0) return;
+    // do only for Brain
     if (reg == 1019) {
         if (! loaded) { 
             load_calibrating_const(arm);

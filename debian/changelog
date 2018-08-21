@@ -1,3 +1,9 @@
+unipi-modbus-tools (1.1.9) unstable; urgency=medium
+
+  * add virtual register 3006,7 - alias for 3000,1 with swapped words
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Fri, 17 Aug 2018 12:12:43 +0200
+
 unipi-modbus-tools (1.1.8) unstable; urgency=medium
 
   * fixed checking board in monitor_virtual_regs

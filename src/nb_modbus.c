@@ -19,6 +19,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
@@ -210,14 +211,18 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, FALSE,
                 "Illegal data value 0x%0X in write_bit request at address %0X\n", data, address);
         } else {
-            n;
             if (address == 1004) { // exception for firmware
                 //arm_firmware(arm, nb_ctx->fwdir, data ? 1 : 0);
                 deferred_op = DFR_OP_FIRMWARE;
                 deferred_arm = arm;
                 n = 1;
-            } else
+            } else {
                 n = write_bit(arm, address, data ? 1 : 0, 0);
+                if (arm && arm->has_virtual_coils && (address == 1001)) {
+                    data = data ? 1 : 0;
+                    monitor_virtual_coils(arm, address, (uint8_t*)(&data), 1); // monitoring coil changes
+                }
+            }
             if (n == 1) {
                 rsp_length += 4; // = req_length;
             } else if (n < 0) {
@@ -268,6 +273,9 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             /* 6 = byte count */
             n = write_bits(arm, address, nb, rsp+rsp_length + 5);
             if ( n == nb ) {
+                if (arm && arm->has_virtual_coils && (address <= 1001) && (address+nb > 1001)) {
+                    monitor_virtual_coils(arm, address, rsp+rsp_length + 5, nb); // monitoring coil changes
+                }
                 rsp_length += 4;
             } else if (n < 0) {
             	rsp_length = nb_response_exception(
@@ -314,11 +322,11 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             } else if (n < 0) {
             	rsp_length = nb_response_exception(
                         nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
-                        "Illegal data value 0x%0X in read_bits\n", address);
+                        "Illegal data value in write_registers %d\n", address);
             } else {
                 rsp_length = nb_response_exception(
                     nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
-                    "Illegal data address 0x%0X in write_registers\n", address);
+                    "Illegal data address %d in write_registers\n", address);
             }
         }
     }

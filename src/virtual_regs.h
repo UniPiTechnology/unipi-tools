@@ -20,7 +20,9 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
 int read_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
 int write_virtual_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_lock);
 int write_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);
-int monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result);
+void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result);
+
+void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt);
 
 
 #endif

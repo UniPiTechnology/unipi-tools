@@ -7,22 +7,15 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct __attribute__ ((packed)) {
-    uint16_t   signature;
-    uint8_t   ver1[2];
-    uint32_t  serial;
-    uint8_t   flags[2];
-    char      model[4];
-    uint8_t   fill[2];
-} unipiversion;
+#include "unipiutil.h"
 
 int main(int argc, char** argv)
 {
    int res;
    int do_set = 0;
    int i;
-   unipiversion ver;
    char hostname[256];
+   char *unipi_model;
 
    if (argc > 1) {
       if (gethostname(hostname, sizeof(hostname))) return 1;
@@ -38,21 +31,10 @@ int main(int argc, char** argv)
       if (do_set == 0) return 0;
    }
 
-   int f = open("/sys/bus/i2c/devices/1-0057/eeprom", O_RDONLY);
-   if (f < 0) {
-      f = open("/sys/bus/i2c/devices/0-0057/eeprom", O_RDONLY);
-      if (f < 0) {
-         return 1;
-      }
-   }
-   res = lseek(f, 0x60, 0);
-   if (res < 0) goto err;
-   res = read(f,&ver,sizeof(ver));
-   if (res < 0) goto err;
-   close(f);
-   if (ver.signature != 0x55fa) goto err;
-   ver.fill[0] = 0;
-   sprintf(hostname, "%s-sn%d", ver.model, ver.serial);
+   unipi_model = get_unipi_name();
+   if (unipi_model[0]=='\0') return 1;
+
+   sprintf(hostname, "%s-sn%d", unipi_model, get_unipi_serial());
    //printf();
    if (do_set) {
        sethostname(hostname,strlen(hostname));
@@ -60,7 +42,4 @@ int main(int argc, char** argv)
        printf("%s\n", hostname);
    }
    return 0;
-err:
-   close(f);
-   return 1;
 }

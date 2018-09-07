@@ -169,7 +169,7 @@ static struct option long_options[] = {
   {"resetrw", no_argument,      0, 'R'},
   {"calibrate", no_argument,    0, 'C'},
   {"final", required_argument,  0, 'F'},
-  {"port",  no_argument,        0, 'p'},
+  {"port",  required_argument,  0, 'p'},
   {"baud",  required_argument,  0, 'b'},
   {"unit",    required_argument,0, 'u'},
   {"dir", required_argument,    0, 'd'},

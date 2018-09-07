@@ -203,7 +203,9 @@ int main(int argc, char **argv)
     if (do_prog) {
         // FW manipulation
         if (do_calibrate) {
-            arm->bv.hw_version = arm->bv.base_hw_version | 0x8;
+            // combine base_board + MAJ/MIN of hw_version + CAL
+            arm->bv.hw_version = (arm->bv.base_hw_version & 0xff00) |\
+                                 (arm->bv.hw_version & 0xff | 0x8);
             do_resetrw = 1;
         } else if (do_final) {
             if (!(arm->bv.hw_version & 0x8)) {

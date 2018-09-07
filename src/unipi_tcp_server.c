@@ -39,6 +39,7 @@
 #include <sys/epoll.h>
 
 #include "armspi.h"
+#include "unipiutil.h"
 #include "nb_modbus.h"
 
 
@@ -47,7 +48,7 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-const char* version_string = "Version 1.14:2018:07:19";
+const char* version_string = "Version 1.19:2018:08:21";
 
 char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
@@ -367,6 +368,7 @@ int main(int argc, char *argv[])
     struct epoll_event *events;
     mb_event_data_t*  event_data;
     uint32_t fwver;
+    char *unipi_model;
 
      // Options
     int c;
@@ -455,6 +457,7 @@ int main(int argc, char *argv[])
     nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
     nb_ctx->fwdir = firmwaredir;
 
+
     /* Create arm handles */
     int ai;
     for (ai=0; ai<MAX_ARMS; ai++) {
@@ -469,6 +472,16 @@ int main(int argc, char *argv[])
             }
         }
     }
+
+    if (nb_ctx->arm[0]) {
+		/* Check UniPi Model */
+		unipi_model = get_unipi_name();
+		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0)) {
+            if (verbose) printf("Using virtual coil 1001 on gpio18\n");
+			nb_ctx->arm[0]->has_virtual_coils = 1;
+			system("echo 18 >/sys/class/gpio/export; echo out >/sys/class/gpio/gpio18/direction; echo 1 >/sys/class/gpio/gpio18/value");
+		}
+	}
 
     server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
     printf("UniPi TCP Modbus Server: Listening Connection Established RET:%d\n", server_socket);

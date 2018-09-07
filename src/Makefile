@@ -66,6 +66,7 @@ endif
 SPISRC = armspi.c
 SPISRC += spicrc.c
 SPISRC += armutil.c
+SPISRC += unipiutil.c
 SRC = $(SPISRC) nb_modbus.c virtual_regs.c
 
  

@@ -18,11 +18,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <fcntl.h>
+
 #include "armspi.h"
 #include "armutil.h"
 #include "virtual_regs.h"
 
-typedef struct {
+typedef struct __attribute__ ((__packed__)) {
     uint16_t ao_sw;
     uint16_t ao_v_dev;
     uint16_t ao_v_offs;
@@ -82,7 +84,7 @@ float aoa_reg2float(uint16_t regvalue)
 
 float aor_reg2float(uint16_t regvalue)
 {
-    return fvalues[2];  // return resistance
+    return fvalues[2]; //return resistance - must be already calculated!!!
 }
 
 float aiv1_reg2float(uint16_t regvalue)
@@ -102,7 +104,7 @@ float aiv2_reg2float(uint16_t regvalue)
 
 float air2_reg2float(uint16_t regvalue)
 {
-    return  regvalue;
+    return  regvalue/10.0;
 }
 
 // WITH CALIBRATION
@@ -151,6 +153,7 @@ float aiv2_reg2floatc(uint16_t regvalue)
 void set_fp_by_mode()
 {
     if (calibration.ao_sw == 3) {
+        ao_float2reg = use_calibration ? aov_float2regc : aov_float2reg;
         ai2_reg2float = air2_reg2float;
         ao_reg2float = aor_reg2float;
     } else if (calibration.ao_sw == 1) {
@@ -183,7 +186,7 @@ void load_calibrating_const(arm_handle* arm)
     vmul2 =  (3.3 * vrefint) / vref /4096;
     vmul0 = vmul1 = vmul2 * 3;
     amul0 = amul1 = vmul2 * 10;
-    use_calibration = (calibration.ao_v_dev!=0) || (calibration.ao_v_offs!=0);
+    use_calibration = (calibration.ao_v_dev != 0xffff) && ((calibration.ao_v_dev!=0) || (calibration.ao_v_offs!=0));
     if (use_calibration) {
         voffs0 = vmul0*(calibration.ao_v_offs)/10000.0;
         vmul0  = vmul0*(1.0+calibration.ao_v_dev/10000.0);
@@ -207,7 +210,7 @@ int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* resu
     int n, r0;
     uint16_t registers[3];
     if (HW_BOARD(arm->bv.base_hw_version)==0) {
-        if ((reg >= 3000) && (reg < 3005+cnt)) {
+        if ((reg >= 3000) && (reg+cnt <= 3006)) {
             if (! loaded) { 
                 load_calibrating_const(arm);
                 if (! loaded) return -1;
@@ -231,35 +234,77 @@ int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* resu
 int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
 {
     float fval;
+    uint32_t swapped;
     uint16_t regval;
     if (HW_BOARD(arm->bv.base_hw_version)==0) {
-        if ((reg >= 3000) && (reg < 3005+cnt)) {
+        if ((reg >= 3000) && (reg+cnt <= 3006)) {
+            if (! loaded) { 
+                load_calibrating_const(arm);
+                if (! loaded) return -1;
+            }
             if ((reg==3000) && (cnt >=2)) {
                 fval = *((float*)values);
+                vvprintf("VIRTUAL REGS write fval=%f\n",fval);
                 regval = ao_float2reg(fval);
                 if (write_regs(arm, 2, 1, &regval)!=1) return -1;
                 return cnt;
             } else {
                 return -1;
             }
+        } else if ((reg == 3006) && (cnt==2)) {
+            if (! loaded) { 
+                load_calibrating_const(arm);
+                if (! loaded) return -1;
+            }
+            swapped = (uint32_t)(*(values+1) | (*(values) << 16));
+            fval = *((float*) &swapped);
+            vvprintf("VIRTUAL REGS write fval=%f\n",fval);
+            regval = ao_float2reg(fval);
+            if (write_regs(arm, 2, 1, &regval)!=1) return -1;
+            return cnt;
         }
     }
     return 0;
 }
 
-int monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
+void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
 {
+    if (HW_BOARD(arm->bv.base_hw_version)!=0) return;
+    // do only for Brain
     if (reg == 1019) {
+        if (! loaded) { 
+            load_calibrating_const(arm);
+            if (! loaded) return;
+        }
         calibration.ao_sw = *result;
         set_fp_by_mode();
         vvprintf("VIRTUAL REGS ao mode=%d\n",calibration.ao_sw);
     } else if (reg == 1024) {
+        if (! loaded) { 
+            load_calibrating_const(arm);
+            if (! loaded) return;
+        }
         calibration.ai_sw = *result;
         set_fp_by_mode();
         vvprintf("VIRTUAL REGS ai mode=%d\n",calibration.ai_sw);
     }
 }
 
+void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt)
+{
+    int gpio = open("/sys/class/gpio/gpio18/value", O_WRONLY);
+    if (gpio < 0) return;
+
+	int shift = 1001 - reg;
+    if (((values[0] >> shift) & 1)== 0) {
+        vvprintf("VIRTUAL COIL 1001 mode=on d=%02x\n", values[0]);
+		write(gpio,"1", 1);
+	} else {
+        vvprintf("VIRTUAL COIL 1001 mode=off d=%02x\n", values[0]);
+		write(gpio,"0", 1);
+	}
+    close(gpio);
+}
 //int read_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
 //int write_virtual_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_lock);
 //int write_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);

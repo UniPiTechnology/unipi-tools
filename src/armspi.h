@@ -69,6 +69,7 @@ typedef struct {
     uint8_t rx2[SNIPLEN2 + CRC_SIZE + 40];
     Tboard_version bv;
     int speed;
+	int has_virtual_coils;
 }  arm_handle;
 
 

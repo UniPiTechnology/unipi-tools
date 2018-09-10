@@ -1,3 +1,10 @@
+unipi-modbus-tools (1.1.10) unstable; urgency=medium
+
+  * fixed fwserial --port parameter
+  * add dependency on unipi-common (>=version)
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Mon, 10 Sep 2018 12:29:13 +0200
+
 unipi-modbus-tools (1.1.9) unstable; urgency=medium
 
   * add virtual register 3006,7 - alias for 3000,1 with swapped words

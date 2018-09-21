@@ -1,8 +1,8 @@
-unipi-modbus-tools (1.1.11) UNRELEASED; urgency=medium
+unipi-modbus-tools (1.1.11) unstable; urgency=medium
 
   * add alternate dependency to unipi-kernel-modules-dkms
 
- -- Miroslav Ondra <bokula@bokula.faster.cz>  Thu, 20 Sep 2018 16:53:14 +0200
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Fri, 21 Sep 2018 02:50:11 +0200
 
 unipi-modbus-tools (1.1.10) unstable; urgency=medium
 

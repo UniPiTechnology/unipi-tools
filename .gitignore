@@ -18,3 +18,5 @@ bandwidth-client
 src/libmodbus-master/tests/
 src/libmodbus-master/m4/
 libmodbus/
+bin/unipi_tcp_server
+bin/unipihost

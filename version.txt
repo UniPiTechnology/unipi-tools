@@ -1,1 +1,1 @@
-Repository:unipi-modbus-tools ActiveBranch:[master] PrecedingRevision:102(b523ac8) LatestCommit:Fri Sep 7 16:45:52 CEST 2018
+Repository:unipi-modbus-tools ActiveBranch:[master] PrecedingRevision:110(140ee27) LatestCommit:Tue Oct 2 13:27:52 CEST 2018

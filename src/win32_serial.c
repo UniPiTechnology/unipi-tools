@@ -581,15 +581,15 @@ void setup_gui(int argc, char **argv) {
     gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
 
     gtk_window_set_position(GTK_WINDOW(main_window), GTK_WIN_POS_CENTER);
-    gtk_window_set_default_size(GTK_WINDOW(main_window), 400, 330);
+    gtk_window_set_default_size(GTK_WINDOW(main_window), 400, 290);
     gtk_window_set_resizable(GTK_WINDOW(main_window), FALSE);
-    gtk_widget_set_size_request(main_window, 400, 330);
+    gtk_widget_set_size_request(main_window, 400, 290);
     gtk_container_set_border_width(GTK_CONTAINER(main_window), 10);
     gtk_window_set_title(GTK_WINDOW(main_window), "UniPi Serial Port Firmware Flasher v.1.3");
 
     gtk_widget_set_margin_left(flash_button, 10);
     gtk_widget_set_margin_top(flash_button, 10);
-    gtk_widget_set_size_request(flash_button, 385, 180);
+    gtk_widget_set_size_request(flash_button, 385, 140);
     g_signal_connect(flash_button, "clicked", G_CALLBACK(flash_button_pressed), NULL);
     gtk_box_pack_start(GTK_BOX(button_hbox), flash_button, FALSE, FALSE, 0);
 

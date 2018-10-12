@@ -46,6 +46,7 @@ int upboard;
 
 int do_verify = 0;
 int do_prog   = 1;
+int do_connect = 1;
 int do_resetrw = 0;
 int do_calibrate = 0;
 int do_final = 0;
@@ -92,8 +93,8 @@ modbus_t *ctx;
 FILE* fdx;
 
 char box_entries[255][64];
-char parity_entries[3] = {
-	'N','O','E'
+char parity_entries[2] = {
+	'N','E'
 };
 char output_string[1024];
 
@@ -134,7 +135,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
 				}
 			}
 		} else {
-			snprintf(output_string, sizeof(output_string), "Verification Failed!!: %s\n", modbus_strerror(errno));
+			snprintf(output_string, sizeof(output_string), "Verification failed!!: %s\n", modbus_strerror(errno));
 			gtk_label_set_text(GTK_LABEL(output_label), output_string);
 			return -1;
 		}
@@ -143,7 +144,7 @@ int verify(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_pa
 			pd = (uint16_t*) rw_data;
 		}
 	}
-	snprintf(output_string, sizeof(output_string), "Verification Passed!\n");
+	snprintf(output_string, sizeof(output_string), "Verification passed!\n");
 	gtk_label_set_text(GTK_LABEL(output_label), output_string);
 }
 
@@ -151,6 +152,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 {
 	uint16_t* pd;
 	int ret, chunk, page;
+	int retval = -1;
 	// Programming
 	modbus_set_response_timeout(ctx, 1, 0);
 	page = 0;
@@ -174,14 +176,16 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 		}
 		if (modbus_write_register(ctx, 0x7705, page) == 1) {   // set page address in the target device
 			for (chunk=0; chunk < 8; chunk++) {
-				int retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
-				if (retval == -1) { // send chunk of data (64*2 B)
+				retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
+				while (retval == -1 && errors < 255) { // send chunk of data (64*2 B)
+					retval = modbus_write_registers(ctx, 0x7700+chunk, REG_SIZE, pd);
 					errors++;
 				}
 				fprintf(stderr, "Written Chunk %d, R:%d E:%d\n", chunk, retval, errors);
 				pd += REG_SIZE;
 			}
-			if (modbus_write_register(ctx, 0x7707, 1) == 1) {  // write page to flash
+			retval = modbus_write_register(ctx, 0x7707, 1);
+			if (retval != 1) {
 				printf("Page Written OK\n");
 				if (page == last_prog_page) {
 					page = RW_START_PAGE;
@@ -193,19 +197,40 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 				errors++;
 				printf(" Trying again\n");
 				fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
+				while (retval != 1) {  // write page to flash
+					retval = modbus_write_register(ctx, 0x7707, 1);
+					if (retval != 1) {
+						printf("Page Written OK\n");
+						if (page == last_prog_page) {
+							page = RW_START_PAGE;
+						} else {
+							page++;
+						}
+
+					} else {
+						errors++;
+						printf(" Trying again\n");
+						fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
+					}
+				}
 			}
 		} else {
 			errors++;
 			printf(" Trying again\n");
 		}
-		if (errors > 200) {
-			snprintf(output_string, sizeof(output_string), "Flashing Not Successful!! Power-cycle your target device");
+		if (errors > 255) {
+			snprintf(output_string, sizeof(output_string), "Flashing not successful!! Power-cycle your target device");
 			gtk_label_set_text(GTK_LABEL(output_label), output_string);
+			do_connect = 1;
+			gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 			return -1;
 		}
 	}
-	snprintf(output_string, sizeof(output_string), "Flashing Successful!! Power-cycle your target device");
+	snprintf(output_string, sizeof(output_string), "Flashing successful!! Power-cycle your target device");
 	gtk_label_set_text(GTK_LABEL(output_label), output_string);
+	do_connect = 1;
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
+	return 0;
 }
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
@@ -214,7 +239,7 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     int read_n, i;
     fd = fopen(path, "rb");
     if (!fd) {
-        printf("error opening firmware file \"%s\"\n", path);
+        printf("Error opening firmware file \"%s\"\n", path);
         return -1;
     }
     struct stat finfo;
@@ -242,14 +267,18 @@ void select_port(GtkComboBox *caller) {
     // Open port
 	gint i = gtk_combo_box_get_active(caller);
     active_port = box_entries[i];
-    test_connection_settings();
+	do_connect = 1;
+	gtk_label_set_text(GTK_LABEL(output_label), " ");
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 }
 
 void select_parity(GtkComboBox *caller) {
     // Open port
 	gint i = gtk_combo_box_get_active(caller);
     active_parity = parity_entries[i];
-    test_connection_settings();
+	do_connect = 1;
+	gtk_label_set_text(GTK_LABEL(output_label), " ");
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 }
 
 void select_address(GtkComboBox *caller) {
@@ -320,7 +349,9 @@ void select_address(GtkComboBox *caller) {
 		break;
 	}
 	}
-	test_connection_settings();
+	do_connect = 1;
+	gtk_label_set_text(GTK_LABEL(output_label), " ");
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 }
 
 void select_baud_rate(GtkComboBox *caller) {
@@ -363,7 +394,9 @@ void select_baud_rate(GtkComboBox *caller) {
 		break;
 	}
 	}
-	test_connection_settings();
+	do_connect = 1;
+	gtk_label_set_text(GTK_LABEL(output_label), " ");
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 }
 
 void select_stop_bit_count(GtkComboBox *caller) {
@@ -382,14 +415,16 @@ void select_stop_bit_count(GtkComboBox *caller) {
 		break;
 	}
 	}
-	test_connection_settings();
+	do_connect = 1;
+	gtk_label_set_text(GTK_LABEL(output_label), " ");
+	gtk_button_set_label(GTK_BUTTON(flash_button), "Connect");
 }
 
 void test_connection_settings(void) {
-	ctx = modbus_new_rtu(active_port, active_baud, active_parity, 8, 1);
+	ctx = modbus_new_rtu(active_port, active_baud, active_parity, 8, active_stopbits);
     modbus_set_response_timeout(ctx, 0, 800000);
     if (ctx == NULL) {
-        gtk_label_set_text(GTK_LABEL(output_label), "ERROR: Unable to create modbus context (wrong port?)");
+        gtk_label_set_text(GTK_LABEL(output_label), "ERROR: Unable to create ModBus context (wrong port?)");
         return;
     }
     modbus_set_slave(ctx, active_address);
@@ -403,7 +438,7 @@ void test_connection_settings(void) {
     // get FW & HW version
     uint16_t r1000[7];
     Tboard_version bv;
-    if (modbus_read_registers(ctx, 1000, 7, r1000) == 57) {
+    if (modbus_read_registers(ctx, 1000, 7, r1000) == 7) {
         parse_version(&bv, r1000);
         snprintf(output_string, sizeof(output_string), "Board:  %s\nE-Board S/N:  (%d)\nBoardset:  %3d %-30s (v%d.%d%s)\nBaseboard:  %3d %-30s (v%d.%d)\nFirmware:  v%d.%d\n",
         		get_extension_map(HW_BOARD(bv.hw_version))->product, (r1000[6] << 16) + r1000[5],
@@ -414,6 +449,12 @@ void test_connection_settings(void) {
                HW_MAJOR(bv.base_hw_version), HW_MINOR(bv.base_hw_version),
 			   SW_MAJOR(bv.sw_version), SW_MINOR(bv.sw_version));
         gtk_label_set_text(GTK_LABEL(output_label), output_string);
+        do_connect = 0;
+        if (do_verify) {
+        	gtk_button_set_label(GTK_BUTTON(flash_button), "Verify");
+        } else {
+        	gtk_button_set_label(GTK_BUTTON(flash_button), "Flash");
+        }
     } else {
         snprintf(output_string, sizeof(output_string), "Read version failed: %s\n", modbus_strerror(errno));
         gtk_label_set_text(GTK_LABEL(output_label), output_string);
@@ -427,21 +468,29 @@ void switch_mode_verify(GtkToggleButton *caller) {
 	if (verification_set == TRUE) {
 		do_verify = 1;
 		do_prog = 0;
-		gtk_button_set_label(GTK_BUTTON(flash_button), "Verify");
+		if (!do_connect) {
+			gtk_button_set_label(GTK_BUTTON(flash_button), "Verify");
+		}
 	} else {
 		do_verify = 0;
 		do_prog = 1;
-		gtk_button_set_label(GTK_BUTTON(flash_button), "Flash");
+		if (!do_connect) {
+			gtk_button_set_label(GTK_BUTTON(flash_button), "Flash");
+		}
 	}
 }
 
 void flash_button_pressed(GtkButton *caller) {
+	if (do_connect) {
+		test_connection_settings();
+		return;
+	}
 	do_resetrw = 1;
 	// FW manipulation
-	ctx = modbus_new_rtu(active_port, active_baud, active_parity, 8, 1);
+	ctx = modbus_new_rtu(active_port, active_baud, active_parity, 8, active_stopbits);
     modbus_set_response_timeout(ctx, 0, 800000);
     if (ctx == NULL) {
-        gtk_label_set_text(GTK_LABEL(output_label), "ERROR: Unable to create modbus context (wrong port?)");
+        gtk_label_set_text(GTK_LABEL(output_label), "ERROR: Unable to create ModBus context (wrong port?)");
         return;
     }
     modbus_set_slave(ctx, active_address);
@@ -557,7 +606,7 @@ void setup_gui(int argc, char **argv) {
     button_hbox = gtk_hbox_new(FALSE, 15);
     label_hbox = gtk_hbox_new(FALSE, 15);
     window_vbox = gtk_vbox_new(FALSE, 10);
-    flash_button = gtk_button_new_with_label("Flash");
+    flash_button = gtk_button_new_with_label("Connect");
     output_label = gtk_label_new("Status: ready");
     port_label = gtk_label_new("Port settings:");
     port_combo_box = gtk_combo_box_text_new();
@@ -581,9 +630,9 @@ void setup_gui(int argc, char **argv) {
     gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
 
     gtk_window_set_position(GTK_WINDOW(main_window), GTK_WIN_POS_CENTER);
-    gtk_window_set_default_size(GTK_WINDOW(main_window), 400, 290);
+    gtk_window_set_default_size(GTK_WINDOW(main_window), 400, 320);
     gtk_window_set_resizable(GTK_WINDOW(main_window), FALSE);
-    gtk_widget_set_size_request(main_window, 400, 290);
+    gtk_widget_set_size_request(main_window, 400, 320);
     gtk_container_set_border_width(GTK_CONTAINER(main_window), 10);
     gtk_window_set_title(GTK_WINDOW(main_window), "UniPi Serial Port Firmware Flasher v.1.3");
 
@@ -638,8 +687,7 @@ void setup_gui(int argc, char **argv) {
     g_signal_connect(G_OBJECT(address_combo_box), "changed", G_CALLBACK(select_address), NULL);
 
     gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(parity_combo_box), 0, NULL, "N");
-    gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(parity_combo_box), 1, NULL, "O");
-    gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(parity_combo_box), 2, NULL, "E");
+    gtk_combo_box_text_insert(GTK_COMBO_BOX_TEXT(parity_combo_box), 1, NULL, "E");
     gtk_combo_box_set_active(GTK_COMBO_BOX(parity_combo_box), 0);
     g_signal_connect(G_OBJECT(parity_combo_box), "changed", G_CALLBACK(select_parity), NULL);
 

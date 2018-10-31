@@ -156,7 +156,7 @@ float aiv2_reg2floatc(uint16_t regvalue)
 }
 
 
-void set_fp_by_mode()
+void set_fp_by_mode(void)
 {
     if (calibration.ao_sw == 3) {
         ao_float2reg = use_calibration ? aov_float2regc : aov_float2reg;

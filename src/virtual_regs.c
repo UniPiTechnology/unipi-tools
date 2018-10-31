@@ -89,16 +89,19 @@ float aor_reg2float(uint16_t regvalue)
 
 float aiv1_reg2float(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return vmul1 * regvalue;
 }
 
 float aia1_reg2float(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return amul1 * regvalue;
 }
 
 float aiv2_reg2float(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return vmul2 * regvalue;
 }
 
@@ -136,16 +139,19 @@ float aoa_reg2floatc(uint16_t regvalue)
 
 float aiv1_reg2floatc(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return vmul1 * regvalue + voffs1;
 }
 
 float aia1_reg2floatc(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return amul1 * regvalue + aoffs1;
 }
 
 float aiv2_reg2floatc(uint16_t regvalue)
 {
+	if (((int16_t) regvalue) < 0) return 0.0;
     return vmul2 * regvalue + voffs2;
 }
 

@@ -1,3 +1,15 @@
+unipi-modbus-tools (1.1.13) unstable; urgency=medium
+
+  * fixed reg->float (virtual registers) for negative numbers.
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Wed, 31 Oct 2018 14:25:21 +0100
+
+unipi-modbus-tools (1.1.12) unstable; urgency=medium
+
+  * modify verbose in fwserial
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Mon, 24 Sep 2018 19:44:59 +0200
+
 unipi-modbus-tools (1.1.11) unstable; urgency=medium
 
   * add alternate dependency to unipi-kernel-modules-dkms

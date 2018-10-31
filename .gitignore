@@ -18,3 +18,10 @@ bandwidth-client
 src/libmodbus-master/tests/
 src/libmodbus-master/m4/
 libmodbus/
+bin/unipi_tcp_server
+bin/unipihost
+src/glibconfig.h
+src/gtk/*
+Default/src/armspi.d
+Default/src/armutil.d
+Default/src/subdir.mk

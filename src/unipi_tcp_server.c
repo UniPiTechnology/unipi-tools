@@ -377,6 +377,10 @@ int main(int argc, char *argv[])
        c = getopt_long(argc, argv, "vdicl:p:t:s:b:f:n:a:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
+               if ((argv[optind]==NULL) || (argv[optind][0] == '\0')) {
+                   //optind++;
+                   break;
+               }
                printf ("non-option ARGV-element: %s\n", argv[optind]);
                exit(EXIT_FAILURE);
             }

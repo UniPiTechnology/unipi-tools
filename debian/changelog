@@ -1,3 +1,16 @@
+unipi-modbus-tools (1.1.15) unstable; urgency=medium
+
+  * fix speed setting in fwspi
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Thu, 17 Jan 2019 11:12:17 +0100
+
+unipi-modbus-tools (1.1.14) unstable; urgency=medium
+
+  * fix empty parameter in unipi_tct_server
+  * fix DAEMON_OPTS in systemd service file
+
+ -- Miroslav Ondra <bokula@bokula.faster.cz>  Wed, 19 Dec 2018 17:03:06 +0100
+
 unipi-modbus-tools (1.1.13) unstable; urgency=medium
 
   * fixed reg->float (virtual registers) for negative numbers.

@@ -360,6 +360,10 @@ uint32_t firmware_op(arm_handle* arm, uint32_t address, uint8_t* tx_data, int tx
                                       sizeof(crc));						// set crc
     char_package[0] = (uint8_t)arm->index;
     char_package[3] = 0;
+    if (arm->speed) {
+        char_package[4] = arm->speed >> 8;
+        char_package[5] = arm->speed & 0xff;
+    }
     char_package[7] = ((uint8_t)arm->index+1);
     if (arm_verbose>1) printf("FW-OP send len:%d: addr:%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x\n", sizeof(arm_comm_firmware), char_package[13], char_package[12], char_package[11], char_package[10], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
 

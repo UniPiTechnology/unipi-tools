@@ -23,6 +23,8 @@ Tboards_map up_boards[] = {
     {3, 16, "U-14Di-1"},
     {4, 16, "P-6Di5Ro-1"},
     {5, 16, "U-6Di5Ro-1"},
+    {6, 16, "P-4Di5Ro-1"},
+    {7, 16, "U-4Di5Ro-1"},
     {13,16, "B-485-1"},
 };
 
@@ -59,7 +61,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 18
+#define HW_COUNT 21
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -79,6 +81,9 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
     {16, 16,0, "X-1Ir"},
     {17, 17,0, "X-8W"},
+    {18, 11,6, "E-4Ai4Ao_P-4Di5Ro",},         //"E-4Ai4Ao_P-4Di5Ro"},
+    {19, 11,7, "E-4Ai4Ao_U-4Di5Ro"},
+    {20,  1,6, "E-8Di8Ro_P-4Di5Ro", },     
 };
 
 Tcompatibility_map* get_map(int board)

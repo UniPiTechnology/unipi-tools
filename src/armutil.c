@@ -37,7 +37,9 @@ Textension_map extension_boards[] = {
 	{6, 6, "xS30"},
 	{11, 12, "xS50-CAL"},
 	{12, 12, "xS50"},
-	{16, 16, "X-1Ir"}
+	{16, 16, "X-1Ir"},
+	{17, 17, "MM-8OW"},
+	{21, 21, "MM-8PT"}
 };
 
 Textension_map* get_extension_map(int board) {
@@ -61,7 +63,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 21
+#define HW_COUNT 22
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -80,10 +82,11 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {14, 14,0, "E-4Light"},
     {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
     {16, 16,0, "X-1Ir"},
-    {17, 17,0, "X-8W"},
+    {17, 17,0, "MM-8OW"},
     {18, 11,6, "E-4Ai4Ao_P-4Di5Ro",},         //"E-4Ai4Ao_P-4Di5Ro"},
     {19, 11,7, "E-4Ai4Ao_U-4Di5Ro"},
     {20,  1,6, "E-8Di8Ro_P-4Di5Ro", },     
+    {21, 21,0, "MM-8PT"},
 };
 
 Tcompatibility_map* get_map(int board)

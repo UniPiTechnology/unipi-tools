@@ -21,7 +21,7 @@ stages:
 build_from_test_on_rpi:
     stage: build_package
     only:
-        - ci-test
+        - test
     except:
         - tags
     tags:
@@ -36,7 +36,7 @@ build_from_test_on_rpi:
 build_from_test_on_nanopi:
     stage: build_package
     only:
-        - ci-test
+        - test
     except:
         - tags
     tags:
@@ -52,7 +52,7 @@ build_from_test_on_nanopi:
 deploy_package_from_test:
     stage: deploy_packages
     only:
-        - ci-test
+        - test
     except:
         - tags
     script:

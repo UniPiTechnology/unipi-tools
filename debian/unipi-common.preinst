@@ -34,7 +34,9 @@ case "$1" in
             rm /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh || true
 		fi
 
-		sed 's/#INITRD=Yes/INITRD=Yes/' -i /etc/default/raspberrypi-kernel
+		if test -f /etc/default/raspberrypi-kernel; then
+			 sed 's/#INITRD=Yes/INITRD=Yes/' -i /etc/default/raspberrypi-kernel	
+		fi
     ;;
     upgrade)
 	;;

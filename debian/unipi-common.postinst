@@ -39,13 +39,14 @@ update_initramfs() {
   fi
 }
 
-if [ -d /run/systemd/system ]; then
-        systemctl --system daemon-reload >/dev/null || true
-        deb-systemd-helper enable unipicheck.service >/dev/null || true
-        deb-systemd-invoke start unipicheck.service >/dev/null || true
-fi
 
 if [ "$1" = "configure" ]; then
+
+	deb-systemd-helper enable unipicheck.service >/dev/null || true
+	if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        deb-systemd-invoke start unipicheck.service >/dev/null || true
+	fi
     # if initramfs config file is default, change MODULES=most to MODULES=list
 	if dpkg --verify initramfs-tools-core | grep -q '/etc/initramfs-tools/initramfs.conf' ; then
 		true

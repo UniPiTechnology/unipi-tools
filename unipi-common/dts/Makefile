@@ -5,7 +5,9 @@ DTBS = $(DTSS:.dts=.dtbo)
 
 
 %.dtbo: %.dts
-	dtc -@ $< > $@
+	dtc -@ $< -o $@
+
+#	dtc -@ $< -o $@ ## this is correct, but not supported by some version of dtc
 
 
 all: $(DTBS)

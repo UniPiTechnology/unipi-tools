@@ -27,8 +27,6 @@ build_from_test_on_rpi:
     tags:
         - armhf
     script:
-        - apt-get update
-        - apt-get install device-tree-compiler
         - /ci-scripts/build-package-for-test.sh unipi-tools
     artifacts:
         paths:

@@ -7,7 +7,7 @@ INSTALL = install
 
 all: libmodbusx
 	cd src; make; cd ..
-	if [ $(ARCH) = "arm" ]; then cd unipi-common/dts; make; cd ../.. ; fi
+	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then cd unipi-common/dts; make; cd ../.. ; fi
 
 libmodbusx:
 	@echo ${CFLAGS}
@@ -33,7 +33,7 @@ clean:
 
 install:
 	$(INSTALL) -D $(BINFILES:%=src/%) -t $(DESTDIR)/opt/unipi/bin
-	if [ $(ARCH) = "arm" ]; then $(INSTALL) -D unipi-common/dts/*.dtbo -t $(DESTDIR)/boot/overlays ; fi
+	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then $(INSTALL) -D unipi-common/dts/*.dtbo -t $(DESTDIR)/boot/overlays ; fi
 
 mr-proper:
 	@make clean

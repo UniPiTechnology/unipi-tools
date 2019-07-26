@@ -32,7 +32,7 @@ clean:
 	@rm -rf libmodbus
 
 install:
-	$(INSTALL) -D $(BINFILES:%=src/%) -t $(DESTDIR)/opt/unipi/bin
+	$(INSTALL) -D $(BINFILES:%=src/%) src/unipi-target.map -t $(DESTDIR)/opt/unipi/bin
 	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then $(INSTALL) -D unipi-common/dts/*.dtbo -t $(DESTDIR)/boot/overlays ; fi
 
 mr-proper:

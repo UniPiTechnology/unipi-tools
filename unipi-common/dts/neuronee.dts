@@ -1,0 +1,31 @@
+/dts-v1/;
+
+/ {
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target = < 0xdeadbeef >;
+
+		__overlay__ {
+			#address-cells = < 0x01 >;
+			#size-cells = < 0x00 >;
+			status = "okay";
+
+			24c01@57 {
+				compatible = "24c01";
+				#pwm-cells = < 0x02 >;
+				reg = < 0x57 >;
+				status = "okay";
+			};
+		};
+	};
+
+	__symbols__ {
+		neuronee = "/fragment@0/__overlay__/24c01@57";
+	};
+
+
+	__fixups__ {
+		i2c_arm = "/fragment@0:target:0";
+	};
+};

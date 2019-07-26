@@ -6,9 +6,6 @@
 # This is a POSIX shell fragment
 #
 
-# try to update firmware in Neuron boards on start of neuron_tcp_daemon
-FIRMWARE_UPDATE=0
-
 # Additional options that are passed to the Daemon.
 # Parameter -a 255 is required for Codesys. 
 # Common access is available via Modbus address 255 (and also 0)

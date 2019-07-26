@@ -42,7 +42,6 @@ build_from_test_on_nanopi:
     tags:
         - arm64
     script:
-        - dpkg -l device-tree-compiler
         - /ci-scripts/build-package-for-test.sh unipi-tools
     artifacts:
         paths:

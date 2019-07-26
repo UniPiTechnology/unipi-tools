@@ -1,0 +1,4 @@
+^UNIPI1	= unipi1.target
+^[SML]  = unipispi.target
+^S165	= lte.target
+^S103G  = unipigprs.target

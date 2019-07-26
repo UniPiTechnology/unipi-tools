@@ -22,6 +22,34 @@ unipiversion global_unipi_version;
 char  unipi_name[sizeof(global_unipi_version.model)+1];
 int unipi_loaded = 0;
 
+int read_unipi1_eprom( unipiversion *ver)
+{
+   int res;
+   int i;
+
+   int f = open("/sys/bus/i2c/devices/1-0050/eeprom", O_RDONLY);
+   if (f < 0) {
+         return 1;
+   }
+   res = lseek(f, 0x160, 0);
+   if (res < 0) goto err;
+   res = read(f,ver,sizeof(unipiversion));
+   if (res < 0) goto err;
+   if (ver->signature != 0x55fa) goto err;
+   close(f);
+   for (i=0; i<6; i++) { 
+       if (ver->model[i]==0xff) {
+          ver->model[i] = '\0';
+          break;
+       }
+   }
+   unipi_loaded = 1;
+   return 0;
+err:
+   close(f);
+   return 1;
+}
+
 int read_unipi_eprom( unipiversion *ver)
 {
    int res;
@@ -56,9 +84,16 @@ err:
 char* get_unipi_name(void)
 {
 	if (! unipi_loaded) {
-		if (read_unipi_eprom(&global_unipi_version) == 0) {
+		if (read_unipi1_eprom(&global_unipi_version) == 0) {
 			strncpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
 			unipi_name[sizeof(global_unipi_version.model)] = '\0';
+			if ((unipi_name[0] == '\0') || ((uint8_t)unipi_name[0] == 0xff)) {
+				strncpy(unipi_name, "UNIPI1", sizeof("UNIPI1"));
+			}
+		} else if (read_unipi_eprom(&global_unipi_version) == 0) {
+			strncpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
+			unipi_name[sizeof(global_unipi_version.model)] = '\0';
+
 		} else {
 			unipi_name[0] = '\0';
 		}
@@ -69,8 +104,14 @@ char* get_unipi_name(void)
 uint32_t get_unipi_serial(void)
 {
 	if (! unipi_loaded) {
-		if (read_unipi_eprom(&global_unipi_version) != 0) global_unipi_version.serial = 0;
+		if (read_unipi1_eprom(&global_unipi_version) == 0) {
+			return global_unipi_version.serial;
+
+		} else if (read_unipi_eprom(&global_unipi_version) == 0) 
+			return global_unipi_version.serial;
+
+		global_unipi_version.serial = 0;
 	}
-	return global_unipi_version.serial;
+	return 0;
 }
 

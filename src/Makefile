@@ -66,7 +66,7 @@ SPISRC += armutil.c
 SPISRC += unipiutil.c
 SRC = $(SPISRC) nb_modbus.c virtual_regs.c
 
-BINFILES = unipi_tcp_server fwspi fwserial unipihost
+BINFILES = unipi_tcp_server fwspi fwserial unipihost unipicheck
  
 # Define optimisation level here
 #OPT = -Ofast
@@ -84,7 +84,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 #
 # makefile rules
 #
-all: unipi_tcp_server fwspi fwserial unipihost
+all: $(BINFILES)
 
 %.o: %.c
 	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
@@ -106,6 +106,10 @@ fwserial: fwserial.o armutil.o
 
 unipihost:  unipihost.o unipiutil.o
 	$(CC) unipihost.o unipiutil.o $(LDFLAGS) -o $@
+	@chmod +x $@
+
+unipicheck:  unipicheck.o unipiutil.o
+	$(CC) unipicheck.o unipiutil.o -lm -o $@
 	@chmod +x $@
 	
 bandwidth-client: bandwidth-client.o

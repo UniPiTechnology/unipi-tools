@@ -25,7 +25,10 @@ endif
 %:
 	dh $@ --with=systemd
 
+override_dh_auto_build:
+	dh_auto_build -- LINUX_DIR_PATH=$(LINUX_DIR_PATH)
 
 
 override_dh_strip:
 	dh_strip --no-automatic-dbgsym
+

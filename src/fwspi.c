@@ -29,7 +29,7 @@ int   BAUD = 8000000;
 #ifdef OS_WIN32
 char* firmwaredir = "./fw"
 #else
-char* firmwaredir = "/opt/fw";
+char* firmwaredir = "/opt/unipi/firmware";
 #endif
 int device_index;
 int upboard;
@@ -70,7 +70,7 @@ void print_usage(char *argv0)
     printf("--index <index>\t\t [0...n] device index\n");
     printf("--spidev <spidev>\t\t /dev/unipispi \n");
     printf("--baud <baudrate>\t default 10000000\n");
-    printf("--dir <firmware dir>\t default /opt/fw\n");
+    printf("--dir <firmware dir>\t default /opt/unipi/firmware\n");
     printf("--verbose\t show more messages\n");
     printf("--programm\t write firmware to flash\n");
     printf("--resetrw\t check/rewrite also rw settings\n");

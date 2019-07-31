@@ -1,0 +1,53 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+    fragment@0 {
+        target = <&spi0>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    /* the cs pin of the neuron-controller */
+    fragment@1 {
+        target = <&gpio>;
+        __overlay__ {
+            spi0_cs_pins: spi0_cs_pins {
+				brcm,pins = <8 7 25 24>;
+				brcm,function = <1>;
+            };
+        };
+    };
+
+	fragment@2 {
+		target = <&spi0>;
+
+        __overlay__ {
+			#address-cells = < 0x01 >;
+			#size-cells = < 0x00 >;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
+			cs-gpios = <&gpio 8 1>, <&gpio 7 1>, <&gpio 25 1>, <&gpio 24 1>;
+			status = "okay";
+
+			spidev@2 {
+				compatible = "spidev";
+				reg = <2>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spi-max-frequency = <12000000>;
+			};
+
+			spidev@3 {
+				compatible = "spidev";
+				reg = <3>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spi-max-frequency = <12000000>;
+			};
+		};
+	};
+};

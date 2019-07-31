@@ -4,6 +4,7 @@ unipi-common/systemd/system/* lib/systemd/system
 unipi-common/systemd/system.conf.d/* lib/systemd/system.conf.d
 
 unipi-common/udev/* lib/udev/rules.d
+unipi-common/etc/modprobe.d/* etc/modprobe.d
 
 unipi-common/etc/initramfs/hooks/* etc/initramfs-tools/hooks
 unipi-common/etc/initramfs/scripts/init-bottom/hwclock.sh etc/initramfs-tools/scripts/init-bottom
@@ -16,4 +17,6 @@ unipi-common/etc/initramfs/modules.d/* usr/share/initramfs-tools/modules.d
 
 unipi-common/usr/bin/* usr/bin
 
-debian/tmp/opt/unipi/bin/unipihost	opt/unipi/bin/
+debian/tmp/opt/unipi/tools/unipihost	opt/unipi/tools/
+debian/tmp/opt/unipi/tools/unipicheck	opt/unipi/tools/
+debian/tmp/opt/unipi/data/unipi-target.map	opt/unipi/data

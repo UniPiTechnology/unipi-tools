@@ -5,9 +5,17 @@ INSTALL = install
 
 #BINPATH := $(BINFILES:%=src/%)
 
+
+#ifeq (armhf,$(filter armhf,$(ARCH) $(DEB_TARGET_ARCH)))
+#overlaysd: overlays/*.dts
+#	cd overlays; make; cd ..
+#else
+#overlaysd: 
+#endif
+
 all: libmodbusx
 	cd src; make; cd ..
-	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then cd unipi-common/dts; make; cd ../.. ; fi
+	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then cd overlays; make; cd ../.. ; fi
 
 libmodbusx:
 	@echo ${CFLAGS}
@@ -32,8 +40,9 @@ clean:
 	@rm -rf libmodbus
 
 install:
-	$(INSTALL) -D $(BINFILES:%=src/%) src/unipi-target.map -t $(DESTDIR)/opt/unipi/bin
-	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then $(INSTALL) -D unipi-common/dts/*.dtbo -t $(DESTDIR)/boot/overlays ; fi
+	$(INSTALL) -D $(BINFILES:%=src/%) -t $(DESTDIR)/opt/unipi/tools
+	$(INSTALL) -D src/unipi-target.map -t $(DESTDIR)/opt/unipi/data
+	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then $(INSTALL) -D overlays/*.dtbo -t $(DESTDIR)/boot/overlays ; fi
 
 mr-proper:
 	@make clean

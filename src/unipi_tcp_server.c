@@ -53,7 +53,7 @@ const char* version_string = "Version 1.19:2018:08:21";
 char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
-char* firmwaredir = "/opt/fw";
+char* firmwaredir = "/opt/unipi/firmware";
 int do_check_fw = 0;
 int broadcast_address = 0;
 

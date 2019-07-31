@@ -35,7 +35,7 @@ int   DEVICE_ID = 15;
 #ifdef OS_WIN32
 char* firmwaredir = "./fw";
 #else
-char* firmwaredir = "/opt/fw";
+char* firmwaredir = "/opt/unipi/firmware";
 #endif
 int upboard;
 //int verbose = 0;
@@ -195,7 +195,7 @@ void print_usage(char *argv0)
     printf("--baud <baudrate>\t default 19200\n");
     printf("--parity N|E|O\t default N\n");
     printf("--timeout in ms\t default 800\n");
-    printf("--dir <firmware dir>\t default /opt/fw\n");
+    printf("--dir <firmware dir>\t default /opt/unipi/firmware\n");
     printf("--verbose\t show more messages\n");
     printf("--verify\t compare flash with file\n");
     printf("--programm\t write firmware to flash\n");

@@ -1,5 +1,5 @@
 
-BINFILES = unipi_tcp_server fwspi fwserial unipihost
+BINFILES = unipi_tcp_server fwspi fwserial unipihost unipicheck
 HOST = $(shell ${CC} -dumpmachine | sed 's/-.*//')
 INSTALL = install
 
@@ -15,7 +15,9 @@ INSTALL = install
 
 all: libmodbusx
 	cd src; make; cd ..
-	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then cd overlays; make; cd ../.. ; fi
+	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then \
+	  cd overlays; make LINUX_DIR_PATH=${LINUX_DIR_PATH}; cd ../.. ; \
+	fi
 
 libmodbusx:
 	@echo ${CFLAGS}

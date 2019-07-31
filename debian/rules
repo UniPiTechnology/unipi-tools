@@ -13,6 +13,14 @@
 # package maintainers to append LDFLAGS
 #export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
+ifeq ($(shell dpkg-architecture -q DEB_BUILD_ARCH),armhf)
+
+RPI_FIRMWARE_VER = $(shell dpkg-query -f='$${Version}' -W raspberrypi-kernel-headers)
+LINUX_DIR_PATH = $(shell dpkg -L raspberrypi-kernel-headers | sed -n '/^\/lib\/modules\/.*-v7.*\/build$$/p')
+KERNEL_VERSION = $(subst /lib/modules/,,$(subst /build,,$(LINUX_DIR_PATH)))
+
+endif
+
 
 %:
 	dh $@ --with=systemd

@@ -87,7 +87,7 @@ int main(int argc, char** argv)
    if (unipi_model[0]=='\0') return 1;
 
    /* try to open */
-   ftable = fopen("/opt/unipi/bin/unipi-target.map", "r");
+   ftable = fopen("/opt/unipi/data/unipi-target.map", "r");
    if (ftable == NULL) {
 		/* fail-safe behavior */
 		if (strcmp(unipi_model,"UNIPI1") == 0) {

@@ -1,0 +1,22 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&i2c1>;
+
+		__overlay__ {
+			#address-cells = <0x01>;
+			#size-cells = <0x00>;
+			status = "okay";
+
+			ds2482: ds2482@18 {
+				compatible = "ds2482";
+				reg = <0x18>;
+				status = "okay";
+			};
+		};
+	};
+};

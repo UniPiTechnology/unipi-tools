@@ -40,7 +40,7 @@ char active_parity = 'N';
 #ifdef OS_WIN32
 char* firmwaredir = "./fw";
 #else
-char* firmwaredir = "/opt/fw";
+char* firmwaredir = "/opt/unipi/firmware";
 #endif
 int upboard;
 

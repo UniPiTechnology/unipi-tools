@@ -126,7 +126,7 @@ fwserial-win: win32_serial.o armutil.o
 endif
 
 install:
-	$(INSTALL) -D $(BINFILES) -t $(DESTDIR)/opt/unipi/bin
+	$(INSTALL) -D $(BINFILES) -t $(DESTDIR)/opt/unipi/tools
 
 
 clean:

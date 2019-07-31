@@ -105,11 +105,11 @@ fwserial: fwserial.o armutil.o
 	@chmod +x $@
 
 unipihost:  unipihost.o unipiutil.o
-	$(CC) unipihost.o unipiutil.o $(LDFLAGS) -o $@
+	$(CC) unipihost.o unipiutil.o -o $@
 	@chmod +x $@
 
 unipicheck:  unipicheck.o unipiutil.o
-	$(CC) unipicheck.o unipiutil.o -lm -o $@
+	$(CC) unipicheck.o unipiutil.o -o $@
 	@chmod +x $@
 	
 bandwidth-client: bandwidth-client.o

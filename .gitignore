@@ -10,6 +10,7 @@ src/fwspi
 src/fwserial
 src/unipi_tcp_server
 src/unipihost
+src/unipicheck
 src/bandwidth-client
 .travis.yml
 .dir-locals.el

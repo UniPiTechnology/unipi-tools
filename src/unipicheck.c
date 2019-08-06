@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <regex.h>
+#include <sys/wait.h>
 
 #include "unipiutil.h"
 
@@ -17,10 +18,20 @@
 int calltarget(char* target)
 {
 	char ctarget[MAXTARGET];
+	pid_t cpid;
+
 	memset(ctarget, 0, MAXTARGET);
-	strncpy(ctarget, target, MAXTARGET);
+	strncpy(ctarget, target, MAXTARGET-1);
 	printf("  >>>> %s\n", ctarget);
-	return execl("/bin/systemctl", "--no-block", "start", ctarget, NULL);
+	cpid = fork();
+	if (cpid == -1) {
+		printf("Error forking process\n");
+		return -1;
+	}
+    if (cpid == 0){
+		return execl("/bin/systemctl", "--no-block", "start", ctarget, NULL);
+	}
+	return 0;
 }
 
 int is_valid_char(char ch)
@@ -95,6 +106,7 @@ int main(int argc, char** argv)
 		} else {
 			calltarget("unipispi.target");
 		}
+		while (waitpid(-1, NULL, 0) > 0);
 		return 0;
    }
 
@@ -116,6 +128,7 @@ int main(int argc, char** argv)
 
    free(line);
    fclose(ftable);
+   while (waitpid(-1, NULL, 0) > 0);
 
    return 0;
 }

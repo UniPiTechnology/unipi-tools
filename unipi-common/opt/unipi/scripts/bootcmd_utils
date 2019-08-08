@@ -1,0 +1,103 @@
+#!/bin/bash
+
+#### HELPER FUNCTIONS FOR SCRIPTED EDITING OF boot.cmd FILE ####
+
+COMMENT_CHAR="#"
+NEWLINE=$'\n'
+FILE_PATH=/boot/boot.cmd
+
+uncomment_line_force()
+{
+    sed -i "s/^[${COMMENT_CHAR}]\(.*$1.*\)/\1/I" ${FILE_PATH}
+}
+
+uncomment_line()
+{
+  #Make check if change of the line is necessary
+  grep -q "^[^;#].*${1}.*" ${FILE_PATH}
+
+  if [ $? -eq 0 ]; then
+    return 0 #Otherwise do not write anything
+  else
+    uncomment_line_force $1
+    return 1
+  fi
+}
+
+comment_line_force()
+{
+  sed -i "s/\(.*$1.*\)/${COMMENT_CHAR}\1/I" ${FILE_PATH}
+}
+
+comment_line()
+{
+  #Make check if change of the line is necessary
+  grep -q "^[${COMMENT_CHAR}].*${1}.*" ${FILE_PATH}
+
+  if [ $? -eq 0 ]; then
+    return 0 #Otherwise do not write anything
+  else
+    comment_line_force $1
+    return 1
+  fi
+}
+
+has_valid_footer()
+{
+  grep -q "\+\+\+${1}" ${FILE_PATH}
+}
+
+insert_footer()
+{
+
+  has_valid_footer ${1}
+
+  if [ $? = 0 ];then
+    return 0
+  fi
+
+  date=$(date +%Y-%m-%d)
+  FOOTER_TEXT="${NEWLINE}#+++${1} This file has been auto-modified according to the recipe for ${1} family UniPi unit on ${date}.
+#To re-initialize default values, delete this two-line text and restart the machine."
+
+  echo "$FOOTER_TEXT" >> ${FILE_PATH}
+
+  return 1
+}
+
+compile_file()
+{
+  DIR=$(dirname ${FILE_PATH})
+  cd $DIR
+  mkimage -C none -A arm -T script -d boot.cmd boot.scr
+}
+
+unit_family=${1}
+
+shift
+
+has_valid_footer ${unit_family}
+
+#The file already contains the footer - nothing to do...
+[ ! ${?} = 0 ] || exit 0
+
+changed=0
+while [ -n "${1}" ]; do
+    case "${1}" in
+    -c)   shift
+          comment_line ${1}
+          [ $? -gt 0 ] && ((changed++))
+            ;;
+    -u)   shift
+          uncomment_line ${1}
+          [ $? -gt 0 ] && ((changed++))
+            ;;
+    esac
+    shift
+done
+
+insert_footer ${unit_family}
+
+if [ $changed -gt 0 ]; then
+  compile_file
+fi

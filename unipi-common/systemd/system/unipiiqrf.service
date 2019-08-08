@@ -1,0 +1,14 @@
+[Unit]
+Description=Adapts device-tree fot IQRF series UniPi units
+#After=local-fs.target
+Before=evok.service
+Before=mervisrt.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/bash ./opt/unipi/scripts/bootcmd_utils IQRF -c '\/soc\/serial@01c28000 compatible' -u '\/soc\/spi@01c68000\/spi@3'
+#RemainAfterExit=yes
+
+[Install]
+#WantedBy=multi-user.target
+WantedBy=unipiiqrf.target

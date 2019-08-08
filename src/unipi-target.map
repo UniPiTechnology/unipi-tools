@@ -2,3 +2,4 @@
 ^[SML]  = unipispi.target
 ^S165	= lte.target
 ^S103G  = unipigprs.target
+^[SML][1-5]75	= unipiiqrf.target

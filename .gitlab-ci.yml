@@ -1,4 +1,4 @@
-variables:
+#variables:
 #    TEMPLATE_DISABLE: "1"
 
 include: 

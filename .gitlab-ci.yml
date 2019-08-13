@@ -36,7 +36,6 @@ build-stable:rpi:
 
 build-oldstable:nano:
     extends: .build_for_oldstable
-    extends: .build_for_oldstable
     tags: ['arm64']
     before_script: 
         - apt-get update

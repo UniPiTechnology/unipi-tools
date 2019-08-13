@@ -215,7 +215,8 @@ int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* resu
 {
     int n, r0;
     uint16_t registers[3];
-    if (HW_BOARD(arm->bv.base_hw_version)==0) {
+
+    if (arm && (HW_BOARD(arm->bv.base_hw_version)==0)) {
         if ((reg >= 3000) && (reg+cnt <= 3006)) {
             if (! loaded) { 
                 load_calibrating_const(arm);
@@ -242,7 +243,7 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
     float fval;
     uint32_t swapped;
     uint16_t regval;
-    if (HW_BOARD(arm->bv.base_hw_version)==0) {
+    if (arm && (HW_BOARD(arm->bv.base_hw_version)==0)) {
         if ((reg >= 3000) && (reg+cnt <= 3006)) {
             if (! loaded) { 
                 load_calibrating_const(arm);
@@ -275,7 +276,8 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
 
 void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
 {
-    if (HW_BOARD(arm->bv.base_hw_version)!=0) return;
+    if ((arm == NULL) || (HW_BOARD(arm->bv.base_hw_version)!=0)) 
+        return;
     // do only for Brain
     if (reg == 1019) {
         if (! loaded) { 

@@ -1,4 +1,3 @@
-
 BINFILES = unipi_tcp_server fwspi fwserial unipihost unipicheck
 HOST = $(shell ${CC} -dumpmachine | sed 's/-.*//')
 INSTALL = install
@@ -12,6 +11,7 @@ INSTALL = install
 #else
 #overlaysd: 
 #endif
+.PHONY: all libmodbusx
 
 all: libmodbusx
 	cd src; make; cd ..

@@ -16,7 +16,7 @@ INSTALL = install
 all: libmodbusx
 	cd src; make; cd ..
 	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then \
-	  cd overlays; make LINUX_DIR_PATH=${LINUX_DIR_PATH}; cd ../.. ; \
+	  cd overlays; make LINUX_DIR_PATH="${LINUX_DIR_PATH}"; cd ../.. ; \
 	fi
 
 libmodbusx:

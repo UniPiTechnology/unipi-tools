@@ -17,7 +17,7 @@ Description: Common utilities for Unipi/Neuron/Axon
 
 Package: unipi-modbus-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-common(>=1.1.10), unipi-kernel-modules-dkms | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
+Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-common(>=1.1.17), unipi-kernel-modules-dkms | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
 Replaces: neuron-modbus-tools (<= 1.1.3)
 Breaks: neuron-modbus-tools (<= 1.1.3)
 Provides: neuron-modbus-tools
@@ -26,7 +26,7 @@ Description: Modbus server for UniPi Neuron/Axon controllers.
 
 Package: unipi-firmware-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-common(>=1.1.10), unipi-kernel-modules-dkms | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
+Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-common(>=1.1.17), unipi-kernel-modules-dkms | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
 Description: Firmware utilities for UniPi Neuron/Axon controllers.
  Utility for firmware update via SPI or serial Modbus. 
  Requires firmware files (packag eunipi-firmware.deb)

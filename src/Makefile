@@ -20,6 +20,7 @@
 CC   = $(CCPREFIX)gcc -g
 CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
+INSTALL=install
  
 # standard version
 #MODBUS_LIBDIR = /usr/lib/modbus
@@ -35,18 +36,14 @@ INCDIRS       = $(MODBUSDIR)/src\
 
 LIBDIRS += $(MODBUS_LIBDIR)
 
-DSTDIR = ../bin
+DSTDIR = .
+#DSTDIR = ../bin
 
 # List all user libraries here
-#LIBS = util modbus
 LIBS = modbus m
-
-#LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs -l modbus 
 
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
-#LDFLAGS2 = -Llibmodbus-3.1.4/src/.libs libmodbus-3.1.4/src/.libs/libmodbus.dll.a
-#DFLAGS2  = -Ilibmodbus-3.1.4/src
   CC += -D OS_WIN32
   LDFLAGS2 = $(MODBUS_LIBDIR)/libmodbus.dll.a
   LIBDIRS += c:\MinGW\bin
@@ -69,6 +66,7 @@ SPISRC += armutil.c
 SPISRC += unipiutil.c
 SRC = $(SPISRC) nb_modbus.c virtual_regs.c
 
+BINFILES = unipi_tcp_server fwspi fwserial unipihost unipicheck
  
 # Define optimisation level here
 #OPT = -Ofast
@@ -81,37 +79,43 @@ LIB     = $(patsubst %,-l%, $(LIBS))
 OBJS  = $(SRC:.c=.o)
 SPIOBJS  = $(SPISRC:.c=.o)
 
-#CPFLAGS = $(MCFLAGS) $(OPT) -g -gdwarf-3 -mthumb   -fomit-frame-pointer -Wall -Wstrict-prototypes -fverbose-asm -Wa,-ahlms=$(<:.c=.lst) $(DEFS)
-#LDFLAGS = $(MCFLAGS) -g -gdwarf-3 -mthumb -nostartfiles -T$(LINKER_SCRIPT) -Wl,-Map=$(PROJECT).map,--cref,--no-warn-mismatch $(LIBDIR) $(LIB)
 LDFLAGS = $(LIBDIR) $(LIB)
 
 #
 # makefile rules
 #
-all: $(DSTDIR)/unipi_tcp_server $(DSTDIR)/fwspi $(DSTDIR)/fwserial $(DSTDIR)/unipihost
+all: $(BINFILES)
 
 %.o: %.c
 	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
 
-$(DSTDIR)/unipi_tcp_server: unipi_tcp_server.o $(OBJS) 
+
+.PHONY: fwspi unipi_tcp_server fwserial
+
+unipi_tcp_server: unipi_tcp_server.o $(OBJS) 
 	$(CC) unipi_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 
-$(DSTDIR)/fwspi:  fwspi.o $(OBJS)
+fwspi:  fwspi.o $(OBJS)
 	$(CC) fwspi.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 	
-#fwserial.o: fwserial.c
-#	$(CC) -c $(DFLAGS2)  $< -o $@
-
-$(DSTDIR)/fwserial: fwserial.o armutil.o
+fwserial: fwserial.o armutil.o
 	$(CC) $+ $(LDFLAGS) -o $@
 	@chmod +x $@
 
-$(DSTDIR)/unipihost:  unipihost.o $(OBJS)
-	$(CC) unipihost.o $(OBJS) $(LDFLAGS) -o $@
+unipihost:  unipihost.o unipiutil.o
+	$(CC) unipihost.o unipiutil.o -o $@
+	@chmod +x $@
+
+unipicheck:  unipicheck.o unipiutil.o
+	$(CC) unipicheck.o unipiutil.o -o $@
 	@chmod +x $@
 	
+bandwidth-client: bandwidth-client.o
+	$(CC) bandwidth-client.o $(LDFLAGS) -o $@
+
+
 # SYSTEMROOT should be defined on windows, so we use it to detect the OS
 ifdef SYSTEMROOT
 win32_serial.o: win32_serial.c
@@ -121,36 +125,14 @@ fwserial-win: win32_serial.o armutil.o
 	$(CC) $+ $(LDFLAGS2) $(LDFLAGS) -o neuron_fw_utility
 endif
 
-bandwidth-client: bandwidth-client.o
-	$(CC) bandwidth-client.o $(LDFLAGS) -o $@
-
-.PHONY: fwspi unipi_tcp_server fwserial
-
-unipi_tcp_server:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
-
-fwspi:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
-
-fwserial:
-	@rm -f $(DSTDIR)/$@
-	$(MAKE) $(DSTDIR)/$@
+install:
+	$(INSTALL) -D $(BINFILES) -t $(DESTDIR)/opt/unipi/tools
 
 
 clean:
-	-rm -rf $(OBJS) $(SPIOBJS) unipi_tcp_server.o fwspi.o fwserial.o win32_serial.o bandwidth-client.o unipihost.o virtual_regs.o
-	-rm -rf $(PROJECT).elf
-	-rm -rf $(PROJECT).map
-	-rm -rf $(PROJECT).hex
-	-rm -rf $(PROJECT).bin
-	-rm -rf $(PROJECT).rw
-	-rm -f ../bin/*
-	-rm -rf $(SRC:.c=.lst)
-
-#install:
-#	mkdir -p $(DESTDIR)/opt/neurontcp
-#	install -m 0755 neuron_tcp_server $(DESTDIR)/opt/neurontcp
+	-rm -f *.o
+	-rm -f $(BINFILES)
+#	-rm -rf $(SRC:.c=.lst)
+#	-rm -f ../bin/*
 
 # *** EOF ***

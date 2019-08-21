@@ -1,0 +1,13 @@
+[Unit]
+Description=Generate reset for GPRS modul via pin 18
+#After=local-fs.target
+Before=evok.service
+Before=mervisrt.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/bash ./opt/unipi/scripts/gprs-reset.sh
+#RemainAfterExit=yes
+
+[Install]
+WantedBy=unipigprs.target

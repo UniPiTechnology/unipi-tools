@@ -1,5 +1,4 @@
 #! /usr/bin/dh-exec
 
-debian/systemd/unipitcp.service lib/systemd/system
-debian/systemd/unipihost.service lib/systemd/system
-debian/tmp/opt/*	opt
+unipi-modbus-tools/systemd/system/* 		lib/systemd/system
+debian/tmp/opt/unipi/tools/unipi_tcp_server	opt/unipi/tools/

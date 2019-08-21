@@ -1,0 +1,11 @@
+# Defaults for unipi-modbus-tools initscript
+# loaded by unipifirmware.service
+# installed at /etc/default/unipi-firmware-tools by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# try to update firmware in Neuron/Axon boards during system start
+FIRMWARE_UPDATE=0
+

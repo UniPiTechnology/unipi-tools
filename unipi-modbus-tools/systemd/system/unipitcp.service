@@ -5,15 +5,13 @@ Before=evok.service
 
 [Service]
 Type=simple
-Environment="FIRMWARE_UPDATE=1"
 Environment="DAEMON_OPTS="
 EnvironmentFile=-/etc/default/unipi-modbus-tools
-ExecStartPre=/bin/sh -c 'if [ "${FIRMWARE_UPDATE}" = "1" ]; then /opt/unipi-bin/fwspi --auto; fi'
-ExecStart=/opt/unipi-bin/unipi_tcp_server -p 502 ${DAEMON_OPTS}
+ExecStart=/opt/unipi/tools/unipi_tcp_server -p 502 ${DAEMON_OPTS}
 TimeoutStopSec=3
 SyslogLevel=debug
 SyslogIdentifier=unipi
-WorkingDirectory=/opt/unipi-bin
+WorkingDirectory=/opt/unipi/tools
 
 Restart=always
 

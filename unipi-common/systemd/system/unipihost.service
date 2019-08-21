@@ -7,7 +7,7 @@ Before=mervisrt.service
 
 [Service]
 Type=oneshot
-ExecStart=-/opt/unipi-bin/unipihost unipi raspberrypi raspberry
+ExecStart=-/opt/unipi/tools/unipihost unipi raspberrypi raspberry
 ExecStartPost=/bin/sh -c 'grep "`hostname`" /etc/hosts || echo "127.0.1.1  `hostname`" >> /etc/hosts || /bin/true'
 ExecStartPost=/bin/sh -c 'systemctl --no-block try-restart avahi-daemon || /bin/true'
 RemainAfterExit=yes

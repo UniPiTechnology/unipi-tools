@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Unipi/Neuron/Axon version
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/unipi/tools/unipicheck
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

@@ -1,4 +1,3 @@
-/backup
 *~
 *.swp
 *.o
@@ -7,10 +6,12 @@
 *.log
 *.trs
 *.exe
-fwspi
-fwserial
-neuron_tcp_server
-bandwidth-client
+src/fwspi
+src/fwserial
+src/unipi_tcp_server
+src/unipihost
+src/unipicheck
+src/bandwidth-client
 .travis.yml
 .dir-locals.el
 .deps
@@ -18,10 +19,10 @@ bandwidth-client
 src/libmodbus-master/tests/
 src/libmodbus-master/m4/
 libmodbus/
-bin/unipi_tcp_server
-bin/unipihost
 src/glibconfig.h
 src/gtk/*
 Default/src/armspi.d
 Default/src/armutil.d
 Default/src/subdir.mk
+debian/tmp/
+debian/changelog

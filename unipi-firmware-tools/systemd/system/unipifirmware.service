@@ -1,0 +1,13 @@
+[Unit]
+Description=Unipi Neuron/Axon Firmware Update Service
+Before=unipitcp.service
+
+[Service]
+Type=oneshot
+Environment="FIRMWARE_UPDATE=0"
+EnvironmentFile=-/etc/default/unipi-firmware-tools
+ExecStart=/bin/sh -c 'if [ "${FIRMWARE_UPDATE}" = "1" ]; then /opt/unipi/tools/fwspi --auto; fi'
+WorkingDirectory=/opt/unipi/tools
+
+[Install]
+WantedBy=unipispi.target

@@ -418,6 +418,7 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
 {
     uint32_t rx_result;
 
+	int retry = 0;
     int prev_addr = -1;
     int len = datalen;
     uint32_t address = start_address;
@@ -436,14 +437,15 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
         }
         if (rx_result != ARM_FIRMWARE_KEY) {
         	if (arm_verbose) printf("Address %x does not equal %x\n", rx_result, ARM_FIRMWARE_KEY);
-            if ((address == prev_addr)||(prev_addr == -1)) { 
+            if ((retry++ >=10) || (prev_addr == -1)) { 
+            /*if ((address == prev_addr)||(prev_addr == -1)) { */
                 // double error or start error
                 usleep(100000);
                 break;
             }
             address = prev_addr;
             len = datalen - (address - start_address);
-            usleep(100000);
+            usleep(200000);
             continue;
         }
         if (prev_addr != -1) {
@@ -457,6 +459,7 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
         usleep(100000);
         prev_addr = address;
         address = address + ARM_PAGE_SIZE;
+		retry = 0;
     }
     return 0;
 }

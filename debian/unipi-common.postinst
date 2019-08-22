@@ -43,6 +43,7 @@ update_initramfs() {
 if [ "$1" = "configure" ]; then
 
 	deb-systemd-helper enable unipicheck.service >/dev/null || true
+	deb-systemd-helper enable unipihostname.service >/dev/null || true
 	if [ -d /run/systemd/system ]; then
         systemctl --system daemon-reload >/dev/null || true
         deb-systemd-invoke start unipicheck.service >/dev/null || true

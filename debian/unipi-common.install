@@ -19,6 +19,6 @@ unipi-common/etc/initramfs/modules.d/* usr/share/initramfs-tools/modules.d
 
 unipi-common/usr/bin/* usr/bin
 
-debian/tmp/opt/unipi/tools/unipihost	opt/unipi/tools/
+debian/tmp/opt/unipi/tools/unipihostname	opt/unipi/tools/
 debian/tmp/opt/unipi/tools/unipicheck	opt/unipi/tools/
 debian/tmp/opt/unipi/data/unipi-target.map	opt/unipi/data

@@ -9,7 +9,7 @@
 src/fwspi
 src/fwserial
 src/unipi_tcp_server
-src/unipihost
+src/unipihostname
 src/unipicheck
 src/bandwidth-client
 .travis.yml

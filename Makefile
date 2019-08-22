@@ -1,4 +1,4 @@
-BINFILES = unipi_tcp_server fwspi fwserial unipihost unipicheck
+BINFILES = unipi_tcp_server fwspi fwserial unipihostname unipicheck
 HOST = $(shell ${CC} -dumpmachine | sed 's/-.*//')
 INSTALL = install
 

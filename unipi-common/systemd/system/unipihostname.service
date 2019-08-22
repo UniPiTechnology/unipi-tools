@@ -1,17 +1,17 @@
 [Unit]
 Description=Set default hostname on Neuron and Axon
-#After=local-fs.target
+After=local-fs.target
 Before=avahi-daemon.service
 Before=evok.service
 Before=mervisrt.service
 
 [Service]
 Type=oneshot
-ExecStart=-/opt/unipi/tools/unipihost unipi raspberrypi raspberry
+ExecStart=-/opt/unipi/tools/unipihostname unipi raspberrypi raspberry
 ExecStartPost=/bin/sh -c 'grep "`hostname`" /etc/hosts || echo "127.0.1.1  `hostname`" >> /etc/hosts || /bin/true'
 ExecStartPost=/bin/sh -c 'systemctl --no-block try-restart avahi-daemon || /bin/true'
 RemainAfterExit=yes
 
 [Install]
 #WantedBy=multi-user.target
-WantedBy=unipispi.target
+WantedBy=sysinit.target

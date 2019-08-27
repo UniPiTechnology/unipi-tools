@@ -6,7 +6,7 @@ Before=mervisrt.service
 
 [Service]
 Type=oneshot
-ExecStart=-/bin/bash ./opt/unipi/scripts/bootcmd_utils IQRF -c '\/soc\/serial@01c28000 compatible' -u '\/soc\/spi@01c68000\/spi@3'
+ExecStart=-/bin/bash -c 'cd /etc/bootcmd.d/; make enable-iqrf disable-485-on-ttyS0'
 #RemainAfterExit=yes
 
 [Install]

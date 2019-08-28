@@ -112,6 +112,6 @@ uint32_t get_unipi_serial(void)
 
 		global_unipi_version.serial = 0;
 	}
-	return 0;
+	return global_unipi_version.serial;
 }
 

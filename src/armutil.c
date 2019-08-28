@@ -83,9 +83,9 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
     {16, 16,0, "X-1Ir"},
     {17, 17,0, "MM-8OW"},
-    {18, 11,6, "E-4Ai4Ao_P-4Di5Ro",},         //"E-4Ai4Ao_P-4Di5Ro"},
-    {19, 11,7, "E-4Ai4Ao_U-4Di5Ro"},
-    {20,  1,6, "E-8Di8Ro_P-4Di5Ro", },     
+    {18, 11,6, "E-4Ai4Ao_P-R485Di4Ro5",},         //"E-4Ai4Ao_P-4Di5Ro"},
+    {19, 11,7, "E-4Ai4Ao_U-R485Di4Ro5"},
+    {20,  1,6, "E-8Di8Ro_P-R485Di4Ro5", },     
     {21, 21,0, "MM-8PT"},
 };
 

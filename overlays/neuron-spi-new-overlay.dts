@@ -56,7 +56,7 @@
 		    #address-cells = <1>;
 		    #size-cells = <0>;
 			neuronspi0: neuronspi@0 {
-				compatible = "unipi,neuron";
+				compatible = "unipispi";
 				reg = <1>;
 				spi-max-frequency = <12000000>;
 				status = "okay";
@@ -68,7 +68,7 @@
 				neuron-probe-always-succeeds = <0>;
 			};
 			neuronspi1: neuronspi@1 {
-				compatible = "unipi,neuron";
+				compatible = "unipispi";
 				reg = <2>;
 				spi-max-frequency = <12000000>;
 				status = "okay";
@@ -80,7 +80,7 @@
 				neuron-probe-always-succeeds = <0>;
 			};
 			neuronspi2: neuronspi@2 {
-				compatible = "unipi,neuron";
+				compatible = "unipispi";
 				reg = <3>;
 				spi-max-frequency = <12000000>;
 				status = "okay";

@@ -1,40 +1,37 @@
 #!/bin/bash
 
 CONFIGTXT=/boot/config.txt
+CONFIGINC=config-initrd.inc
+PATHINC="/boot/${CONFIGINC}"
 
-function replace_initrd()
-{
-  SUFFIX=$1
-  FVER=$2
-  sed "s/initramfs initrd.img-[[:digit:]\.]\+${SUFFIX}[[:blank:]]/initramfs initrd.img-${FVER} /;t" \
-	-i $CONFIGTXT
-}
-
+# check or insert include directive  into config.txt  
+INCLUDE="include ${CONFIGINC}"
+grep -q -e "^[[:blank:]]*${INCLUDE}" "${CONFIGTXT}" || sed "1 i${INCLUDE}" -i "${CONFIGTXT}"
 
 if [ -n "$1" ]; then
+	### called after new kernel installed
 	FULLVER=$1
 	VER=${FULLVER%%-*+}
 	VER=${VER%%+}
 	SUFFIX=${FULLVER##$VER}
-	replace_initrd ${SUFFIX} ${FULLVER}
-    exit 0
+
+else
+	### initialization during package install
+	FULLVER=`uname -r`
+	# get version without + -v7+ or -v7l+
+	VER=${FULLVER%%-*+}
+	VER=${VER%%+}
 fi
 
-### initialization during package install
-FULLVER=`uname -r`
-# get version without + -v7+ or -v7l+
-VER=${FULLVER%%-*+}
-VER=${VER%%+}
-
-sed '/initramfs initrd.img-/d;/^\[pi[1234]\]/d;/^\[all\]/d'  -i $CONFIGTXT
-cat <<EOF >>$CONFIGTXT
+cat <<EOF >${PATHINC}
 [pi1]
-initramfs initrd.img-$VER+ followkernel
+initramfs initrd.img-${VER}+ followkernel
 [pi2]
-initramfs initrd.img-$VER-v7+ followkernel
+initramfs initrd.img-${VER}-v7+ followkernel
 [pi3]
-initramfs initrd.img-$VER-v7+ followkernel
+initramfs initrd.img-${VER}-v7+ followkernel
 [pi4]
-initramfs initrd.img-$VER-v7l+ followkernel
+initramfs initrd.img-${VER}-v7l+ followkernel
 [all]
 EOF
+

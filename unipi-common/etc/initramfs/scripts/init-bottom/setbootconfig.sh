@@ -49,21 +49,16 @@ if [ "${DO_MOUNT}" = "1" ]; then
 fi
 
 (
-[ -z "$I2C" ] && echo "dtparam=i2c_arm=on"
-[ -z "$NEURONEE" ] && echo "dtoverlay=neuronee"
-[ -z "$RTC" ] && echo "dtoverlay=i2c-rtc,mcp7941x"
-[ -z "$UNIPIEE" ] && echo "dtoverlay=unipiee"
-if [ -n "$IS_UNIPI1" ]; then
-  sed 's/^[[:blank:]]*\(dtoverlay[[:blank:]]*=[[:blank:]]*neuron-spi-new\)/#\1/'  ${MNTDIR}/config.txt
-else
-  [ -z "$NEURONDRV" ] && echo "dtoverlay=neuron-spi-new"
-  sed '/^[[:blank:]#;]*dtoverlay[[:blank:]]*=[[:blank:]]*neuron-spi-new/d' ${MNTDIR}/config.txt
-fi
-) >${MNTDIR}/config.new
+	echo "dtparam=i2c_arm=on"
+	echo "dtoverlay=neuronee"
+	echo "dtoverlay=i2c-rtc,mcp7941x"
+	echo "dtoverlay=unipiee"
+	[ "$IS_UNIPI1" = "1" ] || echo "dtoverlay=neuron-spi-new"
+) >"${MNTDIR}/config-unipi.inc"
 
-rm -f ${MNTDIR}/config.old 2>/dev/null
-mv ${MNTDIR}/config.txt ${MNTDIR}/config.old
-mv ${MNTDIR}/config.new ${MNTDIR}/config.txt
+# check or insert include into config.txt  
+INCLUDE="include config-unipi.inc"
+grep -q -e "^[[:blank:]]*${INCLUDE}" "${MNTDIR}/config.txt" || sed "1 i${INCLUDE}" -i "${MNTDIR}/config.txt"  
 
 if [ "${DO_MOUNT}" = "1" ]; then
   ## umount boot

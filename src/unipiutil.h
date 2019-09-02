@@ -13,6 +13,10 @@
 
 #include <sys/types.h>
 
+# define e_stringify(VER) #VER
+# define stringify(VER) e_stringify(VER)
+# define PROJECT_VER stringify(PROJECT_VERSION)
+
 char* get_unipi_name(void);
 uint32_t get_unipi_serial(void);
 

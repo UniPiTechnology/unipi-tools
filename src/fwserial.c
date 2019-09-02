@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "unipiutil.h"
 
 /* Hardware constants */
 #define PAGE_SIZE   1024            
@@ -37,6 +38,8 @@ char* firmwaredir = "./fw";
 #else
 char* firmwaredir = "/opt/unipi/firmware";
 #endif
+const char* version_string = "Version " PROJECT_VER;
+
 int upboard;
 //int verbose = 0;
 int do_verify = 0;
@@ -303,6 +306,9 @@ int main(int argc, char **argv)
            break;
        }
     }
+
+    if (verbose)
+    	   printf("Fwserial: %s\n", version_string);
 
     if (PORT == NULL) {
         eprintf("Port device must be specified\n", optarg);

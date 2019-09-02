@@ -22,6 +22,10 @@ CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 INSTALL=install
  
+ifdef PROJECT_VERSION
+override PROJECT_VERSION := -DPROJECT_VERSION=$(PROJECT_VERSION)
+endif 
+
 # standard version
 #MODBUS_LIBDIR = /usr/lib/modbus
 #INCDIRS = /usr/include/modbus
@@ -87,7 +91,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 all: $(BINFILES)
 
 %.o: %.c
-	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
+	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) $< -o $@
 
 
 .PHONY: fwspi unipi_tcp_server fwserial

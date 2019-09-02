@@ -21,12 +21,13 @@ KERNEL_VERSION = $(subst /lib/modules/,,$(subst /build,,$(LINUX_DIR_PATH)))
 
 endif
 
+PROJECT_VERSION=$(shell dpkg-parsechangelog -S Version)
 
 %:
 	dh $@ --with=systemd
 
 override_dh_auto_build:
-	dh_auto_build -- LINUX_DIR_PATH="$(LINUX_DIR_PATH)"
+	dh_auto_build -- LINUX_DIR_PATH="$(LINUX_DIR_PATH)" PROJECT_VERSION=$(PROJECT_VERSION)
 
 
 override_dh_strip:

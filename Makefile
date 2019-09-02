@@ -4,6 +4,7 @@ INSTALL = install
 
 #BINPATH := $(BINFILES:%=src/%)
 
+##include version.inc
 
 #ifeq (armhf,$(filter armhf,$(ARCH) $(DEB_TARGET_ARCH)))
 #overlaysd: overlays/*.dts
@@ -20,8 +21,6 @@ all: libmodbusx
 	fi
 
 libmodbusx:
-	@echo ${CFLAGS}
-	@echo ${LDFLAGS}
 	@if [ -d libmodbus ]; then \
 		cd libmodbus;\
 		if ! git pull; then \
@@ -31,7 +30,6 @@ libmodbusx:
 		git clone git://github.com/stephane/libmodbus;\
 	 fi
 	@cd libmodbus;\
-	 #export xCFLAGS="-g -O2 -fstack-protector-all";\
 	 ./autogen.sh;\
 	 ac_cv_func_malloc_0_nonnull=yes ./configure --host=${HOST} --enable-static --enable-shared=no --disable-tests;\
 	 make clean; make;

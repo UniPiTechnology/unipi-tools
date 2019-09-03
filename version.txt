@@ -1,1 +1,0 @@
-Repository:unipi-modbus-tools ActiveBranch:[master] PrecedingRevision:113(f63d822) LatestCommit:Fri Oct 12 14:45:59 CEST 2018

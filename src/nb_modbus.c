@@ -28,7 +28,7 @@
 #include "armutil.h"
 #include "virtual_regs.h"
 
-#include <modbus-version.h>
+#include <modbus/modbus-version.h>
 #if LIBMODBUS_VERSION_CHECK(3,1,4) != 1
 //Library_error "YOU NEED libmodbus version min 3.1.4"
 #endif

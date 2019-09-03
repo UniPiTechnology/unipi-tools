@@ -12,8 +12,8 @@
 #ifndef __nb_modbus_h
 #define __nb_modbus_h
 
-#include <modbus.h>
-#include <modbus-tcp.h>
+#include <modbus/modbus.h>
+#include <modbus/modbus-tcp.h>
 
 #include "armspi.h"
 

@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <errno.h>
-#include <modbus.h>
+#include <modbus/modbus.h>
 #include <unistd.h>
 
 #include "armutil.h"

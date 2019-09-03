@@ -19,7 +19,7 @@ DO_LIBMODBUS = $(shell dpkg --compare-versions "$(LIBMODBUS_VER)" ge "3.1.4" || 
 
 
 all: libmodbus
-	cd src; make; cd ..
+	cd src; make
 	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then \
 	  cd overlays; make LINUX_DIR_PATH="${LINUX_DIR_PATH}"; cd ../.. ; \
 	fi
@@ -37,11 +37,11 @@ libmodbus:
 	@cd libmodbus;\
 	 ./autogen.sh;\
 	 ac_cv_func_malloc_0_nonnull=yes ./configure --host=${HOST} --enable-static --enable-shared=no --disable-tests;\
-	 make clean; make;
+	 make clean; make && make install DESTDIR=$(PWD)/libmodbus
 endif
 
 clean:
-	cd src; make clean; cd ..
+	cd src && make clean
 	@rm -rf libmodbus
 
 install:

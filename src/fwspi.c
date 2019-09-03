@@ -20,6 +20,7 @@
 #include "armspi.h"
 #include "armutil.h"
 #include "nb_modbus.h"
+#include "unipiutil.h"
 
 
 /* Default parameters */
@@ -31,6 +32,8 @@ char* firmwaredir = "./fw"
 #else
 char* firmwaredir = "/opt/unipi/firmware";
 #endif
+const char* version_string = "Version " PROJECT_VER;
+
 int device_index;
 int upboard;
 //int verbose = 0;
@@ -183,6 +186,7 @@ int main(int argc, char **argv)
     }
 
     //arm = malloc(sizeof(arm_handle));
+    if (verbose)  printf("Fwspi: %s\n", version_string);
     if ( arm_init(arm, PORT , BAUD, device_index) < 0) {
         fprintf(stderr, "Unable to create the arm[%d] context\n", device_index);
         free(arm);

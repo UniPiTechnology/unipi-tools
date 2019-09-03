@@ -37,6 +37,10 @@ update_initramfs() {
   if [ -x /etc/kernel/postinst.d/initrd-config ]; then
 	/etc/kernel/postinst.d/initrd-config || true
   fi
+  # reconfigure kernel, which can be installed in the same batch
+  # try to find kernel packege name using attribute Provides: linux-image
+  LINUX_IMAGE=$(dpkg-query -W -f='Package: ${Package}\nProvides: ${Provides}\n' | grep -B 1 -E "^Provides: .*linux-image" | awk '/^Package:/ {print $2}')
+  [ -n "$LINUX_IMAGE" ] && dpkg-reconfigure "$LINUX_IMAGE"
 }
 
 

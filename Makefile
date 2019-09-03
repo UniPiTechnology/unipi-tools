@@ -2,8 +2,12 @@ BINFILES = unipi_tcp_server fwspi fwserial unipihostname unipicheck
 HOST = $(shell ${CC} -dumpmachine | sed 's/-.*//')
 INSTALL = install
 
+LIBMODBUS_VER = $(shell dpkg-query -f '$${Version}' -W libmodbus-dev)
+DO_LIBMODBUS = $(shell dpkg --compare-versions "$(LIBMODBUS_VER)" ge "3.1.4" || echo local)
+
 #BINPATH := $(BINFILES:%=src/%)
 
+##include version.inc
 
 #ifeq (armhf,$(filter armhf,$(ARCH) $(DEB_TARGET_ARCH)))
 #overlaysd: overlays/*.dts
@@ -11,17 +15,17 @@ INSTALL = install
 #else
 #overlaysd: 
 #endif
-.PHONY: all libmodbusx
+.PHONY: all libmodbus
 
-all: libmodbusx
-	cd src; make; cd ..
+
+all: libmodbus
+	cd src; make
 	if [ "$(ARCH)" = "arm" -o "$(DEB_TARGET_ARCH)" = "armhf" ]; then \
 	  cd overlays; make LINUX_DIR_PATH="${LINUX_DIR_PATH}"; cd ../.. ; \
 	fi
 
-libmodbusx:
-	@echo ${CFLAGS}
-	@echo ${LDFLAGS}
+ifeq ($(DO_LIBMODBUS),local)
+libmodbus:
 	@if [ -d libmodbus ]; then \
 		cd libmodbus;\
 		if ! git pull; then \
@@ -31,14 +35,13 @@ libmodbusx:
 		git clone git://github.com/stephane/libmodbus;\
 	 fi
 	@cd libmodbus;\
-	 #export xCFLAGS="-g -O2 -fstack-protector-all";\
 	 ./autogen.sh;\
 	 ac_cv_func_malloc_0_nonnull=yes ./configure --host=${HOST} --enable-static --enable-shared=no --disable-tests;\
-	 make clean; make;
-
+	 make clean; make && make install DESTDIR=$(PWD)/libmodbus
+endif
 
 clean:
-	cd src; make clean; cd ..
+	cd src && make clean
 	@rm -rf libmodbus
 
 install:

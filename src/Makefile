@@ -22,6 +22,10 @@ CP   = $(CCPREFIX)objcopy
 AS   = $(CCPREFIX)gcc -x assembler-with-cpp
 INSTALL=install
  
+ifdef PROJECT_VERSION
+override PROJECT_VERSION := -DPROJECT_VERSION=$(PROJECT_VERSION)
+endif 
+
 # standard version
 #MODBUS_LIBDIR = /usr/lib/modbus
 #INCDIRS = /usr/include/modbus
@@ -29,15 +33,14 @@ INSTALL=install
 # But we need libmodbus version >= 3.1.4 
 #   - older versions listen on all interface 
 #   - there was problem with tty name length
-MODBUSDIR = ../libmodbus
-MODBUS_LIBDIR = $(MODBUSDIR)/src/.libs
-INCDIRS       = $(MODBUSDIR)/src\
-                $(MODBUSDIR)
+MODBUSDIR = ../libmodbus/usr/local/
+MODBUS_LIBDIR = $(MODBUSDIR)/lib
+INCDIRS       = $(MODBUSDIR)/include
 
 LIBDIRS += $(MODBUS_LIBDIR)
 
 DSTDIR = .
-#DSTDIR = ../bin
+
 
 # List all user libraries here
 LIBS = modbus m
@@ -87,7 +90,7 @@ LDFLAGS = $(LIBDIR) $(LIB)
 all: $(BINFILES)
 
 %.o: %.c
-	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $< -o $@
+	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) $< -o $@
 
 
 .PHONY: fwspi unipi_tcp_server fwserial

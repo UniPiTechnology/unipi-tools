@@ -11,42 +11,42 @@ build-newstable:nano:
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers
+        - apt-get install -y axon-kernel-headers libmodbus-dev
 
 build-newstable:rpi:
     extends: .build_for_newstable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers
+        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev
 
 build-stable:nano:
     extends: .build_for_stable
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers
+        - apt-get install -y axon-kernel-headers libmodbus-dev
 
 build-stable:rpi:
     extends: .build_for_stable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers
+        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev
 
 build-oldstable:nano:
     extends: .build_for_oldstable
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers
+        - apt-get install -y axon-kernel-headers libmodbus-dev
 
 build-oldstable:rpi:
     extends: .build_for_oldstable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers
+        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev
 
 deploy-test:
     extends: .deploy_test

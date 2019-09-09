@@ -32,35 +32,41 @@ fi
 update_initramfs() {
   [ -x /usr/sbin/update-initramfs -a -e /etc/initramfs-tools/initramfs.conf ] \
     || return 0
-  update-initramfs -c -t -k `uname -r` || true
   # set initramfs ...  in /boot/config.txt 
   if [ -x /etc/kernel/postinst.d/initrd-config ]; then
-	/etc/kernel/postinst.d/initrd-config || true
+      /etc/kernel/postinst.d/initrd-config || true
   fi
   # reconfigure kernel, which can be installed in the same batch
   # try to find kernel packege name using attribute Provides: linux-image
   LINUX_IMAGE=$(dpkg-query -W -f='Package: ${Package}\nProvides: ${Provides}\n' | grep -B 1 -E "^Provides: .*linux-image" | awk '/^Package:/ {print $2}')
-  [ -n "$LINUX_IMAGE" ] && dpkg-reconfigure "$LINUX_IMAGE"
+  if [ -n "$LINUX_IMAGE" ]; then
+      dpkg-reconfigure "$LINUX_IMAGE"
+  else
+      update-initramfs -c -t -k `uname -r` || true
+  fi
 }
 
 
 if [ "$1" = "configure" ]; then
 
-	deb-systemd-helper enable unipicheck.service >/dev/null || true
-	deb-systemd-helper enable unipihostname.service >/dev/null || true
-	if [ -d /run/systemd/system ]; then
+    deb-systemd-helper enable unipicheck.service >/dev/null || true
+    deb-systemd-helper enable unipihostname.service >/dev/null || true
+    if [ -d /run/systemd/system ]; then
         systemctl --system daemon-reload >/dev/null || true
         deb-systemd-invoke start unipicheck.service >/dev/null || true
-	fi
+    fi
     # if initramfs config file is default, change MODULES=most to MODULES=list
-	if dpkg --verify initramfs-tools-core | grep -q '/etc/initramfs-tools/initramfs.conf' ; then
-		true
+    if dpkg --verify initramfs-tools-core | grep -q '/etc/initramfs-tools/initramfs.conf' ; then
+        true
     else
         sed -i 's/^MODULES=most/MODULES=list/' /etc/initramfs-tools/initramfs.conf
-	fi
+    fi
+    if test -f /etc/default/raspberrypi-kernel; then
+        sed 's/#INITRD=Yes/INITRD=Yes/' -i /etc/default/raspberrypi-kernel
+    fi
     if [ -x /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh ]; then
-   		#prepare /boot/config.txt
-	    /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh --noreboot
-	fi
+        #prepare /boot/config.txt
+        /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh --noreboot
+    fi
     update_initramfs
 fi

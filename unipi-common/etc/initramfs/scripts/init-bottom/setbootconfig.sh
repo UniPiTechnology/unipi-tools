@@ -6,7 +6,7 @@ grep -q 'Hardware[[:blank:]]*:[[:blank:]]*BCM' /proc/cpuinfo || exit 0
 unset IS_REAL_SYSTEM
 unset DO_MOUNT
 
-if [ "$1" = "--noreboot"  -o -n "${DESTDIR}" ]; then
+if [ "$1" = "--noreboot" -o -n "${DESTDIR}" ]; then
     ## called from package install
     MNTDIR=/boot
     # check if running from "real" Neuron system

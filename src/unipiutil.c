@@ -31,7 +31,7 @@ int read_unipi1_eprom( unipiversion *ver)
    if (f < 0) {
          return 1;
    }
-   res = lseek(f, 0x160, 0);
+   res = lseek(f, 0xe0, 0);
    if (res < 0) goto err;
    res = read(f,ver,sizeof(unipiversion));
    if (res < 0) goto err;

@@ -51,11 +51,11 @@ esac
 
 if grep -q 'Hardware[[:blank:]]*:[[:blank:]]*BCM' /proc/cpuinfo; then
 	mkdir -p /usr/share/rpikernelhack/overlays
-	dpkg-divert --package rpikernelhack --divert /usr/share/rpikernelhack/overlays/ds2482.dtbo /boot/overlays/ds2482.dtbo
-	dpkg-divert --package rpikernelhack --divert /usr/share/rpikernelhack/overlays/neuronee.dtbo /boot/overlays/neuronee.dtbo
-	dpkg-divert --package rpikernelhack --divert /usr/share/rpikernelhack/overlays/neuron-spi.dtbo /boot/overlays/neuron-spi.dtbo
-	dpkg-divert --package rpikernelhack --divert /usr/share/rpikernelhack/overlays/neuron-spi-new.dtbo /boot/overlays/neuron-spi-new.dtbo
-	dpkg-divert --package rpikernelhack --divert /usr/share/rpikernelhack/overlays/unipiee.dtbo /boot/overlays/unipiee.dtbo
+	dpkg-divert --package rpikernelhack --no-rename --divert /usr/share/rpikernelhack/overlays/ds2482.dtbo /boot/overlays/ds2482.dtbo
+	dpkg-divert --package rpikernelhack --no-rename --divert /usr/share/rpikernelhack/overlays/neuronee.dtbo /boot/overlays/neuronee.dtbo
+	dpkg-divert --package rpikernelhack --no-rename --divert /usr/share/rpikernelhack/overlays/neuron-spi.dtbo /boot/overlays/neuron-spi.dtbo
+	dpkg-divert --package rpikernelhack --no-rename --divert /usr/share/rpikernelhack/overlays/neuron-spi-new.dtbo /boot/overlays/neuron-spi-new.dtbo
+	dpkg-divert --package rpikernelhack --no-rename --divert /usr/share/rpikernelhack/overlays/unipiee.dtbo /boot/overlays/unipiee.dtbo
 else
     rm -f /etc/initramfs-tools/scripts/init-bottom/setbootconfig.sh || true
     rm -f /etc/initramfs-tools/scripts/init-bottom/reinitialize_default_var || true

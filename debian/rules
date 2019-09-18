@@ -34,6 +34,11 @@ override_dh_strip:
 	dh_strip --no-automatic-dbgsym
 
 override_dh_systemd_start:
-	dh_systemd_start --no-package=unipi-common
+	dh_systemd_start -Xset_image_read_only.service unipihostname.service unipicheck.service
+
+override_dh_systemd_enable:
+	dh_systemd_enable -Xset_image_read_only.service
+
+# --no-package=unipi-common
 
 

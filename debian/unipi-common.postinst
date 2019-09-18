@@ -32,9 +32,11 @@ fi
 update_initramfs() {
   [ -x /usr/sbin/update-initramfs -a -e /etc/initramfs-tools/initramfs.conf ] \
     || return 0
-  # set initramfs ...  in /boot/config.txt 
+  # set initramfs ...  in /boot/config.txt
   if [ -x /etc/kernel/postinst.d/initrd-config ]; then
       /etc/kernel/postinst.d/initrd-config || true
+      # clear lines with initramfs in config.txt. This is now in include file
+      grep -q -e "^[[:blank:]]*initramfs" /boot/config.txt && sed "/^[[:blank:]]*initramfs/d" -i /boot/config.txt
   fi
   # reconfigure kernel, which can be installed in the same batch
   # try to find kernel packege name using attribute Provides: linux-image
@@ -49,17 +51,6 @@ update_initramfs() {
 
 if [ "$1" = "configure" ]; then
 
-    #deb-systemd-helper enable unipicheck.service >/dev/null || true
-    #deb-systemd-helper enable unipihostname.service >/dev/null || true
-
-    #DEBHELPER#
-
-    deb-systemd-helper disable set_image_read_only.service >/dev/null || true
-
-    if [ -d /run/systemd/system ]; then
-        systemctl --system daemon-reload >/dev/null || true
-        deb-systemd-invoke start unipicheck.service >/dev/null || true
-    fi
     # if initramfs config file is default, change MODULES=most to MODULES=list
     if dpkg --verify initramfs-tools-core | grep -q '/etc/initramfs-tools/initramfs.conf' ; then
         true
@@ -76,5 +67,7 @@ if [ "$1" = "configure" ]; then
     update_initramfs
 
 fi
+
+#DEBHELPER#
 
 exit 0

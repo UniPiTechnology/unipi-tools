@@ -17,7 +17,7 @@ else
     DO_MOUNT=1
     MNTDIR=/tmp/boot
 fi
-    
+
 if [ "${IS_REAL_SYSTEM}" = "1" ]; then
   [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c01@57 ] && NEURONEE=1
   [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c02@50 ] && UNIPIEE=1
@@ -56,9 +56,9 @@ fi
 	[ "$IS_UNIPI1" = "1" ] || echo "dtoverlay=neuron-spi-new"
 ) >"${MNTDIR}/config-unipi.inc"
 
-# check or insert include into config.txt  
+# check or insert include into config.txt
 INCLUDE="include config-unipi.inc"
-grep -q -e "^[[:blank:]]*${INCLUDE}" "${MNTDIR}/config.txt" || sed "1 i${INCLUDE}" -i "${MNTDIR}/config.txt"  
+grep -q -e "^[[:blank:]]*${INCLUDE}" "${MNTDIR}/config.txt" || sed "1 i${INCLUDE}" -i "${MNTDIR}/config.txt"
 
 if [ "${DO_MOUNT}" = "1" ]; then
   ## umount boot

@@ -6,6 +6,7 @@ After=regenerate_ssh_host_keys.service regenerate_nginx_mervis_keys.service
 Type=oneshot
 ExecStartPre=/bin/sh -c 'while systemctl -q is-enabled regenerate_ssh_host_keys.service; do sleep 5; done'
 ExecStartPre=/bin/sh -c 'while systemctl -q is-enabled regenerate_nginx_mervis_keys.service; do sleep 5; done'
+ExecStartPre=/bin/sh -c 'while systemctl is-active sshswitch | grep -qv -e "inactive" ; do sleep 5; done'
 ExecStart=/usr/bin/remount ro --permanent
 ExecStartPost=/bin/sh -c 'remount rw; /bin/systemctl disable set_image_read_only.service; remount'
 

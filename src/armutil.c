@@ -15,7 +15,7 @@ typedef struct {
   const char*   name;
 } Tcompatibility_map;
 
-#define UP_COUNT 7
+#define UP_COUNT 8
 Tboards_map up_boards[] = {
     {0, 0, ""},
     {1, 16, "P-11DiR485-1"},

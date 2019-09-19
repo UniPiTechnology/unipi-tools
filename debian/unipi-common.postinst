@@ -42,7 +42,7 @@ update_initramfs() {
   # try to find kernel packege name using attribute Provides: linux-image
   LINUX_IMAGE=$(dpkg-query -W -f='Package: ${Package}\nProvides: ${Provides}\n' | grep -B 1 -E "^Provides: .*linux-image" | awk '/^Package:/ {print $2}')
   if [ -n "$LINUX_IMAGE" ]; then
-      dpkg-reconfigure "$LINUX_IMAGE"
+      dpkg-reconfigure "$LINUX_IMAGE" || true
   else
       update-initramfs -c -t -k `uname -r` || true
   fi

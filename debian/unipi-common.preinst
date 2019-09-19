@@ -23,7 +23,7 @@ case "$1" in
 			rm /etc/systemd/system/unipi1.target
 		fi
 		if test -f /etc/systemd/system/unipicheck.service; then
-			rm /etc/systemd/system/sysinit.target.wants/unipicheck.service || true
+			#rm /etc/systemd/system/sysinit.target.wants/unipicheck.service || true
 			rm /etc/systemd/system/unipicheck.service 
             systemctl --system daemon-reload >/dev/null || true
 		fi

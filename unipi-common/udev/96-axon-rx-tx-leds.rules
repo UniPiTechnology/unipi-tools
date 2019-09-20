@@ -1,0 +1,6 @@
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xa", RUN+="/bin/sh -ec 'echo ttyS0-tx > /sys/${DEVPATH}/trigger || exit 0"
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xb", RUN+="/bin/sh -ec 'echo ttyS0-rx > /sys/${DEVPATH}/trigger || exit 0"
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xc", RUN+="/bin/sh -ec 'echo ttyS2-tx > /sys/${DEVPATH}/trigger || exit 0"
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xd", RUN+="/bin/sh -ec 'echo ttyS2-rx > /sys/${DEVPATH}/trigger || exit 0"
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xe", RUN+="/bin/sh -ec 'echo ttyS1-tx > /sys/${DEVPATH}/trigger || exit 0"
+ACTION=="add", SUBSYSTEM=="leds", DEVPATH=="*/leds/unipi*uled-xf", RUN+="/bin/sh -ec 'echo ttyS1-rx > /sys/${DEVPATH}/trigger || exit 0"

@@ -3,9 +3,13 @@
 unipi-common/systemd/system/* lib/systemd/system
 unipi-common/systemd/system.conf.d/* lib/systemd/system.conf.d
 
-unipi-common/udev/* lib/udev/rules.d
+unipi-common/udev/*unipi* lib/udev/rules.d
+[linux-arm64] unipi-common/udev/*axon* lib/udev/rules.d
+
 unipi-common/etc/modprobe.d/* etc/modprobe.d
 unipi-common/etc/modules-load.d/* etc/modules-load.d
+
+unipi-common/etc/apt/preferences.d/* etc/apt/preferences.d
 
 unipi-common/opt/unipi/scripts/* opt/unipi/scripts
 

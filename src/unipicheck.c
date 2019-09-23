@@ -95,7 +95,7 @@ int main(int argc, char** argv)
    char *line, *token;
 
    unipi_model = get_unipi_name();
-   if (unipi_model[0]=='\0') return 1;
+   if (unipi_model[0]=='\0') return 0;
 
    /* try to open */
    ftable = fopen("/opt/unipi/data/unipi-target.map", "r");

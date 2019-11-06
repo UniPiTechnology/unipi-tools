@@ -1,0 +1,14 @@
+[Unit]
+Description=Enables RS485 on ttyS0
+#After=local-fs.target
+Before=evok.service
+Before=mervisrt.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/bash -c 'cd /etc/bootcmd.d/; make enable-485-on-ttyS0'
+#RemainAfterExit=yes
+
+[Install]
+#WantedBy=multi-user.target
+WantedBy=unipi-ttys0-rs485.target

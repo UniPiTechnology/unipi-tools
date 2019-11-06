@@ -1,4 +1,4 @@
-Unit]
+[Unit]
 Description=Enables RS485 on ttyS0
 #After=local-fs.target
 Before=evok.service

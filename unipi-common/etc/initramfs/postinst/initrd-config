@@ -1,10 +1,15 @@
 #!/bin/bash
 
 CONFIGTXT=/boot/config.txt
-CONFIGINC=config-initrd.inc
+CONFIGINC=config_initrd.inc
 PATHINC="/boot/${CONFIGINC}"
 
-# check or insert include directive  into config.txt  
+# Remove old file using '-' instead of '_'
+rm -f "/boot/config-initrd.inc"
+# Change include using '-' instead of '_'
+sed -i "s/include config-initrd\.inc/include config_initrd.inc/" "${CONFIGTXT}"
+
+# check or insert include directive into config.txt  
 INCLUDE="include ${CONFIGINC}"
 grep -q -e "^[[:blank:]]*${INCLUDE}" "${CONFIGTXT}" || sed "1 i${INCLUDE}" -i "${CONFIGTXT}"
 

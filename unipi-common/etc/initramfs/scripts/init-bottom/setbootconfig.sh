@@ -54,10 +54,15 @@ fi
 	echo "dtoverlay=i2c-rtc,mcp7941x"
 	echo "dtoverlay=unipiee"
 	[ "$IS_UNIPI1" = "1" ] || echo "dtoverlay=neuron-spi-new"
-) >"${MNTDIR}/config-unipi.inc"
+) >"${MNTDIR}/config_unipi.inc"
+
+# Remove old file using '-' instead of '_'
+rm -f "${MNTDIR}/config-unipi.inc"
+# Change include using '-' instead of '_'
+sed -i "s/include config-unipi\.inc/include config_unipi.inc/" "${MNTDIR}/config.txt"
 
 # check or insert include into config.txt
-INCLUDE="include config-unipi.inc"
+INCLUDE="include config_unipi.inc"
 grep -q -e "^[[:blank:]]*${INCLUDE}" "${MNTDIR}/config.txt" || sed "1 i${INCLUDE}" -i "${MNTDIR}/config.txt"
 
 if [ "${DO_MOUNT}" = "1" ]; then

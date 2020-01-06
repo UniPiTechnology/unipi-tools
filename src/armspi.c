@@ -229,6 +229,8 @@ int write_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values)
 
 int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result)
 {
+    uint8_t mask;
+    int lastbyte;
     uint16_t len2 = SIZEOF_HEADER + (((cnt+15) >> 4) << 1);  // trunc to 16bit in bytes
     if (len2 > 256){
         if (arm_verbose) printf("Too many registers in READ_BITS");
@@ -246,6 +248,12 @@ int read_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result)
     }
     cnt = ac_header(arm->rx2)->len;
     memmove(result, arm->rx2+SIZEOF_HEADER, ((cnt+7) >> 3));    // trunc to 8 bit
+    if (cnt & 0x7) {
+        // fix zeroing unused bits in last byte
+        lastbyte = cnt >> 3;
+        mask = 0xff >> (8-(cnt & 7));
+        result[lastbyte] &= mask;
+    }
     return cnt;
 }
 

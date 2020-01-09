@@ -9,6 +9,10 @@ unset DO_MOUNT
 if [ "$1" = "--noreboot" -o -n "${DESTDIR}" ]; then
     ## called from package install
     MNTDIR=/boot
+    # Move old file using '-' instead of '_'
+    [ -f "${MNTDIR}/config-unipi.inc" ] && mv -f "${MNTDIR}/config-unipi.inc" "${MNTDIR}/config_unipi.inc"
+    # Change include using '-' instead of '_'
+    sed -i "s/include config-unipi\.inc/include config_unipi.inc/" "${MNTDIR}/config.txt"
     # check if running from "real" Neuron system
     grep -q '^/dev/mmcblk[[:digit:]]p1 /boot ' /proc/mounts && IS_REAL_SYSTEM=1
 else

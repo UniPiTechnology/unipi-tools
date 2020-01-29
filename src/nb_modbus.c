@@ -210,18 +210,15 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             rsp_length = nb_response_exception(
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, FALSE,
                 "Illegal data value 0x%0X in write_bit request at address %0X\n", data, address);
+        } else if((address >= 1004) && (address <= 1006)) {
+            rsp_length = nb_response_exception(
+                nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
+                "Illegal data address 0x%0X in write_coil\n", address);
         } else {
-            if (address == 1004) { // exception for firmware
-                //arm_firmware(arm, nb_ctx->fwdir, data ? 1 : 0);
-                deferred_op = DFR_OP_FIRMWARE;
-                deferred_arm = arm;
-                n = 1;
-            } else {
-                n = write_bit(arm, address, data ? 1 : 0, 0);
-                if (arm && arm->has_virtual_coils && (address == 1001)) {
-                    data = data ? 1 : 0;
-                    monitor_virtual_coils(arm, address, (uint8_t*)(&data), 1); // monitoring coil changes
-                }
+            n = write_bit(arm, address, data ? 1 : 0, 0);
+            if (arm && arm->has_virtual_coils && (address == 1001)) {
+                data = data ? 1 : 0;
+                monitor_virtual_coils(arm, address, (uint8_t*)(&data), 1); // monitoring coil changes
             }
             if (n == 1) {
                 rsp_length += 4; // = req_length;
@@ -231,7 +228,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                         "Illegal data value 0x%0X in write_coil\n", address);
             } else {
                 rsp_length = nb_response_exception(
-                    nb_ctx->ctx, MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE, rsp,
+                    nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
                     "Illegal data address 0x%0X in write_coil\n", address);
             }
         }
@@ -267,8 +264,11 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
         if (nb < 1 || MODBUS_MAX_WRITE_BITS < nb) {
             rsp_length = nb_response_exception(
                 nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp,
-                "Illegal number of values %d in write_bits (max %d)\n", nb, MODBUS_MAX_WRITE_BITS);
-        } else if (address < 0 ) {
+                "Illegal number of values %d in write_coils (max %d)\n", nb, MODBUS_MAX_WRITE_BITS);
+        } else if (address < 0 || ((address <= 1006) && (address + nb > 1004))) {
+            rsp_length = nb_response_exception(
+                nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
+                "Illegal data address 0x%0X in write_coils\n", address);
         } else {
             /* 6 = byte count */
             n = write_bits(arm, address, nb, rsp+rsp_length + 5);

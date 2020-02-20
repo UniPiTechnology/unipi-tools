@@ -12,7 +12,7 @@ Vcs-Browser: http://git.unipi.technology/UniPi/unipi-tools/
 Package: unipi-common
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, busybox, initramfs-tools
-Recommends: unipi-modbus-tools (>=1.2.20), unipi-firmware (>=5.43), unipi-lte (>=0.9)
+Recommends: unipi-modbus-tools (>=1.2.20), unipi-firmware (>=5.43*), unipi-lte (>=0.9)
 Description: Common utilities for Unipi/Neuron/Axon
  Check model and version Unipi platform
 

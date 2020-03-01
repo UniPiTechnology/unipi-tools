@@ -12,13 +12,13 @@ Vcs-Browser: http://git.unipi.technology/UniPi/unipi-tools/
 Package: unipi-common
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, busybox, initramfs-tools,
-Breaks: unipi-firmware (<<5.50), unipi-kernel-modules (<<1.42~), unipi-kernel-modules-dkms (<<1.42~), neuron-kernel (<<1.13.20180719), axon-kernel (<<1.13.20180719), unipi-lte (<<0.10)
+Breaks: unipi-firmware (<<5.50), unipi-kernel-modules (<<1.42), unipi-kernel-modules-dkms (<<1.42), neuron-kernel (<<1.42), axon-kernel (<<1.13.20180719), unipi-lte (<<0.10)
 Description: Common utilities for Unipi/Neuron/Axon
  Check model and version of Unipi platform
 
 Package: unipi-modbus-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-kernel-modules (>=1.42~) | unipi-kernel-modules-dkms (>=1.42~)  | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
+Depends: ${shlibs:Depends}, ${misc:Depends}, unipi-kernel-modules (>=1.42) | unipi-kernel-modules-dkms (>=1.42) | neuron-kernel (>=1.42) | axon-kernel (>= 1.13.20180719)
 Replaces: neuron-modbus-tools (<= 1.1.3)
 Breaks: neuron-modbus-tools (<= 1.1.3)
 Provides: neuron-modbus-tools
@@ -28,7 +28,7 @@ Description: Modbus server for UniPi Neuron/Axon controllers.
 Package: unipi-firmware-tools
 Architecture: any
 Pre-Depends: unipi-common(>=1.2.22~)
-Suggests: ${shlibs:Depends}, ${misc:Depends}, unipi-kernel-modules (>=1.42~) | unipi-kernel-modules-dkms (>=1.42~) | neuron-kernel (>=1.13.20180719) | axon-kernel (>= 1.13.20180719)
+Suggests: ${shlibs:Depends}, ${misc:Depends}, unipi-kernel-modules (>=1.42) | unipi-kernel-modules-dkms (>=1.42) | neuron-kernel (>=1.42)
 Description: Firmware utilities for UniPi Neuron/Axon controllers.
  Utility for firmware update via SPI or serial Modbus. 
  Requires firmware files (packag eunipi-firmware.deb)

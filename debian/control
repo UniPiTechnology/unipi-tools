@@ -11,8 +11,8 @@ Vcs-Browser: http://git.unipi.technology/UniPi/unipi-tools/
 
 Package: unipi-common
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, busybox, initramfs-tools,
-Breaks: unipi-firmware (<<5.50), unipi-kernel-modules (<<1.42), unipi-kernel-modules-dkms (<<1.42), neuron-kernel (<<1.42), axon-kernel (<<1.13.20180719), unipi-lte (<<0.10)
+Depends: ${shlibs:Depends}, ${misc:Depends}, busybox, initramfs-tools
+Breaks: unipi-firmware (<<5.50), unipi-kernel-modules (<<1.42), unipi-kernel-modules-dkms (<<1.42), neuron-kernel (<<1.13.20180719), axon-kernel (<<1.13.20180719), unipi-lte (<<0.10~)
 Description: Common utilities for Unipi/Neuron/Axon
  Check model and version of Unipi platform
 

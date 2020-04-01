@@ -15,14 +15,14 @@ typedef struct __attribute__ ((packed)) {
     uint8_t   flags[2];
     char      model[6];
     //uint8_t   fill[2];
-} unipiversion;
+} unipiversion_t;
 
 
-unipiversion global_unipi_version;
+unipiversion_t global_unipi_version;
 char  unipi_name[sizeof(global_unipi_version.model)+1];
 int unipi_loaded = 0;
 
-int read_unipi1_eprom( unipiversion *ver)
+int read_unipi1_eprom( unipiversion_t *ver)
 {
    int res;
    int i;
@@ -33,11 +33,11 @@ int read_unipi1_eprom( unipiversion *ver)
    }
    res = lseek(f, 0xe0, 0);
    if (res < 0) goto err;
-   res = read(f,ver,sizeof(unipiversion));
+   res = read(f,ver,sizeof(unipiversion_t));
    if (res < 0) goto err;
    if (ver->signature != 0x55fa) goto err;
    close(f);
-   for (i=0; i<6; i++) { 
+   for (i=0; i<6; i++) {
        if (ver->model[i]==0xff) {
           ver->model[i] = '\0';
           break;
@@ -50,7 +50,7 @@ err:
    return 1;
 }
 
-int read_unipi_eprom( unipiversion *ver)
+int read_unipi_eprom( unipiversion_t *ver)
 {
    int res;
    int i;
@@ -65,11 +65,11 @@ int read_unipi_eprom( unipiversion *ver)
    }
    res = lseek(f, 0x60, 0);
    if (res < 0) goto err;
-   res = read(f,ver,sizeof(unipiversion));
+   res = read(f,ver,sizeof(unipiversion_t));
    if (res < 0) goto err;
    if (ver->signature != 0x55fa) goto err;
    close(f);
-   for (i=0; i<6; i++) { 
+   for (i=0; i<6; i++) {
        if (ver->model[i]==0xff) {
           ver->model[i] = '\0';
           break;
@@ -107,7 +107,7 @@ uint32_t get_unipi_serial(void)
 		if (read_unipi1_eprom(&global_unipi_version) == 0) {
 			return global_unipi_version.serial;
 
-		} else if (read_unipi_eprom(&global_unipi_version) == 0) 
+		} else if (read_unipi_eprom(&global_unipi_version) == 0)
 			return global_unipi_version.serial;
 
 		global_unipi_version.serial = 0;

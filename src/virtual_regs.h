@@ -24,5 +24,7 @@ void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result);
 
 void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt);
 
+int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result);
+
 
 #endif

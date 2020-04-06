@@ -19,6 +19,8 @@ unipi-common/etc/initramfs/modules.d/* usr/share/initramfs-tools/modules.d
 [linux-armhf] unipi-common/etc/initramfs/scripts/init-bottom/reinitialize_default_var  etc/initramfs-tools/scripts/init-bottom
 [linux-armhf] unipi-common/etc/initramfs/scripts/init-bottom/setbootconfig.sh  etc/initramfs-tools/scripts/init-bottom
 [linux-armhf] unipi-common/etc/initramfs/postinst/initrd-config etc/kernel/postinst.d
+[linux-arm64] unipi-common/etc/tmpfiles.d/* etc/tmpfiles.d
+
 
 [linux-armhf] debian/tmp/boot/overlays/* boot/overlays
 

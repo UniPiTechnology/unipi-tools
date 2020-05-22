@@ -1,4 +1,5 @@
 #! /usr/bin/dh-exec
 
 unipi-modbus-tools/systemd/system/* 		lib/systemd/system
+unipi-modbus-tools/etc/default/* 		etc/default
 debian/tmp/opt/unipi/tools/unipi_tcp_server	opt/unipi/tools/

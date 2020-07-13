@@ -56,7 +56,7 @@ fi
 	echo "dtparam=i2c_arm=on"
 	echo "dtoverlay=neuronee"
 	echo "dtoverlay=i2c-rtc,mcp7941x"
-	echo "dtoverlay=unipiee"
+	[ "$IS_UNIPI1" = "1" ] && echo "dtoverlay=unipiee"
 	[ "$IS_UNIPI1" = "1" ] || echo "dtoverlay=neuron-spi-new"
 ) >"${MNTDIR}/config_unipi.inc"
 

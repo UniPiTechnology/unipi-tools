@@ -32,7 +32,7 @@ if [ "${IS_REAL_SYSTEM}" = "1" ]; then
   grep -q okay /sys/firmware/devicetree/base/soc/i2c@7e804000/status && I2C=1
 
 
-if [ -n "$RTC" -a -n "$I2C" ]; then
+if [ -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT" ]; then
 
   echo 24c02 0x50 > /sys/bus/i2c/devices/i2c-1/new_device
   if [ -f "/sys/bus/i2c/devices/1-0050/eeprom" ] ; then
@@ -49,7 +49,7 @@ if [ -n "$RTC" -a -n "$I2C" ]; then
       fi
   fi
 
-  if [ \( -n "$IS_NEURON" -o -n  "$IS_UNIPI1" \) -a -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT"]; then
+  if [ \( -n "$IS_NEURON" -o -n  "$IS_UNIPI1" \) -a -n "$RTC" -a -n "$I2C" ]; then
     if [ -n "$IS_UNIPI1" ]; then
         if [ -z "$NEURONDRV" ]; then
             echo OK

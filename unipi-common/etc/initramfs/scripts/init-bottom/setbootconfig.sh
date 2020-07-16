@@ -39,7 +39,7 @@ if [ -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT" ]; then
     IS_UNIPI1=1
   else
     echo 0x50 > /sys/bus/i2c/devices/i2c-1/delete_device
-    echo 24c02 0x57 > /sys/bus/i2c/devices/i2c-1/new_device
+    echo 24c01 0x57 > /sys/bus/i2c/devices/i2c-1/new_device
       if [ -f "/sys/bus/i2c/devices/1-0057/eeprom" ] ; then
         IS_NEURON=1
       else

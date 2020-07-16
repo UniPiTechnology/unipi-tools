@@ -25,8 +25,12 @@ fi
 if [ "${IS_REAL_SYSTEM}" = "1" ]; then
   [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/mcp7941x@6f ] && RTC=1
   [ -d /sys/firmware/devicetree/base/soc/spi@7e204000/neuronspi@0 ] && NEURONDRV=1
+  [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c01@57 ] && EEPROM_1=1
+  [ -d /sys/firmware/devicetree/base/soc/i2c@7e804000/24c02@50 ] && EEPROM_2=1
+  [ -n "$EEPROM_1" -a -n "$EEPROM_2" ] && EE_CONFLICT=1
   grep -q okay /sys/firmware/devicetree/base/soc/spi@7e204000/status && SPI=1
   grep -q okay /sys/firmware/devicetree/base/soc/i2c@7e804000/status && I2C=1
+
 
 if [ -n "$RTC" -a -n "$I2C" ]; then
 
@@ -45,7 +49,7 @@ if [ -n "$RTC" -a -n "$I2C" ]; then
       fi
   fi
 
-  if [ \( -n "$IS_NEURON" -o -n  "$IS_UNIPI1" \) -a -n "$RTC" -a -n "$I2C" ]; then
+  if [ \( -n "$IS_NEURON" -o -n  "$IS_UNIPI1" \) -a -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT"]; then
     if [ -n "$IS_UNIPI1" ]; then
         if [ -z "$NEURONDRV" ]; then
             echo OK

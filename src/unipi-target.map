@@ -2,5 +2,6 @@
 ^[SML]  = unipispi.target
 ^[SM][1-5]65	= lte.target
 ^S103-G  = unipigprs.target
+^[SML][1-5]85 = unipinb.target
 ^[SML][1-5]75	= unipiiqrf.target
 ^S115  = unipi-ttys0-rs485.target

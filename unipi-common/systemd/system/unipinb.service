@@ -1,0 +1,13 @@
+[Unit]
+Description=Generate reset for LTE Cat NB module via pin 19
+#After=local-fs.target
+Before=evok.service
+Before=mervisrt.service
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/bash ./opt/unipi/scripts/bg96-poweron.sh
+#RemainAfterExit=yes
+
+[Install]
+WantedBy=unipinb.target

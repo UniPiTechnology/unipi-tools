@@ -49,7 +49,7 @@ LIBS = modbus m
 ifdef SYSTEMROOT
   CC += -D OS_WIN32
   LDFLAGS2 = $(MODBUS_LIBDIR)/libmodbus.dll.a
-  LIBDIRS += c:\MinGW\bin
+  LIBDIRS += /usr/i686-w64-mingw32/sys-root/mingw/lib
   INCDIRS += gtk/include/gtk-3.0\
              gtk/include/glib-2.0\
              gtk/lib/glib-2.0/include\

@@ -12,6 +12,11 @@ SyslogLevel=debug
 SyslogIdentifier=unipi
 WorkingDirectory=/opt/unipi/tools
 
+#WatchdogSec=30s
+#Restart=on-failure
+#StartLimitInterval=2min
+#StartLimitBurst=2
+#StartLimitAction=reboot-force
 Restart=always
 
 [Install]

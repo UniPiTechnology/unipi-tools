@@ -37,6 +37,8 @@ update_initramfs() {
       /etc/kernel/postinst.d/initrd-config || true
       # clear lines with initramfs in config.txt. This is now in include file
       grep -q -e "^[[:blank:]]*initramfs" /boot/config.txt && sed "/^[[:blank:]]*initramfs/d" -i /boot/config.txt
+      grep -q -e "^[[:blank:]]*dtoverlay=neuronee" /boot/config.txt && sed "/^[[:blank:]]*dtoverlay=neuronee/d" -i /boot/config.txt
+      grep -q -e "^[[:blank:]]*dtoverlay=unipiee" /boot/config.txt && sed "/^[[:blank:]]*dtoverlay=unipiee/d" -i /boot/config.txt
   fi
   # reconfigure kernel, which can be installed in the same batch
   # try to find kernel packege name using attribute Provides: linux-image

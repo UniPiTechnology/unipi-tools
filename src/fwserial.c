@@ -387,7 +387,7 @@ int main(int argc, char **argv)
             }
         }
         // load firmware file
-        char* fwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".bin");
+        char* fwname = firmware_name(&bv, firmwaredir, ".bin");
         prog_data = malloc(MAX_FW_SIZE);
         vprintf_1("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
@@ -407,7 +407,7 @@ int main(int argc, char **argv)
         if (do_resetrw) {
             // load rw consts file
             rw_data = malloc(MAX_RW_SIZE);
-            char* rwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
+            char* rwname = firmware_name(&bv, firmwaredir, ".rw");
             vprintf_2("Opening RW settings file: %s\n", rwname);
             rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
             free(rwname);

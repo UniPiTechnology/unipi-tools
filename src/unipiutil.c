@@ -60,7 +60,10 @@ int read_unipi_eprom( unipiversion *ver)
    if (f < 0) {
       f = open("/sys/bus/i2c/devices/0-0057/eeprom", O_RDONLY);
       if (f < 0) {
-         return 1;
+         f = open("/sys/bus/i2c/devices/2-0057/eeprom", O_RDONLY);
+         if (f < 0) {
+             return 1;
+         }
       }
    }
    res = lseek(f, 0x60, 0);

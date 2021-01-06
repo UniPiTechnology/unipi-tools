@@ -121,29 +121,40 @@ char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int
     Tcompatibility_map* map = get_map(HW_BOARD(bv->hw_version));
     if (map  == NULL) return NULL;
     
-    if (map->baseboard == map->board) {
-        const char* armname = map->name;
-        char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
-        strcpy(fwname, fwdir);
-        if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_version, calibrate?"C":"", ext);
-        return fwname;
+    if (SW_MAJOR(bv->sw_version) <= 5)
+    {
+        if (map->baseboard == map->board) {
+            const char* armname = map->name;
+            char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
+            strcpy(fwname, fwdir);
+            if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
+            sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_version, calibrate?"C":"", ext);
+            return fwname;
 
-    } else {
-        Tcompatibility_map* basemap = get_map(HW_BOARD(bv->base_hw_version));
-        if (basemap == NULL) return NULL;
-        //uint8_t base_version = HW_MAJOR(hw_base);
-        if (basemap->board != map->baseboard) {
-            // Incorrent parameters
-            return NULL;
+        } else {
+            Tcompatibility_map* basemap = get_map(HW_BOARD(bv->base_hw_version));
+            if (basemap == NULL) return NULL;
+            //uint8_t base_version = HW_MAJOR(hw_base);
+            if (basemap->board != map->baseboard) {
+                // Incorrent parameters
+                return NULL;
+            }
+            const char* basename = basemap->name;
+            Tboards_map* umap = get_umap(map->upboard);
+            const char* uname = umap->name;
+            char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
+            strcpy(fwname, fwdir);
+            if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
+            sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_version, uname, calibrate?"C":"", ext);
+            return fwname;
         }
-        const char* basename = basemap->name;
-        Tboards_map* umap = get_umap(map->upboard);
-        const char* uname = umap->name;
-        char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
+    }
+    else
+    {
+        char* fwname = malloc(strlen(fwdir) + strlen(ext) + 11);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_version, uname, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%2d_%2d_%2d-%d%s%s", map->board, map->baseboard, map->upboard, used_board_version, calibrate?"C":"", ext);
         return fwname;
     }
 }

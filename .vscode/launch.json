@@ -9,7 +9,12 @@
             "type":"cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/src/fwspi",
-            "args": ["-i 0 --verbose"],
+            "args": [
+                "-i 0",
+                //"-F 0",
+                "-P",
+                "--verbose"
+            ],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],

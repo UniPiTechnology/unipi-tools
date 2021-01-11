@@ -43,6 +43,7 @@ int do_resetrw= 0;
 int do_calibrate= 0;
 int do_final= 0;
 int do_auto= 0;
+int do_upgrade = 0;
 
 
 #define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
@@ -53,6 +54,7 @@ static struct option long_options[] = {
   {"auto", no_argument,         0, 'a'},
   {"verbose", no_argument,      0, 'v'},
   {"programm", no_argument,     0, 'P'},
+  {"upgrade", no_argument,      0, 'U'},
   {"resetrw", no_argument,      0, 'R'},
   {"calibrate", no_argument,    0, 'C'},
   {"final", required_argument,  0, 'F'},
@@ -76,6 +78,7 @@ void print_usage(char *argv0)
     printf("--dir <firmware dir>\t default /opt/unipi/firmware\n");
     printf("--verbose\t show more messages\n");
     printf("--programm\t write firmware to flash\n");
+    printf("--upgrade\t upgrade firmware from 5.x to 6.x\n");
     printf("--resetrw\t check/rewrite also rw settings\n");
     printf("--calibrate\t write calibrating firmware to flash\n");
     printf("--final <upper board id or ?>\t write final firmware over calibrating\n");
@@ -92,6 +95,7 @@ int main(int argc, char **argv)
     uint16_t val, reg;
     arm_handle *arm;
     FILE* fdx;
+    uint32_t fw_upgrade;
     
     // Parse command line options
     int c;
@@ -119,6 +123,9 @@ int main(int argc, char **argv)
            break;
        case 'R':
            do_resetrw = 1;
+           break;
+        case 'U':
+           do_upgrade = 1;
            break;
        case 'C':
            do_calibrate = 1; do_prog = 1; do_resetrw = 1;
@@ -202,6 +209,9 @@ int main(int argc, char **argv)
                HW_BOARD(bv->base_hw_version),  arm_name(bv->base_hw_version),
                HW_MAJOR(bv->base_hw_version), HW_MINOR(bv->base_hw_version));
     printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
+    if (fw_upgrade=check_firmware_update(bv, firmwaredir)) {
+        vprintf("PLEASE UPDATE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+    }
 
     
     if (do_prog) {
@@ -226,6 +236,8 @@ int main(int argc, char **argv)
                 free(arm);
                 return -1;
             }
+        } else if (do_upgrade) {
+            arm_firmware_do(arm, firmwaredir, do_resetrw);
         }
         if (do_prog || do_calibrate) {
             arm_firmware_do(arm, firmwaredir, do_resetrw);

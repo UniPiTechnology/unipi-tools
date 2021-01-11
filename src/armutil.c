@@ -336,7 +336,7 @@ uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir)
         if (fseek(fd, -4, SEEK_END) >= 0) {
             if (fread(&fwver, 1, 4, fd) == 4) {
                 if (fwver & 0xff000000) fwver = fwver >> 16;
-                if (fwver > bv->sw_version) ret = fwver;
+                if (fwver > bv->sw_version) ret = fwver;//FIXME:check 32bit number from file
             } 
         }
         fclose(fd);

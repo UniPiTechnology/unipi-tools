@@ -313,3 +313,30 @@ uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datale
     fclose(fd);
     return data;
 }
+
+/*******************
+ function checks if firmware in file is newer (6.x instead of 5.x) then firmware in Tboard_version and firmware update is recommended
+    - file firmware version is written in last four bytes in .rw file
+    - return 0 or file firmware version
+*/
+uint32_t check_firmware_update(Tboard_version* bv, const char* fwdir)
+{
+    FILE* fd;
+    char* fwname;
+    uint32_t fwver;
+    uint32_t ret = 0;
+
+    fwname = firmware_name(bv, fwdir, ".rw");
+
+    if (fd = fopen(fwname, "rb")) {
+        if (fseek(fd, -4, SEEK_END) >= 0) {
+            if (fread(&fwver, 1, 4, fd) == 4) {
+                if (fwver & 0xff000000) fwver = fwver >> 16;
+                if (fwver > bv->sw_version) ret = fwver;
+            } 
+        }
+        fclose(fd);
+    }
+    free(fwname);
+    return ret;
+}

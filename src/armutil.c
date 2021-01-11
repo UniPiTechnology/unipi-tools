@@ -319,7 +319,7 @@ uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datale
     - file firmware version is written in last four bytes in .rw file
     - return 0 or file firmware version
 */
-uint32_t check_firmware_update(Tboard_version* bv, const char* fwdir)
+uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir)
 {
     FILE* fd;
     char* fwname;

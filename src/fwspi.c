@@ -237,6 +237,7 @@ int main(int argc, char **argv)
                 return -1;
             }
         } else if (do_upgrade) {
+            arm->bv.sw_version = (uint16_t)0x0600;
             arm_firmware_do(arm, firmwaredir, do_resetrw);
         }
         if (do_prog || do_calibrate) {

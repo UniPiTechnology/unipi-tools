@@ -326,6 +326,10 @@ uint32_t check_firmware_update(Tboard_version* bv, const char* fwdir)
     uint32_t fwver;
     uint32_t ret = 0;
 
+    if (SW_MAJOR(bv->sw_version) >= 6)
+        return (uint32_t)0;
+
+    bv->sw_version = 0x0600;
     fwname = firmware_name(bv, fwdir, ".rw");
 
     if (fd = fopen(fwname, "rb")) {

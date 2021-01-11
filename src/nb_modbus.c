@@ -489,7 +489,7 @@ int arm_firmware(arm_handle* arm, const char* fwdir)
     uint32_t fwver;
 
     if (fwver=check_firmware_update(&arm->bv, fwdir)) {
-        vprintf("UPDATED firmware=%d.%d found - to proceed, execute fwspi -P -U\n", fwver>>8, fwver & 0xff);
+        vprintf("PLEASE UPDATE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fwver>>8, fwver & 0xff);
     }
 
     if (fwver=check_new_rw_version(&arm->bv, fwdir)) {

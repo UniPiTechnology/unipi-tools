@@ -116,8 +116,8 @@ const char* arm_name(uint16_t hw_version)
 char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int use_base_revision)
 {
     uint8_t calibrate = IS_CALIB(bv->hw_version);
-    uint8_t board_version = HW_MAJOR(bv->hw_version);
-    uint8_t used_board_version = use_base_revision ? HW_MAJOR(bv->base_hw_version) : board_version;
+    uint8_t board_revision = HW_MAJOR(bv->hw_version);
+    uint8_t used_board_revision = use_base_revision ? HW_MAJOR(bv->base_hw_version) : board_revision;
     Tcompatibility_map* map = get_map(HW_BOARD(bv->hw_version));
     if (map  == NULL) return NULL;
     
@@ -128,7 +128,7 @@ char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int
             char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
             strcpy(fwname, fwdir);
             if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-            sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_version, calibrate?"C":"", ext);
+            sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_revision, calibrate?"C":"", ext);
             return fwname;
 
         } else {
@@ -145,16 +145,16 @@ char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int
             char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
             strcpy(fwname, fwdir);
             if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-            sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_version, uname, calibrate?"C":"", ext);
+            sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_revision, uname, calibrate?"C":"", ext);
             return fwname;
         }
     }
     else
     {
-        char* fwname = malloc(strlen(fwdir) + strlen(ext) + 11);
+        char* fwname = malloc(strlen(fwdir) + strlen(ext) + 7);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%2d_%2d_%2d-%d%s%s", map->board, map->baseboard, map->upboard, used_board_version, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%2d-%d%s%s", map->board, used_board_revision, calibrate?"C":"", ext);
         return fwname;
     }
 }

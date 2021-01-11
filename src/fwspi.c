@@ -209,8 +209,8 @@ int main(int argc, char **argv)
                HW_BOARD(bv->base_hw_version),  arm_name(bv->base_hw_version),
                HW_MAJOR(bv->base_hw_version), HW_MINOR(bv->base_hw_version));
     printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
-    if (fw_upgrade=check_firmware_update(bv, firmwaredir)) {
-        vprintf("PLEASE UPDATE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+    if (fw_upgrade=check_firmware_upgrade(bv, firmwaredir)) {
+        vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
     }
 
     

@@ -71,7 +71,7 @@ int get_board_speed(Tboard_version* bv);
 
 uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir);
 uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen);
-uint32_t check_firmware_update(Tboard_version* bv, const char* fwdir);
+uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir);
 
 Textension_map* get_extension_map(int board);
 

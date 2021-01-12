@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <getopt.h>
+#include <time.h>
 
 //#include <modbus.h>
 
@@ -37,6 +38,7 @@
 
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <systemd/sd-daemon.h>
 
 #include "armspi.h"
 #include "unipiutil.h"
@@ -63,7 +65,7 @@ int broadcast_address = 0;
 
 #define MAX_MB_BUFFER_LEN   MODBUS_TCP_MAX_ADU_LENGTH
 #define MB_BUFFER_COUNT  128;
-#define DEFAULT_POLL_TIMEOUT 20             // milisec
+
 
 nb_modbus_t *nb_ctx = NULL;
 int server_socket;
@@ -280,7 +282,6 @@ static struct option long_options[] = {
   {"daemon",  no_argument,       0, 'd'},
   {"listen",  required_argument, 0, 'l'},
   {"port",    required_argument, 0, 'p'},
-  {"timeout", required_argument, 0, 't'},
   {"nsspause", required_argument, 0, 'n'},
   {"spidev", required_argument, 0, 's'},
   {"bauds",required_argument, 0, 'b'},
@@ -359,7 +360,6 @@ int main(int argc, char *argv[])
     int tcp_port = 502;
     char listen_address[100] = "127.0.0.1";
 
-    int poll_timeout = 0;
     int daemon = 0;
     int server_socket;
     int s, nss;
@@ -369,6 +369,11 @@ int main(int argc, char *argv[])
     mb_event_data_t*  event_data;
     uint32_t fwver;
     char *unipi_model;
+
+    int poll_timeout = -1;
+    int wdtimesec = -1;
+    unsigned long lasttimesec = time(NULL);
+    char* wdenv = getenv("WATCHDOG_USEC");
 
      // Options
     int c;
@@ -402,13 +407,6 @@ int main(int argc, char *argv[])
            tcp_port = atoi(optarg);
            if (tcp_port==0) {
                printf("Port must be non-zero integer (given %s)\n", optarg);
-               exit(EXIT_FAILURE);
-           }
-           break;
-       case 't':
-           poll_timeout = atoi(optarg);
-           if (poll_timeout==0) {
-               printf("Timeout must be non-zero integer (given %s)\n", optarg);
                exit(EXIT_FAILURE);
            }
            break;
@@ -457,6 +455,10 @@ int main(int argc, char *argv[])
        }
     }
 
+	if (wdenv) {
+		wdtimesec = atoi(wdenv)/(2*1000000);
+		poll_timeout = wdtimesec * 1000;
+    }
 
     nb_ctx = nb_modbus_new_tcp(listen_address, tcp_port);
     nb_ctx->fwdir = firmwaredir;
@@ -514,7 +516,6 @@ int main(int argc, char *argv[])
         abort ();
     }
 
-    poll_timeout = -1;
     if (verbose) printf ("poll timeout = %d[ms]\n", poll_timeout);
     /* Prepare buffer pool */
     pool_allocate();
@@ -542,7 +543,13 @@ int main(int argc, char *argv[])
     if (verbose) printf("Starting primary loop\n");
     /* The event loop */
     while (1) {
-
+        if (wdtimesec > 0) {
+            unsigned long ntime = time(NULL);
+            if ((ntime - lasttimesec) >= wdtimesec) {
+                sd_notify (0, "WATCHDOG=1");
+                lasttimesec = ntime;
+            }
+        }
         if (deferred_op == DFR_OP_FIRMWARE) {
             deferred_op = DFR_NONE;
             arm_firmware(deferred_arm, firmwaredir);

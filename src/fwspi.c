@@ -238,9 +238,21 @@ int main(int argc, char **argv)
             }
         } else if (do_upgrade) {
             arm->bv.sw_version = (uint16_t)0x0600;
-            arm_firmware_do(arm, firmwaredir, do_resetrw);
+            if (arm_firmware_do(arm, firmwaredir, do_resetrw) < 0) {
+                fprintf(stderr, "Something went wrong. Restart and try UPGRADE again.\n");
+                close(arm->fd);
+                free(arm);
+                return -1;
+            }
+            upgrade_firmware_copy_struct(arm);
+            if (arm_firmware_do(arm, firmwaredir, do_resetrw) < 0) {
+                fprintf(stderr, "Something went wrong. Restart and try PROGRAMM.\n");
+                close(arm->fd);
+                free(arm);
+                return -1;
+            }
         }
-        if (do_prog || do_calibrate) {
+        if ((do_prog || do_calibrate) && !do_upgrade) {
             arm_firmware_do(arm, firmwaredir, do_resetrw);
         }
     }

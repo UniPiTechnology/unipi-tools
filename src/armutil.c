@@ -154,7 +154,7 @@ char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int
         char* fwname = malloc(strlen(fwdir) + strlen(ext) + 7);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%2d-%d%s%s", map->board, used_board_revision, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%02d-%d%s%s", map->board, used_board_revision, calibrate?"C":"", ext);
         return fwname;
     }
 }
@@ -325,10 +325,12 @@ uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir)
     char* fwname;
     uint32_t fwver;
     uint32_t ret = 0;
+    uint16_t sw_version_bak;
 
     if (SW_MAJOR(bv->sw_version) >= 6)
         return (uint32_t)0;
 
+    sw_version_bak = bv->sw_version;
     bv->sw_version = 0x0600;
     fwname = firmware_name(bv, fwdir, ".rw");
 
@@ -342,5 +344,6 @@ uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir)
         fclose(fd);
     }
     free(fwname);
+    bv->sw_version = sw_version_bak;
     return ret;
 }

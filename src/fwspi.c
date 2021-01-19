@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     char *endptr;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "avPRCs:b:d:F:i:", long_options, &option_index);
+       c = getopt_long(argc, argv, "avPRUCs:b:d:F:i:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                printf ("non-option ARGV-element: %s\n", argv[optind]);

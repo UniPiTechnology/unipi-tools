@@ -479,8 +479,12 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
     free(rw_data);
     // Reload version
     uint16_t configregs[5];
-    if (read_regs(arm, 1000, 5, configregs) == 5)
+    if (read_regs(arm, 1000, 5, configregs) == 5) {
         parse_version(&arm->bv, configregs);
+        return 0;
+    }
+    else
+        return -1;
 }
 
 int arm_firmware(arm_handle* arm, const char* fwdir)

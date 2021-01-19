@@ -13,6 +13,7 @@
                 "-i 0",
                 //"-F 0",
                 "-P",
+                "-U",
                 "--verbose"
             ],
             "stopAtEntry": true,

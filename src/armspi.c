@@ -423,7 +423,7 @@ void finish_firmware(arm_handle* arm)
         printf("REBOOTING...\n");
     }
     idle_op(arm, 255);// Unlock operation
-    usleep(100000);
+    usleep(300000);
 }
 
 int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)

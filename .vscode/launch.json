@@ -14,6 +14,7 @@
                 //"-F 0",
                 "-P",
                 "-U",
+                //"-R",
                 "--verbose"
             ],
             "stopAtEntry": true,

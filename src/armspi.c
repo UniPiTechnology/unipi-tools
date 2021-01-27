@@ -480,5 +480,6 @@ void upgrade_firmware_copy_struct(arm_handle* arm)
 {
     int copy_bit = 1007;
     write_bit(arm, copy_bit, 1, (arm->index) + 1);    // start copy struct while upgrade firmware from 5.x to 6.x
-    usleep(100000);
+    idle_op(arm, 255);// Unlock operation
+    usleep(1000000);
 }

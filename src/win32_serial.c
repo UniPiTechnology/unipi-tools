@@ -539,7 +539,7 @@ void flash_button_pressed(GtkButton *caller) {
 	}
 
 	// load firmware file
-	char* fwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".bin");
+	char* fwname = firmware_name(&bv, firmwaredir, ".bin");
 	prog_data = malloc(MAX_FW_SIZE);
 	printf("Opening firmware file: %s\n", fwname);
 	gtk_label_set_text(GTK_LABEL(output_label), output_string);
@@ -563,7 +563,7 @@ void flash_button_pressed(GtkButton *caller) {
 	if (do_resetrw) {
 		// load rw consts file
 		rw_data = malloc(MAX_RW_SIZE);
-		char* rwname = firmware_name(bv.hw_version, bv.base_hw_version, firmwaredir, ".rw");
+		char* rwname = firmware_name(&bv, firmwaredir, ".rw");
 		printf("Opening RW settings file: %s\n", rwname);
 		int rwlen = load_fw(rwname, rw_data, MAX_RW_SIZE);
 		free(rwname);

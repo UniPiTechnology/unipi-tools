@@ -113,52 +113,63 @@ const char* arm_name(uint16_t hw_version)
     return map->name;
 }
 
-char* _firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext, int use_base_revision)
+char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int use_base_revision)
 {
-    uint8_t calibrate = IS_CALIB(hw_version);
-    uint8_t board_version = HW_MAJOR(hw_version);
-    uint8_t used_board_version = use_base_revision ? HW_MAJOR(hw_base) : board_version;
-    Tcompatibility_map* map = get_map(HW_BOARD(hw_version));
+    uint8_t calibrate = IS_CALIB(bv->hw_version);
+    uint8_t board_revision = HW_MAJOR(bv->hw_version);
+    uint8_t used_board_revision = use_base_revision ? HW_MAJOR(bv->base_hw_version) : board_revision;
+    Tcompatibility_map* map = get_map(HW_BOARD(bv->hw_version));
     if (map  == NULL) return NULL;
     
-    if (map->baseboard == map->board) {
-        const char* armname = map->name;
-        char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
-        strcpy(fwname, fwdir);
-        if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_version, calibrate?"C":"", ext);
-        return fwname;
+    if (SW_MAJOR(bv->sw_version) <= 5)
+    {
+        if (map->baseboard == map->board) {
+            const char* armname = map->name;
+            char* fwname = malloc(strlen(fwdir) + strlen(armname) + strlen(ext) + 2 + 4);
+            strcpy(fwname, fwdir);
+            if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
+            sprintf(fwname+strlen(fwname), "%s-%d%s%s", armname, used_board_revision, calibrate?"C":"", ext);
+            return fwname;
 
-    } else {
-        Tcompatibility_map* basemap = get_map(HW_BOARD(hw_base));
-        if (basemap == NULL) return NULL;
-        //uint8_t base_version = HW_MAJOR(hw_base);
-        if (basemap->board != map->baseboard) {
-            // Incorrent parameters
-            return NULL;
+        } else {
+            Tcompatibility_map* basemap = get_map(HW_BOARD(bv->base_hw_version));
+            if (basemap == NULL) return NULL;
+            //uint8_t base_version = HW_MAJOR(hw_base);
+            if (basemap->board != map->baseboard) {
+                // Incorrent parameters
+                return NULL;
+            }
+            const char* basename = basemap->name;
+            Tboards_map* umap = get_umap(map->upboard);
+            const char* uname = umap->name;
+            char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
+            strcpy(fwname, fwdir);
+            if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
+            sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_revision, uname, calibrate?"C":"", ext);
+            return fwname;
         }
-        const char* basename = basemap->name;
-        Tboards_map* umap = get_umap(map->upboard);
-        const char* uname = umap->name;
-        char* fwname = malloc(strlen(fwdir) + strlen(basename) + strlen(uname) + strlen(ext) + 2 + 4 + +1 + 4);
+    }
+    else
+    {
+        char* fwname = malloc(strlen(fwdir) + strlen(ext) + 7);
         strcpy(fwname, fwdir);
         if (strlen(fwname) && (fwname[strlen(fwname)-1] != '/')) strcat(fwname, "/");
-        sprintf(fwname+strlen(fwname), "%s-%d_%s%s%s", basename, used_board_version, uname, calibrate?"C":"", ext);
+        sprintf(fwname+strlen(fwname), "%02d-%d%s%s", map->board, used_board_revision, calibrate?"C":"", ext);
         return fwname;
     }
 }
 
 
-char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext)
+char* firmware_name(Tboard_version* bv, const char* fwdir, const char* ext)
 {
-	char * fname = _firmware_name(hw_version, hw_base, fwdir, ext, 1);
+	char * fname = _firmware_name(bv, fwdir, ext, 1);
     FILE* fd = fopen(fname, "r");
     if (fd != NULL) {
         fclose(fd);
         return fname;
     }
     free(fname);
-	return _firmware_name(hw_version, hw_base, fwdir, ext, 0);
+	return _firmware_name(bv, fwdir, ext, 0);
 }
 
 int check_compatibility(int hw_base, int upboard)
@@ -242,7 +253,7 @@ uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir)
     uint32_t fwver;
     uint32_t ret = 0;
 
-    fwname = firmware_name(bv->hw_version, bv->base_hw_version, fwdir, ".rw");
+    fwname = firmware_name(bv, fwdir, ".rw");
 
     if (fd = fopen(fwname, "rb")) {
         if (fseek(fd, -4, SEEK_END) >= 0) {
@@ -274,7 +285,7 @@ uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datale
     uint8_t* data;
     size_t maxdatalen;
 
-    fwname = firmware_name(bv->hw_version, bv->base_hw_version, fwdir, rw ? ".rw" : ".bin" );
+    fwname = firmware_name(bv, fwdir, rw ? ".rw" : ".bin" );
 
     fd = fopen(fwname, "rb");
     if (!fd) {
@@ -301,4 +312,38 @@ uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datale
     free(fwname);
     fclose(fd);
     return data;
+}
+
+/*******************
+ function checks if firmware in file is newer (6.x instead of 5.x) then firmware in Tboard_version and firmware update is recommended
+    - file firmware version is written in last four bytes in .rw file
+    - return 0 or file firmware version
+*/
+uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir)
+{
+    FILE* fd;
+    char* fwname;
+    uint32_t fwver;
+    uint32_t ret = 0;
+    uint16_t sw_version_bak;
+
+    if (SW_MAJOR(bv->sw_version) >= 6)
+        return (uint32_t)0;
+
+    sw_version_bak = bv->sw_version;
+    bv->sw_version = 0x0600;
+    fwname = firmware_name(bv, fwdir, ".rw");
+
+    if (fd = fopen(fwname, "rb")) {
+        if (fseek(fd, -4, SEEK_END) >= 0) {
+            if (fread(&fwver, 1, 4, fd) == 4) {
+                if (fwver & 0xff000000) fwver = fwver >> 16;
+                if (fwver > bv->sw_version) ret = fwver;//FIXME:check 32bit number from file
+            } 
+        }
+        fclose(fd);
+    }
+    free(fwname);
+    bv->sw_version = sw_version_bak;
+    return ret;
 }

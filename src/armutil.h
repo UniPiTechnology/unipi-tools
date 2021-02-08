@@ -63,15 +63,15 @@ typedef struct {
 
 int parse_version(Tboard_version* bv, uint16_t *r1000);
 const char* arm_name(uint16_t hw_version);//int sw_version, int hw_version);
-char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext);
+char* firmware_name(Tboard_version* bv, const char* fwdir, const char* ext);
 void print_upboards(int filter);
 int upboard_exists(int board);
 int check_compatibility(int hw_base, int upboard);
 int get_board_speed(Tboard_version* bv);
 
-char* firmware_name(int hw_version, int hw_base, const char* fwdir, const char* ext);
 uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir);
 uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen);
+uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir);
 
 Textension_map* get_extension_map(int board);
 

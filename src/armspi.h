@@ -86,6 +86,7 @@ int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt);
 void start_firmware(arm_handle* arm);
 int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
 void finish_firmware(arm_handle* arm);
+void upgrade_firmware_copy_struct(arm_handle* arm);
 
 extern int arm_verbose;
 extern int nss_pause;

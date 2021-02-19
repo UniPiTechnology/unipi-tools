@@ -444,7 +444,7 @@ int main(int argc, char **argv)
         if (do_upgrade) {
             usleep(200000);
             vprintf_1("Upgrading.\n");
-            modbus_write_register(ctx, 0x7707, 6); // upgrade_firmware_copy_struct
+            modbus_write_register(ctx, 0x7707, 5); // upgrade_firmware_copy_struct
             usleep(200000);
             flashit(ctx,prog_data, rw_data, red, rwred);
             if (do_verify) { 

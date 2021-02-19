@@ -48,6 +48,7 @@ int do_resetrw= 0;
 int do_calibrate= 0;
 int do_final= 0;
 int do_auto = 0;
+int do_upgrade = 0;
 
 #define vprintf_1(f, args...)	if (verbose>=1) printf(f, ##args)
 #define vprintf_2(f, args...)	if (verbose>=2) printf(f, ##args)
@@ -175,6 +176,7 @@ static struct option long_options[] = {
   {"verbose", no_argument,      0, 'v'},
   {"verify", no_argument,       0, 'V'},
   {"programm", no_argument,     0, 'P'},
+  {"upgrade", no_argument,      0, 'U'},
   {"resetrw", no_argument,      0, 'R'},
   {"calibrate", no_argument,    0, 'C'},
   {"final", required_argument,  0, 'F'},
@@ -221,13 +223,14 @@ int main(int argc, char **argv)
     uint32_t new_fwver;
 	char parity = 'N';
 	uint32_t timeout_ms = 800;
+    uint32_t fw_upgrade;
     
     // Parse command line options
     int c;
     char *endptr;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vVPRCp:b:u:d:F:t:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vVPRUCp:b:u:d:F:t:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                eprintf ("non-option ARGV-element: %s\n", argv[optind]);
@@ -248,6 +251,9 @@ int main(int argc, char **argv)
            break;
        case 'R':
            do_resetrw = 1;
+           break;
+       case 'U':
+           do_upgrade = 1;
            break;
        case 'C':
            do_calibrate = 1; do_prog = 1; do_resetrw = 1;
@@ -352,6 +358,9 @@ int main(int argc, char **argv)
                HW_BOARD(bv.base_hw_version),  arm_name(bv.base_hw_version),
                HW_MAJOR(bv.base_hw_version), HW_MINOR(bv.base_hw_version));
         printf("Firmware: v%d.%d\n", SW_MAJOR(bv.sw_version), SW_MINOR(bv.sw_version));
+        if (fw_upgrade=check_firmware_upgrade(&bv, firmwaredir)) {
+            vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+        }
     } else {
         eprintf("Read version failed: %s\n", modbus_strerror(errno));
         modbus_free(ctx);
@@ -385,6 +394,8 @@ int main(int argc, char **argv)
                 modbus_free(ctx);
                 return -1;
             }
+        } else if (do_upgrade) {
+            bv.sw_version = (uint16_t)0x0600;
         }
         // load firmware file
         char* fwname = firmware_name(&bv, firmwaredir, ".bin");
@@ -429,6 +440,18 @@ int main(int argc, char **argv)
             verify(ctx,prog_data, rw_data, red, rwred);
         }
         modbus_write_register(ctx, 0x7707, 3); // reboot
+        // upgrade
+        if (do_upgrade) {
+            usleep(200000);
+            vprintf_1("Upgrading.\n");
+            modbus_write_register(ctx, 0x7707, 6); // upgrade_firmware_copy_struct
+            usleep(200000);
+            flashit(ctx,prog_data, rw_data, red, rwred);
+            if (do_verify) { 
+                verify(ctx,prog_data, rw_data, red, rwred);
+            }
+            modbus_write_register(ctx, 0x7707, 3); // reboot
+        }
         free(prog_data);
     }
     modbus_free(ctx);

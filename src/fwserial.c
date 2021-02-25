@@ -358,9 +358,6 @@ int main(int argc, char **argv)
                HW_BOARD(bv.base_hw_version),  arm_name(bv.base_hw_version),
                HW_MAJOR(bv.base_hw_version), HW_MINOR(bv.base_hw_version));
         printf("Firmware: v%d.%d\n", SW_MAJOR(bv.sw_version), SW_MINOR(bv.sw_version));
-        if (fw_upgrade=check_firmware_upgrade(&bv, firmwaredir)) {
-            vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
-        }
     } else {
         eprintf("Read version failed: %s\n", modbus_strerror(errno));
         modbus_free(ctx);
@@ -374,6 +371,13 @@ int main(int argc, char **argv)
 			do_prog=1;
     	}
 	}
+
+    if (fw_upgrade=check_firmware_upgrade(&bv, firmwaredir)) {
+        vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+    } else {
+        if (do_upgrade) // do not perform full upgrade in case of partial upgrade
+            do_upgrade = 0;
+    }
 
     //modbus_set_response_timeout(ctx, 0, 800000);
     if (do_prog || do_verify) {

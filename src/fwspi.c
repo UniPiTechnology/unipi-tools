@@ -211,6 +211,9 @@ int main(int argc, char **argv)
     printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
     if (fw_upgrade=check_firmware_upgrade(bv, firmwaredir)) {
         vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+    } else {
+        if (do_upgrade) // do not perform full upgrade in case of partial upgrade
+            do_upgrade = 0;
     }
 
     

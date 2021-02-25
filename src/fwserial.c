@@ -170,6 +170,15 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
     
 }
 
+void update_current_mb_address(uint32_t * prog_data, uint8_t mb_address) {
+    uint16_t cursor = 0;
+
+    while (!((prog_data[cursor] == 0xFFFFFFFF) && (prog_data[cursor + 1] == 0xFFFFFFFF)))
+        cursor++;
+
+    prog_data[++cursor] = (uint32_t)mb_address;
+}
+
 
 
 static struct option long_options[] = {
@@ -406,6 +415,7 @@ int main(int argc, char **argv)
         prog_data = malloc(MAX_FW_SIZE);
         vprintf_1("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
+        update_current_mb_address((uint32_t *)prog_data, (uint8_t)DEVICE_ID);
         int rwred = RW_START_PAGE;
         free(fwname);
         if (red <= 0) {

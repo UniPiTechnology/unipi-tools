@@ -373,7 +373,7 @@ int main(int argc, char **argv)
 	}
 
     if (fw_upgrade=check_firmware_upgrade(&bv, firmwaredir)) {
-        vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwspi -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
+        vprintf("PLEASE UPGRADE FIRMWARE TO %d.%d - to proceed, execute fwserial -P -U\n", fw_upgrade>>8, fw_upgrade & 0xff);
     } else {
         if (do_upgrade) // do not perform full upgrade in case of partial upgrade
             do_upgrade = 0;

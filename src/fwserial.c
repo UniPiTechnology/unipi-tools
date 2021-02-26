@@ -415,7 +415,8 @@ int main(int argc, char **argv)
         prog_data = malloc(MAX_FW_SIZE);
         vprintf_1("Opening firmware file: %s\n", fwname);
         int red = load_fw(fwname, prog_data, MAX_FW_SIZE);
-        update_current_mb_address((uint32_t *)prog_data, (uint8_t)DEVICE_ID);
+        if (bv.sw_version >= (uint16_t)0x0600)
+            update_current_mb_address((uint32_t *)prog_data, (uint8_t)DEVICE_ID);
         int rwred = RW_START_PAGE;
         free(fwname);
         if (red <= 0) {

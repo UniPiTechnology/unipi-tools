@@ -285,6 +285,10 @@ int main(int argc, char **argv)
                eprintf("Baud must be non-zero integer (given %s)\n", optarg);
                exit(EXIT_FAILURE);
            }
+           if (BAUD<2400) {
+               eprintf("Baud must be at least 2400 (given %s)\n", optarg);
+               exit(EXIT_FAILURE);
+           }
            break;
        case 'r':
            parity = optarg[0];

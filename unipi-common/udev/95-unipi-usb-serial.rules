@@ -1,3 +1,8 @@
+### HOWTO
+# 1. connect any USB-SERIAL device
+# 2. assume the path is /dev/ttyUSB0
+# 3. check the possible matching rules: udevadm info /dev/ttyUSB0
+
 # RaspberryPi 4
 ENV{ID_PATH}=="platform-fd500000.*", KERNELS=="1-1.3:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/0"
 ENV{ID_PATH}=="platform-fd500000.*", KERNELS=="1-1.4:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/1"
@@ -19,3 +24,7 @@ ENV{ID_PATH}=="platform-20980000.*", KERNELS=="1-1.2:1.0", SUBSYSTEM=="tty", SYM
 ENV{ID_PATH}=="platform-20980000.*", KERNELS=="1-1.3:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/1"
 ENV{ID_PATH}=="platform-20980000.*", KERNELS=="1-1.4:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/2"
 ENV{ID_PATH}=="platform-20980000.*", KERNELS=="1-1.5:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/3"
+
+# Zulu
+ENV{ID_PATH}=="platform-ci_hdrc.1-usb-0:1.1:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/0"
+ENV{ID_PATH}=="platform-ci_hdrc.1-usb-0:1.2:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/1"

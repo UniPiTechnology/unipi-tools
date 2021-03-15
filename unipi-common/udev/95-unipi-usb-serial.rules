@@ -28,3 +28,6 @@ ENV{ID_PATH}=="platform-20980000.*", KERNELS=="1-1.5:1.0", SUBSYSTEM=="tty", SYM
 # Zulu
 ENV{ID_PATH}=="platform-ci_hdrc.1-usb-0:1.1:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/0"
 ENV{ID_PATH}=="platform-ci_hdrc.1-usb-0:1.2:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/1"
+
+# RockChip (Gate)
+ENV{ID_PATH}=="platform-xhci-hcd.0.auto-usb-0:1:1.0", SUBSYSTEM=="tty", SYMLINK+="serial/by-port/0"

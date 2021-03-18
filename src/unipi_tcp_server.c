@@ -54,7 +54,7 @@ char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/unipi/firmware";
-int do_check_fw = 0;
+//int do_check_fw = 0;
 int broadcast_address = 0;
 
 #define MAXEVENTS 64
@@ -249,7 +249,7 @@ int parse_buffer(mb_event_data_t* event_data)
                     return -1;
                 }
                 if (rc > 0) {                   /* Data was sent partially, add EPOLLOUT */
-                    struct epoll_event event;
+//                    struct epoll_event event;
                     event_data->wr_buffer = buffer;
                     result = RES_WRITE_QUEUE;
                 }
@@ -284,8 +284,8 @@ static struct option long_options[] = {
   {"nsspause", required_argument, 0, 'n'},
   {"spidev", required_argument, 0, 's'},
   {"bauds",required_argument, 0, 'b'},
-  {"fwdir", required_argument, 0, 'f'},
-  {"check-firmware", no_argument,0, 'c'},
+/*  {"fwdir", required_argument, 0, 'f'},
+  {"check-firmware", no_argument,0, 'c'},*/
   {"broadcast-address", required_argument, 0, 'a'},
   {"info", no_argument, 0, 'i'},
   {0, 0, 0, 0}
@@ -293,7 +293,7 @@ static struct option long_options[] = {
 
 static void print_usage(const char *progname)
 {
-  printf("usage: %s [-a broadcast_address] [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
+  printf("usage: %s [-a broadcast_address] [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..]\n", progname);
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
@@ -336,7 +336,7 @@ int parse_slist(char * option, char** results)//, int maxlen)
 int parse_ilist(char * option, int* results)
 {
     int i = 0;
-    int len;
+//    int len;
     char* p = option;
     char* np;
 
@@ -367,14 +367,14 @@ int main(int argc, char *argv[])
     struct epoll_event event;
     struct epoll_event *events;
     mb_event_data_t*  event_data;
-    uint32_t fwver;
+//    uint32_t fwver; 
     char *unipi_model;
 
      // Options
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdicl:p:t:s:b:f:n:a:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdil:p:t:s:b:n:a:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                if ((argv[optind]==NULL) || (argv[optind][0] == '\0')) {
@@ -433,12 +433,12 @@ int main(int argc, char *argv[])
                exit(EXIT_FAILURE);
            }
            break;
-       case 'f':
+/*       case 'f':
            firmwaredir = strdup(optarg);
            break;
        case 'c':
            do_check_fw = 1;
-           break;
+           break;*/
        case 'a':
     	   broadcast_address = atoi(optarg);
     	   if (broadcast_address < 0 || broadcast_address > 255) {
@@ -471,9 +471,9 @@ int main(int argc, char *argv[])
             int speed = spi_speed[ai];
             if (!(speed > 0)) speed = spi_speed[0];
             add_arm(nb_ctx, ai, dev, speed);
-            if (nb_ctx->arm[ai] && do_check_fw) {
+            /*if (nb_ctx->arm[ai] && do_check_fw) {
                 arm_firmware(nb_ctx->arm[ai], firmwaredir);
-            }
+            }*/
         }
     }
 
@@ -545,7 +545,7 @@ int main(int argc, char *argv[])
 
         if (deferred_op == DFR_OP_FIRMWARE) {
             deferred_op = DFR_NONE;
-            arm_firmware(deferred_arm, firmwaredir);
+            /*arm_firmware(deferred_arm, firmwaredir);*/
         }
 
         int n, i;
@@ -606,7 +606,7 @@ int main(int argc, char *argv[])
                     }
                     if (rc == 0) { /* All data from buffer was sent */
                         buffer = event_data->wr_buffer;
-                        event_data->wr_buffer == buffer->next;
+//                        event_data->wr_buffer == buffer->next;
                         buffer->next = NULL;
                         repool_buffer(buffer);
                         if (event_data->wr_buffer == NULL) {

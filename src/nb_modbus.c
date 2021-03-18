@@ -28,6 +28,8 @@
 #include "armutil.h"
 #include "virtual_regs.h"
 
+#include "fwimage.h"
+
 #include <modbus/modbus-version.h>
 #if LIBMODBUS_VERSION_CHECK(3,1,4) != 1
 //Library_error "YOU NEED libmodbus version min 3.1.4"
@@ -413,10 +415,11 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed)
         free(arm);
         return -1;
     }
+    return 0;
 }
 
 
-int load_fw(char *path, uint8_t* prog_data, const size_t len)
+/*int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
     FILE* fd;
     int red, i;
@@ -432,7 +435,9 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     fclose(fd);
     return red;
 }
+*/
 
+/*
 #define MAX_R2000  64
 int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
 {
@@ -466,10 +471,12 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
         }
     }
     start_firmware(arm);
+    if (arm->bv.sw_version < 0x0600) {
+        //patch_first_page_downgrade(header, prog_data);
+    }
     send_firmware(arm, prog_data, prog_data_len, 0);
-/*
-    vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
-*/
+//    vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
+
     if (overwrite)  {
         vprintf("\n");
         send_firmware(arm, rw_data, rw_data_len, 0xe000);
@@ -487,9 +494,11 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
         return -1;
 }
 
+*/
+/*
 int arm_firmware(arm_handle* arm, const char* fwdir)
 {
-    /* Check version */
+    // Check version 
     uint32_t fwver;
 
     if (fwver=check_new_rw_version(&arm->bv, fwdir)) {
@@ -497,3 +506,4 @@ int arm_firmware(arm_handle* arm, const char* fwdir)
         return arm_firmware_do(arm, fwdir, FALSE);
     }
 }
+*/

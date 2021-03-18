@@ -83,6 +83,8 @@ OBJS  = $(SRC:.c=.o)
 SPIOBJS  = $(SPISRC:.c=.o)
 
 LDFLAGS = $(LIBDIR) $(LIB)
+#CPFLAGS = -g -fomit-frame-pointer -Wall -Wstrict-prototypes -fverbose-asm 
+CPFLAGS = -Wall -Wstrict-prototypes
 
 #
 # makefile rules
@@ -90,7 +92,13 @@ LDFLAGS = $(LIBDIR) $(LIB)
 all: $(BINFILES)
 
 %.o: %.c
-	$(CC) -c $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) $< -o $@
+	$(CC) -c $(CPFLAGS) $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) $< -o $@
+
+%.serial.o: %.c
+	$(CC) -c $(CPFLAGS) $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) -DFWSERIAL $< -o $@
+
+%.spi.o: %.c
+	$(CC) -c $(CPFLAGS) $(LDFLAGS) -I . $(INCDIR) $(PROJECT_VERSION) -DFWSPI $< -o $@
 
 
 .PHONY: fwspi unipi_tcp_server fwserial
@@ -99,11 +107,15 @@ unipi_tcp_server: unipi_tcp_server.o $(OBJS)
 	$(CC) unipi_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
 	@chmod +x $@
 
-fwspi:  fwspi.o $(OBJS)
-	$(CC) fwspi.o $(OBJS) $(LDFLAGS) -o $@
+#fwspi:  fwspi.o $(OBJS)
+#	$(CC) fwspi.o $(OBJS) $(LDFLAGS) -o $@
+#	@chmod +x $@
+	
+fwspi: fw.spi.o armutil.o armspi.o spicrc.o fwimage.spi.o fwconfig.spi.o fwopt.spi.o fwdriver.spi.o fwbin.spi.o
+	$(CC) $+ $(LDFLAGS) -o $@
 	@chmod +x $@
 	
-fwserial: fwserial.o armutil.o
+fwserial: fw.serial.o armutil.o fwimage.serial.o fwconfig.serial.o fwopt.serial.o fwdriver.serial.o fwbin.serial.o
 	$(CC) $+ $(LDFLAGS) -o $@
 	@chmod +x $@
 

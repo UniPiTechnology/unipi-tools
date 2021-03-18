@@ -7,6 +7,11 @@
 
 #define vprintf( ... ) if (verbose > 0) printf( __VA_ARGS__ )
 #define vvprintf( ... ) if (verbose > 1) printf( __VA_ARGS__ )
+
+#define vprintf_1(f, args...)	if (verbose>=1) printf(f, ##args)
+#define vprintf_2(f, args...)	if (verbose>=2) printf(f, ##args)
+#define eprintf(f, args...)	fprintf(stderr, f, ##args)
+
 extern int verbose;
 
 /* Hardware constants */
@@ -69,9 +74,8 @@ int upboard_exists(int board);
 int check_compatibility(int hw_base, int upboard);
 int get_board_speed(Tboard_version* bv);
 
-uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir);
-uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen);
-uint32_t check_firmware_upgrade(Tboard_version* bv, const char* fwdir);
+//uint32_t check_new_rw_version(Tboard_version* bv, const char* fwdir);
+//uint8_t* load_fw_file(Tboard_version* bv, const char* fwdir, int rw, int* datalen);
 
 Textension_map* get_extension_map(int board);
 

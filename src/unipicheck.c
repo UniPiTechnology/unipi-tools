@@ -85,10 +85,10 @@ int match(char* regstring, char* model)
 #define MAXLINE 1024
 int main(int argc, char** argv)
 {
-   int res;
-   int i;
+//   int res;
+//   int i;
    ssize_t n;
-   ssize_t alloc = MAXLINE;
+   size_t alloc = MAXLINE;
    char *unipi_model;
    FILE* ftable;
    char *saveptr;

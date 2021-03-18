@@ -66,7 +66,7 @@ void nb_modbus_free(nb_modbus_t*  nb_ctx);
 int nb_modbus_reqlen(uint8_t* data, uint8_t size);
 int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broadcast_address);
 int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed);
-int load_fw(char *path, uint8_t* prog_data, const size_t len);
-int arm_firmware(arm_handle* arm, const char* fwdir);
-int arm_firmware_do(arm_handle* arm, const char* fwdir, int rw);
+//int load_fw(char *path, uint8_t* prog_data, const size_t len);
+//int arm_firmware(arm_handle* arm, const char* fwdir);
+//int arm_firmware_do(arm_handle* arm, const char* fwdir, int rw);
 #endif

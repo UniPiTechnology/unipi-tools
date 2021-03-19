@@ -362,9 +362,17 @@ void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
     }
 }
 
-void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt)
+void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt, int platform)
 {
-    int gpio = open("/sys/class/gpio/gpio18/value", O_WRONLY);
+
+    char* gpio_1w_reset_path = NULL;
+
+    if (platform == VIRTUAL_COILS_NANOPI)
+        gpio_1w_reset_path = "/sys/class/gpio/gpio18/value";
+    else if(platform == VIRTUAL_COILS_ZULU)
+        gpio_1w_reset_path = "/sys/class/gpio/gpio149/value";
+
+    int gpio = open(gpio_1w_reset_path, O_WRONLY);
     if (gpio < 0) return;
 
 	int shift = 1001 - reg;

@@ -170,7 +170,6 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
 
     case MODBUS_FC_READ_HOLDING_REGISTERS:
     case MODBUS_FC_READ_INPUT_REGISTERS: {
-    	printf("Karel 0");
         int nb = (req[offset + 3] << 8) + req[offset + 4];
 
         if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
@@ -185,7 +184,6 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             if ((address >= OFFSET_V_REGS) && (address < OFFSET_PV_REGS)) {
                 n = read_virtual_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
             } else if((address >= OFFSET_PV_REGS)){
-            	printf("Karel 1");
             	n = read_pure_virtual_regs(address, nb,  (uint16_t*) (rsp+rsp_length));
             }
             else {
@@ -226,7 +224,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             n = write_bit(arm, address, data ? 1 : 0, 0);
             if (arm && arm->has_virtual_coils && (address == 1001)) {
                 data = data ? 1 : 0;
-                monitor_virtual_coils(arm, address, (uint8_t*)(&data), 1); // monitoring coil changes
+                monitor_virtual_coils(arm, address, (uint8_t*)(&data), 1, arm->has_virtual_coils); // monitoring coil changes
             }
             if (n == 1) {
                 rsp_length += 4; // = req_length;
@@ -282,7 +280,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             n = write_bits(arm, address, nb, rsp+rsp_length + 5);
             if ( n == nb ) {
                 if (arm && arm->has_virtual_coils && (address <= 1001) && (address+nb > 1001)) {
-                    monitor_virtual_coils(arm, address, rsp+rsp_length + 5, nb); // monitoring coil changes
+                    monitor_virtual_coils(arm, address, rsp+rsp_length + 5, nb, arm->has_virtual_coils); // monitoring coil changes
                 }
                 rsp_length += 4;
             } else if (n < 0) {

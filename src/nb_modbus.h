@@ -25,6 +25,9 @@
 
 
 /* Hardware constants */
+#define VIRTUAL_COILS_NANOPI 1
+#define VIRTUAL_COILS_ZULU 2
+
 #define PAGE_SIZE   1024
 #define REG_SIZE    64
 

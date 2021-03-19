@@ -3,7 +3,7 @@ Section: unknown
 Priority: optional
 Maintainer: Miroslav Ondra <info@unipi.technology>
 Uploaders: Martin Triska <triska@unipi.technology>
-Build-Depends: debhelper (>= 9)
+Build-Depends: debhelper (>= 10)
 Standards-Version: 3.9.8
 Homepage: http://www.unipi.technology
 Vcs-Git: http://git.unipi.technology/UniPi/unipi-tools/unipi-tools.git

@@ -239,22 +239,12 @@ int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* resu
     }
 }
 
-
-int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
+int prv_read_from_files(char** filelist, uint8_t filelist_size, uint16_t reg, uint8_t cnt, uint16_t* result)
 {
-	vvprintf("Reading pure virtual reg: %u cnt: %u\n", reg, cnt);
-
-	reg = reg - 10000;
-
-	char* filelist[] = {"/var/run/unipi_lte/rssi",
-			"/var/run/unipi_lte/mode",
-			"/var/run/unipi_lte/nettype",
-			"/var/run/unipi_lte/sigqual"};
-
-
-    if (reg + cnt > (sizeof(filelist) / sizeof(filelist[0])) || (reg < 0)) { //Check bounds
-    	return 0;
-    }
+	//if (reg + cnt > (sizeof(filelist) / sizeof(filelist[0])) || (reg < 0)) { //Check bounds
+	if (reg + cnt > filelist_size || (reg < 0)) { //Check bounds
+		return 0;
+	}
 
 	for (int i=reg; i < reg + cnt; i++) {
 		vvprintf("Opening file %s \n", filelist[i]);
@@ -262,7 +252,7 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 		int value;
 		fp = fopen(filelist[i] ,"r");
 		if(fp == NULL){
-			value = 0;
+			value = -1;
 		}
 		else{
 			fscanf(fp, "%d", &value);
@@ -272,7 +262,43 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 		memcpy(&((uint16_t*)result)[i-reg], &value, sizeof(uint16_t));
 	}
 
-	return cnt;
+    return cnt;
+}
+
+int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
+{
+	vvprintf("Reading pure virtual reg: %u cnt: %u\n", reg, cnt);
+
+	reg = reg - OFFSET_PV_REGS;
+        char ** filelist = NULL;
+        uint8_t filelist_size = 0;
+	// STORSTAT address range [OFFSET_PV_STORSTAT_GROUP : OFFSET_PV_LTE_GROUP)
+	if (reg < OFFSET_PV_LTE_GROUP){
+		char* filelist_a[] = {"/var/run/unipi_stats/cycles_used",
+				"/var/run/unipi_stats/good_blocks",
+				"/var/run/unipi_stats/power_cycles",
+				"/var/run/unipi_stats/vendor_1",
+				"/var/run/unipi_stats/vendor_2",
+				"/var/run/unipi_stats/vendor_3"};
+		filelist = filelist_a;
+                filelist_size = (sizeof(filelist_a) / sizeof(filelist_a[0]));
+	}
+	// LTE address range [OFFSET_PV_LTE_GROUP : OFFSET_PV_SYSSTAT_GROUP)
+	else if (reg < OFFSET_PV_SYSSTAT_GROUP){
+		char* filelist_b[] = {"/var/run/unipi_lte/rssi",
+				"/var/run/unipi_lte/mode",
+				"/var/run/unipi_lte/nettype",
+				"/var/run/unipi_lte/sigqual"};
+		filelist = filelist_b;
+                filelist_size = (sizeof(filelist_b) / sizeof(filelist_b[0]));
+
+	}
+	else{
+		return 0;
+        }
+
+
+	return prv_read_from_files(filelist, filelist_size, reg, cnt, result);
 
 }
 
@@ -354,4 +380,5 @@ void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint1
 //int read_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
 //int write_virtual_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_lock);
 //int write_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);
+
 

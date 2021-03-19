@@ -182,9 +182,9 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
             uint8_t c;
 
             rsp[rsp_length++] = nb << 1;
-            if ((address >= 3000) && (address < 4000)) {
+            if ((address >= OFFSET_V_REGS) && (address < OFFSET_PV_REGS)) {
                 n = read_virtual_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
-            } else if((address >= 10000)){
+            } else if((address >= OFFSET_PV_REGS)){
             	printf("Karel 1");
             	n = read_pure_virtual_regs(address, nb,  (uint16_t*) (rsp+rsp_length));
             }

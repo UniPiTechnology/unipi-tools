@@ -1,7 +1,7 @@
 /*
  * SPI communication with UniPi Neuron and Axon families of controllers
  *
- * using epoll pattern 
+ * using epoll pattern
  *
  * Copyright (c) 2016  Faster CZ, ondra@faster.cz
  *
@@ -50,7 +50,7 @@
 //int spi_speed[3] = {12000000,12000000,12000000};
 //char gpio_int[3][5] = { "27", "23", "22" };
 
-const char* version_string = "Version " PROJECT_VER;
+const char* version_string = PROJECT_VER;
 
 char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
@@ -94,10 +94,10 @@ typedef struct {
         struct {
           mb_buffer_t* rd_buffer;
           mb_buffer_t* wr_buffer;
-        };    
+        };
         arm_handle* arm;
     };
-    
+
 } mb_event_data_t;
 
 
@@ -108,7 +108,7 @@ void pool_allocate(void)
     mb_buffer_t* prev;
     int n = MB_BUFFER_COUNT;
     b_stack = calloc(1, sizeof(mb_buffer_t));
-    b_stack->id = 1; 
+    b_stack->id = 1;
     while(n-- > 0) {
         prev = b_stack;
         b_stack = calloc(1, sizeof(mb_buffer_t));
@@ -186,13 +186,13 @@ int nb_send(int fd, mb_buffer_t* buffer)
                 return 1;  // buffer sent partially
 			}
             perror ("send");
-			return -1;     // error fatal 
+			return -1;     // error fatal
 		}
 		buffer->sendindex = buffer->sendindex + n;
 		wanted = wanted - n;
 	}
 
-    return 0; 
+    return 0;
 }
 
 
@@ -243,7 +243,7 @@ int parse_buffer(mb_event_data_t* event_data)
                 mb_buffer_t* last = event_data->wr_buffer;
                 while (last->next != NULL) last = last->next;
                 last->next = buffer;
- 
+
            } else {                             /* try to send data */
                 int rc = nb_send(event_data->fd, buffer);
                 if (rc < 0) {                   /* Fatal error */
@@ -251,7 +251,6 @@ int parse_buffer(mb_event_data_t* event_data)
                     return -1;
                 }
                 if (rc > 0) {                   /* Data was sent partially, add EPOLLOUT */
-                    struct epoll_event event;
                     event_data->wr_buffer = buffer;
                     result = RES_WRITE_QUEUE;
                 }
@@ -298,7 +297,7 @@ static void print_usage(const char *progname)
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
-      printf("  --%s%s\t %s\n", long_options[i].name, 
+      printf("  --%s%s\t %s\n", long_options[i].name,
                                 long_options[i].has_arg?"=...":"",
                                 "");
   }
@@ -337,7 +336,6 @@ int parse_slist(char * option, char** results)//, int maxlen)
 int parse_ilist(char * option, int* results)
 {
     int i = 0;
-    int len;
     char* p = option;
     char* np;
 
@@ -367,7 +365,6 @@ int main(int argc, char *argv[])
     struct epoll_event event;
     struct epoll_event *events;
     mb_event_data_t*  event_data;
-    uint32_t fwver;
     char *unipi_model;
 
     int poll_timeout = -1;
@@ -446,7 +443,7 @@ int main(int argc, char *argv[])
     	   break;
        case 'i':
     	   printf("Version: %s\n", version_string);
-    	   exit(EXIT_FAILURE);
+    	   exit(EXIT_SUCCESS);
     	   break;
        default:
            print_usage(argv[0]);
@@ -482,11 +479,17 @@ int main(int argc, char *argv[])
     if (nb_ctx->arm[0]) {
 		/* Check UniPi Model */
 		unipi_model = get_unipi_name();
-		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0)) {
-            if (verbose) printf("Using virtual coil 1001 on gpio18\n");
-			nb_ctx->arm[0]->has_virtual_coils = 1;
+		vvprintf("Running on unipi_model %s\n", unipi_model);
+		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0)) { /* models with N-1001 have 1W reset via GPIO18 */
+			if (verbose) printf("Using virtual coil 1001 on gpio18\n");
+			nb_ctx->arm[0]->has_virtual_coils = VIRTUAL_COILS_NANOPI;
 			system("echo 18 >/sys/class/gpio/export; echo out >/sys/class/gpio/gpio18/direction; echo 1 >/sys/class/gpio/gpio18/value");
 		}
+                else if((strncmp(unipi_model, "S207",4) == 0)){
+			if (verbose) printf("Using virtual coil 1001 on gpio149\n");
+			nb_ctx->arm[0]->has_virtual_coils = VIRTUAL_COILS_ZULU;
+			system("echo 149 >/sys/class/gpio/export; echo out >/sys/class/gpio/gpio149/direction; echo 1 >/sys/class/gpio/gpio149/value");
+                }
 	}
 
     server_socket = modbus_tcp_listen(nb_ctx->ctx, NB_CONNECTION);
@@ -556,7 +559,8 @@ int main(int argc, char *argv[])
         }
 
         int n, i;
-        n = epoll_wait (efd, events, MAXEVENTS, poll_timeout);
+        fflush(stdout);
+        n = epoll_wait (efd, events, MAXEVENTS, poll_timeout); //Blocking waiting with no timeout
         for (i = 0; i < n; i++) {
             event_data = events[i].data.ptr;
 
@@ -613,7 +617,6 @@ int main(int argc, char *argv[])
                     }
                     if (rc == 0) { /* All data from buffer was sent */
                         buffer = event_data->wr_buffer;
-                        event_data->wr_buffer == buffer->next;
                         buffer->next = NULL;
                         repool_buffer(buffer);
                         if (event_data->wr_buffer == NULL) {

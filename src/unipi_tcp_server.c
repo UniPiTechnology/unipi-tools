@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 		/* Check UniPi Model */
 		unipi_model = get_unipi_name();
 		vvprintf("Running on unipi_model %s\n", unipi_model);
-		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0) || (strncmp(unipi_model, "S207",4)) { /* models with N-1001 have 1W reset via GPIO18 */
+		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0) || (strncmp(unipi_model, "S207",4) == 0)) { /* models with N-1001 have 1W reset via GPIO18 */
             if (verbose) printf("Using virtual coil 1001 on gpio18\n");
 			nb_ctx->arm[0]->has_virtual_coils = 1;
 			system("echo 18 >/sys/class/gpio/export; echo out >/sys/class/gpio/gpio18/direction; echo 1 >/sys/class/gpio/gpio18/value");

@@ -64,7 +64,7 @@ static int nb_response_exception(modbus_t *ctx, int exception_code, uint8_t *rsp
         va_list ap;
 
         va_start(ap, template);
-        vfprintf(stderr, template, ap);                
+        vfprintf(stderr, template, ap);
         va_end(ap);
     }
     //int offset = ctx->backend->header_length;
@@ -114,6 +114,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     }
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
+    printf("FC: %u Address is %u, slave %u\n", function, address, slave);
 
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;
     if (slave == 0) {
@@ -151,7 +152,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                 "Illegal nb of values %d in read_bits (max %d)\n", nb, MODBUS_MAX_READ_BITS);
         } else {
             rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
-            int n = read_bits(arm, address, nb, rsp+rsp_length); 
+            int n = read_bits(arm, address, nb, rsp+rsp_length);
             if (n >= nb) {
                 rsp_length += (nb / 8) + ((nb % 8) ? 1 : 0);
             } else if (n < 0) {
@@ -160,7 +161,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                         "Illegal data value 0x%0X in read_bits\n", address);
             } else {
                 rsp_length = nb_response_exception(
-                    nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, 
+                    nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp,
                     "Illegal data address 0x%0X in read_bits\n", address);
             }
         }
@@ -169,22 +170,29 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
 
     case MODBUS_FC_READ_HOLDING_REGISTERS:
     case MODBUS_FC_READ_INPUT_REGISTERS: {
+    	printf("Karel 0");
         int nb = (req[offset + 3] << 8) + req[offset + 4];
- 
+
         if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
             rsp_length = nb_response_exception(
-                nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, 
+                nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp,
                 "Illegal nb of values %d in read_register (max %d)\n", nb, MODBUS_MAX_READ_REGISTERS);
         } else {
             int i;
             uint8_t c;
 
             rsp[rsp_length++] = nb << 1;
-            if ((address >= 3000) && (address < 4000)) {
+            if ((address >= OFFSET_V_REGS) && (address < OFFSET_PV_REGS)) {
                 n = read_virtual_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
-            } else {
+            } else if((address >= OFFSET_PV_REGS)){
+            	printf("Karel 1");
+            	n = read_pure_virtual_regs(address, nb,  (uint16_t*) (rsp+rsp_length));
+            }
+            else {
                 n = read_regs(arm, address, nb, (uint16_t*) (rsp+rsp_length));
             }
+
+
             if (n == nb) {
                 for (i = address; i < address + nb; i++) {
                     c = rsp[rsp_length++];
@@ -245,7 +253,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
         if (n == 1) {
             rsp_length += 4; // = req_length;
             if ((address == 1019) || (address==1024)) {    // monitoring register changes
-                monitor_virtual_regs(arm, address, &data); 
+                monitor_virtual_regs(arm, address, &data);
             }
         } else if (n < 0) {
         	rsp_length = nb_response_exception(
@@ -299,7 +307,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
                 nb, MODBUS_MAX_WRITE_REGISTERS);
         } else {
             int i, j;
-            uint8_t c;   
+            uint8_t c;
             for (i = 0, j = rsp_length+5; i < nb; i++, j += 2) {
                 c = rsp[j];
                 rsp[j] = rsp[j+1];
@@ -350,7 +358,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
 
     default:
         rsp_length = nb_response_exception(
-            nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_FUNCTION, rsp, 
+            nb_ctx->ctx, MODBUS_EXCEPTION_ILLEGAL_FUNCTION, rsp,
             "Unknown Modbus function code: 0x%0X\n", function);
         break;
     }
@@ -413,13 +421,14 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed)
         free(arm);
         return -1;
     }
+    return 0;
 }
 
 
 int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
     FILE* fd;
-    int red, i;
+    int red;
     fd = fopen(path, "rb");
     if (!fd) {
         printf("error opening firmware file \"%s\"\n", path);
@@ -481,6 +490,8 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
     uint16_t configregs[5];
     if (read_regs(arm, 1000, 5, configregs) == 5)
         parse_version(&arm->bv, configregs);
+
+    return 0;
 }
 
 int arm_firmware(arm_handle* arm, const char* fwdir)
@@ -488,7 +499,7 @@ int arm_firmware(arm_handle* arm, const char* fwdir)
     /* Check version */
     uint32_t fwver;
 
-    if (fwver=check_new_rw_version(&arm->bv, fwdir)) {
+    if ((fwver=check_new_rw_version(&arm->bv, fwdir))) {
         vprintf("NEW firmware=%d.%d found\n", fwver>>8, fwver & 0xff);
         return arm_firmware_do(arm, fwdir, FALSE);
     }

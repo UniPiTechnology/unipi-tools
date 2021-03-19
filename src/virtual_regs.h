@@ -15,6 +15,12 @@
 #include "armutil.h"
 #include "armspi.h"
 
+#define OFFSET_V_REGS 3000
+#define OFFSET_PV_REGS 4000
+#define OFFSET_PV_STORSTAT_GROUP 0
+#define OFFSET_PV_LTE_GROUP 100
+#define OFFSET_PV_SYSSTAT_GROUP 200
+
 int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);
 int read_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
@@ -23,6 +29,8 @@ int write_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* val
 void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result);
 
 void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt);
+
+int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result);
 
 
 #endif

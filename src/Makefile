@@ -104,7 +104,7 @@ all: $(BINFILES)
 .PHONY: fwspi unipi_tcp_server fwserial
 
 unipi_tcp_server: unipi_tcp_server.o $(OBJS) 
-	$(CC) unipi_tcp_server.o $(OBJS) $(LDFLAGS) -o $@
+	$(CC) unipi_tcp_server.o $(OBJS) $(LDFLAGS) -l systemd -o $@
 	@chmod +x $@
 
 #fwspi:  fwspi.o $(OBJS)

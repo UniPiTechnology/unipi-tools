@@ -32,7 +32,7 @@ if [ "${IS_REAL_SYSTEM}" = "1" ]; then
   grep -q okay /sys/firmware/devicetree/base/soc/i2c@7e804000/status && I2C=1
 
 
-if [ -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT" ]; then
+if [ -n "$RTC" -a -n "$I2C" -a -z "$EE_CONFLICT" -a -n "$IS_REAL_SYSTEM" ]; then
 
   echo 24c02 0x50 > /sys/bus/i2c/devices/i2c-1/new_device
   if [ -f "/sys/bus/i2c/devices/1-0050/eeprom" ] ; then

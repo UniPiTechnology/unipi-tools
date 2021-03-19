@@ -21,6 +21,9 @@
 #define OFFSET_PV_LTE_GROUP 100
 #define OFFSET_PV_SYSSTAT_GROUP 200
 
+#define VIRTUAL_COILS_NANOPI 1
+#define VIRTUAL_COILS_ZULU 2
+
 int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* result);
 int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* values);
 int read_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* result);
@@ -28,7 +31,7 @@ int write_virtual_bit(arm_handle* arm, uint16_t reg, uint8_t value, uint8_t do_l
 int write_virtual_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);
 void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result);
 
-void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt);
+void monitor_virtual_coils(arm_handle* arm, uint16_t reg, uint8_t* values, uint16_t cnt, int platform);
 
 int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result);
 

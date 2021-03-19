@@ -1,0 +1,8 @@
+# Defaults for Unipi ModbusTCP server
+
+# to which IP address the service will bind to.
+# to listen on all, set to 0.0.0.0
+LISTEN_IP=127.0.0.1
+
+# to which port the service will bind to
+LISTEN_PORT=502

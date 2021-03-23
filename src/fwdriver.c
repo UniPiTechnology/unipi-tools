@@ -17,7 +17,8 @@ void* fwspi_open(struct comopt_struct *comopt)
     arm_handle* arm = malloc(sizeof(arm_handle));
     arm_verbose=verbose;
     if (arm_init(arm, comopt->PORT , comopt->BAUD, comopt->DEVICE_ID | UNLOCK_FLAG) < 0) {
-        fprintf(stderr, "Unable to create the arm[%d] context\n", comopt->DEVICE_ID);
+        if (verbose >=0)
+            eprintf("Unable to create the arm[%d] context\n", comopt->DEVICE_ID);
         free(arm);
         return NULL;
     }

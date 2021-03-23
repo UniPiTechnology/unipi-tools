@@ -166,6 +166,7 @@ int auto_update(void)
     void *channel;
     Tboard_version *bv;
 	uint16_t image_version;
+	int verbose0;
     int device_index = com_options.DEVICE_ID;
 	int max_device_index = com_options.DEVICE_ID;
 
@@ -176,7 +177,10 @@ int auto_update(void)
 
     for (;device_index <= max_device_index; device_index++) {
 		com_options.DEVICE_ID = device_index;
+		verbose0 = verbose;
+		verbose = -1;
 		channel=driver.open(&com_options);
+		verbose = verbose0;
 		if (channel != NULL) {
 			if ((bv = driver.identify(channel)) != NULL){
 				if (SW_MAJOR(bv->sw_version) < 6) 

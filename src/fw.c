@@ -146,11 +146,11 @@ int upload_firmware(Tboard_version *bv, void* channel, int do_verify, int do_res
 	driver.run(channel);
 	usleep(200000);
 	// confirm firmware
-	if (do_resetrw) {
+	if ((driver.confirm(channel)!=0) && do_resetrw) {
         com_options.BAUD=19200;  com_options.parity='N', com_options.stopbit=1;
 	    driver.reopen(channel, &com_options);
+	    driver.confirm(channel);
     }
-	driver.confirm(channel);
 	// reboot
 	driver.reboot(channel);
 	usleep(200000);

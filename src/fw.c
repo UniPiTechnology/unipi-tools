@@ -147,10 +147,12 @@ int upload_firmware(Tboard_version *bv, void* channel, int do_verify, int do_res
 	usleep(200000);
 	// confirm firmware
 	if ((driver.confirm(channel)!=0) && do_resetrw) {
-        com_options.BAUD=19200;  com_options.parity='N', com_options.stopbit=1;
+	    vprintf_1("Setting default parameters\n");
+            com_options.BAUD=19200;  com_options.parity='N'; com_options.stopbit=1;
+            com_options.DEVICE_ID=15;
 	    driver.reopen(channel, &com_options);
 	    driver.confirm(channel);
-    }
+        }
 	// reboot
 	driver.reboot(channel);
 	usleep(200000);

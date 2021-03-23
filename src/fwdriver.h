@@ -13,6 +13,7 @@ struct page_description {
 
 struct driver {
 	void* (*open)(struct comopt_struct*);
+	void (*reopen)(void*, struct comopt_struct*);
 	void (*close)(void*);
 	Tboard_version*(*identify)(void*);
 	int  (*start)(void*);

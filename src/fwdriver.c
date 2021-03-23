@@ -32,6 +32,9 @@ void fwspi_close(void* channel)
 	free(arm);
 }
 
+void fwspi_reopen(void* channel, struct comopt_struct *comopt)
+{}
+
 Tboard_version* fwspi_identify(void* channel)
 {
     arm_handle* arm = channel;
@@ -59,7 +62,7 @@ int fwspi_run(void* channel)
 	return 0;
 }
 
-int fwspi_confirm(void* channel)
+int fwspi_confirm(void* channel, int resetrw)
 {
     arm_handle* arm = channel;
 	confirm_firmware(arm);
@@ -121,6 +124,7 @@ int  fwspi_flash(void* channel, struct page_description *pd_array, int count, in
 struct driver driver = {
 	.open	= fwspi_open,
 	.close	= fwspi_close,
+	.reopen	= fwspi_reopen,
 	.identify	= fwspi_identify,
 	.start	= fwspi_start,
 	.run	= fwspi_run,
@@ -170,6 +174,22 @@ void fwserial_close(void* channel)
     struct serial_handle *handle = channel;
 	modbus_free(handle->ctx);
     free(handle);
+}
+
+void fwserial_reopen(void* channel, struct comopt_struct *comopt)
+{
+    struct serial_handle *handle = channel;
+    modbus_t *ctx;
+
+    // reopen serial port
+    modbus_free(handle->ctx);
+    handle->ctx = NULL;
+    ctx = modbus_new_rtu(comopt->PORT, comopt->BAUD, comopt->parity, 8, comopt->stopbit);
+    if (ctx != NULL) {
+        handle->ctx = ctx;
+        modbus_set_slave(ctx, comopt->DEVICE_ID);
+        modbus_set_response_timeout(ctx, 0, comopt->timeout_ms*1000);
+    }
 }
 
 Tboard_version* fwserial_identify(void* channel)
@@ -288,6 +308,7 @@ int fwserial_flash(void* channel, struct page_description *pd_array, int count, 
 struct driver driver = {
 	.open	= fwserial_open,
 	.close	= fwserial_close,
+	.reopen	= fwserial_reopen,
 	.identify	= fwserial_identify,
 	.start	= fwserial_start,
 	.run	= fwserial_run,

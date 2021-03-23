@@ -19,6 +19,7 @@ struct comopt_struct com_options = {
 	.DEVICE_ID = 15,
 	.parity = 'N',
 	.timeout_ms = 800,
+    .stopbit = 1,
 #endif
 };
 

@@ -187,8 +187,10 @@ void fwserial_reopen(void* channel, struct comopt_struct *comopt)
     ctx = modbus_new_rtu(comopt->PORT, comopt->BAUD, comopt->parity, 8, comopt->stopbit);
     if (ctx != NULL) {
         handle->ctx = ctx;
+        if ( verbose > 1) modbus_set_debug(ctx,verbose-1);
         modbus_set_slave(ctx, comopt->DEVICE_ID);
         modbus_set_response_timeout(ctx, 0, comopt->timeout_ms*1000);
+        modbus_connect(ctx);
     }
 }
 

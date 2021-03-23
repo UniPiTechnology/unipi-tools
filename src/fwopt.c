@@ -44,6 +44,7 @@ static struct option long_options[] = {
 #ifdef FWSERIAL
   {"port",  required_argument,  0, 'p'},
   {"parity",required_argument,  0, 'r'},
+  {"stopbits",required_argument,0, 'o'},
   {"timeout",required_argument, 0, 't'},
   {"unit",    required_argument,0, 'u'},
 #endif
@@ -64,6 +65,7 @@ void print_usage(char *argv0)
     printf("--unit <mb address>\t default 15\n");
     printf("--baud <baudrate>\t default 19200\n");
     printf("--parity N|E|O\t default N\n");
+    printf("--stopbis 1|2\t default 1\n");
     printf("--timeout in ms\t default 800\n");
     printf("--verify\t compare flash with file\n");
 #endif
@@ -88,7 +90,7 @@ void print_usage(char *argv0)
 }
 
 #ifdef FWSERIAL
-char* shortopt = "vVPRUDCp:b:u:d:F:t:";
+char* shortopt = "vVPRUDCp:b:u:d:F:t:o:";
 #endif
 #ifdef FWSPI
 char* shortopt = "avPRUCs:b:d:F:i:";
@@ -173,7 +175,13 @@ int parseopt(int argc, char **argv)
                eprintf("Parity must be N or E or O(given %s)\n", optarg);
                return 1;
            }
-           com_options.stopbit = com_options.parity=='N'? 2:1;
+           break;
+       case 'o':
+           com_options.stopbit = atoi(optarg);
+           if (com_options.stopbit!=1 && com_options.stopbit != 2) {
+               eprintf("Stopbits must be 1 or 2 (given %s)\n", optarg);
+               return 1;
+           }
            break;
        case 'u':
            com_options.DEVICE_ID = atoi(optarg);

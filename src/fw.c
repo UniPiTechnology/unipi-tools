@@ -231,8 +231,11 @@ int main(int argc, char **argv)
     printf("Baseboard:  %3d %-30s (v%d.%d)\n",
                HW_BOARD(bv->base_hw_version),  arm_name(bv->base_hw_version),
                HW_MAJOR(bv->base_hw_version), HW_MINOR(bv->base_hw_version));
-    printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
-
+    if (SW_MINOR(bv->sw_version)!=0) {
+        printf("Firmware: v%d.%d\n", SW_MAJOR(bv->sw_version), SW_MINOR(bv->sw_version));
+    } else {
+        printf("WARNING! Bootloader only (v%d.0). UPDATE FIRMWARE!\n", SW_MAJOR(bv->sw_version));
+    }
     header=load_image_header(bv);
     if (header && (SW_MAJOR(bv->sw_version) < 6)) {
         if (!do_upgrade)

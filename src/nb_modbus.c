@@ -116,7 +116,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     }
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
-    printf("FC: %u Address is %u, slave %u\n", function, address, slave);
+    vvprintf("FC: %u Address is %u, slave %u\n", function, address, slave);
 
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;
     if (slave == 0) {

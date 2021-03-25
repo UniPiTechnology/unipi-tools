@@ -582,7 +582,7 @@ int main(int argc, char *argv[])
                             perror("Server accept() error");
                         break;
                     }
-                    printf("New connection from %s:%d on socket %d\n",
+                    vprintf("New connection from %s:%d on socket %d\n",
                                inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port, newfd);
                     /* Make the incoming socket non-blocking and add it to the
                        list of fds to monitor. */
@@ -660,7 +660,7 @@ int main(int argc, char *argv[])
                     }
                     if (count == 0) {
                         /* End of file. The remote has closed the connection. */
-                        printf ("Closed connection on descriptor %d\n", event_data->fd);
+                        vprintf ("Closed connection on descriptor %d\n", event_data->fd);
                         close_event(event_data);
                         break;
                     }

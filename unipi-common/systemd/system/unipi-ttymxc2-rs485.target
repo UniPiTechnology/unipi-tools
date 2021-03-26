@@ -1,0 +1,4 @@
+[Unit]
+Description=Unipi RS485 on ttymxc2 Target
+#Conflicts=neuron.target
+Before=unipispi.target

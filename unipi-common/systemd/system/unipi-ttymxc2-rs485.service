@@ -11,4 +11,4 @@ ExecStart=-/bin/bash -c 'cd /etc/bootcmd.d/; make enable-485-on-ttymxc2'
 
 [Install]
 #WantedBy=multi-user.target
-WantedBy=unipi-ttys0-rs485.target
+WantedBy=unipi-ttymxc2-rs485.target

@@ -1,5 +1,5 @@
 [Unit]
-Description=Unipi Neuron/Axon Modbus/Tcp Server
+Description=Unipi Neuron/Axon/Patron/Gate Modbus/Tcp Server
 Before=mervisrt.service
 Before=evok.service
 
@@ -21,3 +21,4 @@ Restart=always
 
 [Install]
 WantedBy=unipispi.target
+WantedBy=unipigate.target

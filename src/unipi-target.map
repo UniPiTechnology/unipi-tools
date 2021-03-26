@@ -1,5 +1,6 @@
 ^UNIPI1	= unipi1.target
 ^[SML]  = unipispi.target
+^[G]  = unipigate.target
 ^[SM][1-5]6[57]	= lte.target
 ^S103-G  = unipigprs.target
 ^[SML][1-5]85 = unipinb.target

@@ -56,7 +56,7 @@ char* spi_devices[MAX_ARMS] = {"/dev/unipispi","/dev/unipispi","/dev/unipispi"};
 int spi_speed[MAX_ARMS] = {0,0,0};
 char* gpio_int[MAX_ARMS] = { "27", "23", "22" };
 char* firmwaredir = "/opt/unipi/firmware";
-int do_check_fw = 0;
+//int do_check_fw = 0;
 int broadcast_address = 0;
 
 #define MAXEVENTS 64
@@ -284,8 +284,8 @@ static struct option long_options[] = {
   {"nsspause", required_argument, 0, 'n'},
   {"spidev", required_argument, 0, 's'},
   {"bauds",required_argument, 0, 'b'},
-  {"fwdir", required_argument, 0, 'f'},
-  {"check-firmware", no_argument,0, 'c'},
+/*  {"fwdir", required_argument, 0, 'f'},
+  {"check-firmware", no_argument,0, 'c'},*/
   {"broadcast-address", required_argument, 0, 'a'},
   {"info", no_argument, 0, 'i'},
   {0, 0, 0, 0}
@@ -293,7 +293,7 @@ static struct option long_options[] = {
 
 static void print_usage(const char *progname)
 {
-  printf("usage: %s [-a broadcast_address] [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..] [-f firmwaredir] [-c]\n", progname);
+  printf("usage: %s [-a broadcast_address] [-v[v]] [-d] [-l listen_address] [-p port] [-s dev1[,dev2[,dev3]]] [-b [baud1,..]\n", progname);
   int i;
   for (i=0; ; i++) {
       if (long_options[i].name == NULL)  return;
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
     int c;
     while (1) {
        int option_index = 0;
-       c = getopt_long(argc, argv, "vdicl:p:t:s:b:f:n:a:", long_options, &option_index);
+       c = getopt_long(argc, argv, "vdil:p:t:s:b:n:a:", long_options, &option_index);
        if (c == -1) {
            if (optind < argc)  {
                if ((argv[optind]==NULL) || (argv[optind][0] == '\0')) {
@@ -428,12 +428,12 @@ int main(int argc, char *argv[])
                exit(EXIT_FAILURE);
            }
            break;
-       case 'f':
+/*       case 'f':
            firmwaredir = strdup(optarg);
            break;
        case 'c':
            do_check_fw = 1;
-           break;
+           break;*/
        case 'a':
     	   broadcast_address = atoi(optarg);
     	   if (broadcast_address < 0 || broadcast_address > 255) {
@@ -470,16 +470,20 @@ int main(int argc, char *argv[])
             int speed = spi_speed[ai];
             if (!(speed > 0)) speed = spi_speed[0];
             add_arm(nb_ctx, ai, dev, speed);
-            if (nb_ctx->arm[ai] && do_check_fw) {
+            /*if (nb_ctx->arm[ai] && do_check_fw) {
                 arm_firmware(nb_ctx->arm[ai], firmwaredir);
-            }
+            }*/
         }
     }
 
+    unipi_model = get_unipi_name();
+    if (unipi_model[0] == '\0')
+	    printf("Running on an unknown platform");
+    else
+	    vvprintf("Running on unipi_model %s\n", unipi_model);
+
     if (nb_ctx->arm[0]) {
 		/* Check UniPi Model */
-		unipi_model = get_unipi_name();
-		vvprintf("Running on unipi_model %s\n", unipi_model);
 		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0)) { /* models with N-1001 have 1W reset via GPIO18 */
 			if (verbose) printf("Using virtual coil 1001 on gpio18\n");
 			nb_ctx->arm[0]->has_virtual_coils = VIRTUAL_COILS_NANOPI;
@@ -555,7 +559,7 @@ int main(int argc, char *argv[])
         }
         if (deferred_op == DFR_OP_FIRMWARE) {
             deferred_op = DFR_NONE;
-            arm_firmware(deferred_arm, firmwaredir);
+            /*arm_firmware(deferred_arm, firmwaredir);*/
         }
 
         int n, i;
@@ -582,7 +586,7 @@ int main(int argc, char *argv[])
                             perror("Server accept() error");
                         break;
                     }
-                    printf("New connection from %s:%d on socket %d\n",
+                    vprintf("New connection from %s:%d on socket %d\n",
                                inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port, newfd);
                     /* Make the incoming socket non-blocking and add it to the
                        list of fds to monitor. */
@@ -660,7 +664,7 @@ int main(int argc, char *argv[])
                     }
                     if (count == 0) {
                         /* End of file. The remote has closed the connection. */
-                        printf ("Closed connection on descriptor %d\n", event_data->fd);
+                        vprintf ("Closed connection on descriptor %d\n", event_data->fd);
                         close_event(event_data);
                         break;
                     }

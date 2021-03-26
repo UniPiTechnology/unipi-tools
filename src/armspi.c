@@ -143,7 +143,10 @@ int two_phase_op(arm_handle* arm, uint8_t op, uint16_t reg, uint16_t len2)
     char_package[6] = delay_usecs;
     *((uint16_t *)&char_package[1]) = reg;
 
-    if (arm_verbose>1) printf("Ph2-OP: send package len:%d: %x %x %x %x \t%x %x %x %x %x %x\n", total+10, char_package[10], char_package[11], char_package[12], char_package[13], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
+    if (arm_verbose>1) printf("Ph2-OP: send package len:%d: %x %x %x %x \t%x %x %x %x %x %x\n", 
+                    total+10, char_package[10], char_package[11], char_package[12], char_package[13],
+                    char_package[14], char_package[15], char_package[16], char_package[17],
+                    char_package[18], char_package[19]);
 
     ret = write(arm->fd, char_package, total+10);
     if (arm_verbose>1) printf("WRITE RET:%d TOT:%d\n", ret, total);
@@ -310,13 +313,16 @@ int arm_init(arm_handle* arm, const char* device, uint32_t speed, int index)
         return -1;
     }
 
-    arm->index = index;
+    arm->index = index & 0x7f;
 
     /* Load firmware and hardware versions */
     arm->bv.sw_version = 0;
     int backup = arm_verbose;
     arm_verbose = 0;
     arm->speed=speed / 1000;
+
+    if (index & 0x80) idle_op(arm, 255);// Unlock operation
+
     uint16_t configregs[5];
     if (read_regs(arm, 1000, 5, configregs) == 5) {
         parse_version(&arm->bv, configregs);
@@ -377,20 +383,25 @@ uint32_t firmware_op(arm_handle* arm, uint32_t address, uint8_t* tx_data, int tx
         char_package[5] = arm->speed & 0xff;
     }
     char_package[7] = ((uint8_t)arm->index+1);
-    if (arm_verbose>1) printf("FW-OP send len:%d: addr:%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x\n", sizeof(arm_comm_firmware), char_package[13], char_package[12], char_package[11], char_package[10], char_package[14], char_package[15], char_package[16], char_package[17], char_package[18], char_package[19], char_package[20]);
+    if (arm_verbose>1) printf("FW-OP send len:%ld: addr:%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x\n", 
+                 sizeof(arm_comm_firmware), char_package[13], char_package[12], char_package[11], char_package[10],
+                 char_package[14], char_package[15], char_package[16], char_package[17],
+                 char_package[18], char_package[19]);
 
     ret = write(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     if (ret != sizeof(arm_comm_firmware) + 10) {
-    	if (arm_verbose) printf("FW-OP invalid length written: %d, exp: %d\n", ret, sizeof(arm_comm_firmware) + 10);
+    	if (arm_verbose) printf("FW-OP invalid length written: %d, exp: %ld\n", ret, sizeof(arm_comm_firmware) + 10);
         return 0xffffffff;
     }    
    	ret = read(arm->fd, char_package, sizeof(arm_comm_firmware) + 10);
     if (ret != sizeof(arm_comm_firmware) + 10) {
-    	if (arm_verbose) printf("FW-OP invalid length read: %d, exp: %d\n", ret, sizeof(arm_comm_firmware) + 10);
+    	if (arm_verbose) printf("FW-OP invalid length read: %d, exp: %ld\n", ret, sizeof(arm_comm_firmware) + 10);
         return 0xffffffff;
     }
 
-    if (arm_verbose>1) printf("FW-OP recv len:%d: repl:%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x\n", sizeof(arm_comm_firmware), char_package[3], char_package[2], char_package[1], char_package[0], char_package[4], char_package[5], char_package[6], char_package[7], char_package[8], char_package[9], char_package[10]);
+    if (arm_verbose>1) printf("FW-OP recv len:%ld: repl:%02x%02x%02x%02x\t%02x %02x %02x %02x\n",
+             sizeof(arm_comm_firmware), char_package[3], char_package[2], char_package[1], char_package[0],
+                                        char_package[4], char_package[5], char_package[6], char_package[7]);
     // On Ai4Ao doesn't work crc
     //crc = SpiCrcString((uint8_t*)(char_package), sizeof(arm_comm_firmware), 0);// calculate crc INCLUDING crc
     //if (crc != 0) {
@@ -410,6 +421,13 @@ void start_firmware(arm_handle* arm)
     usleep(100000);
 }
 
+void confirm_firmware(arm_handle* arm)
+{
+    int prog_bit = 1004;
+    write_bit(arm, prog_bit, 0, 0);
+    usleep(100000);
+}
+
 
 void finish_firmware(arm_handle* arm)
 {
@@ -417,15 +435,16 @@ void finish_firmware(arm_handle* arm)
 
     // Finish transfer
     rx_result = firmware_op(arm, ARM_FIRMWARE_KEY, NULL, 0);
-    if (rx_result != ARM_FIRMWARE_KEY) {
-        printf("UNKNOWN ERROR\nREBOOTING...\n");
+    if ((rx_result != ARM_FIRMWARE_KEY) && (rx_result != 3)){
+        if (arm_verbose) printf("UNKNOWN ERROR\nREBOOTING...\n");
     } else {
-        printf("REBOOTING...\n");
+        if (arm_verbose) printf("REBOOTING...\n");
     }
     idle_op(arm, 255);// Unlock operation
-    usleep(100000);
+    usleep(200000);
 }
 
+/*
 int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address)
 {
     uint32_t rx_result;
@@ -434,7 +453,7 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
     int prev_addr = -1;
     int len = datalen;
     uint32_t address = start_address;
-    if (arm_verbose>1) printf("Starting to send %d byte at %x\n", datalen, start_address);
+    if (arm_verbose>1) printf("Starting to send %ld byte at %x\n", datalen, start_address);
     while (len >= 0) {
         if (len >= ARM_PAGE_SIZE) {
             rx_result = firmware_op(arm, address, data + (address - start_address), ARM_PAGE_SIZE);
@@ -450,7 +469,7 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
         if (rx_result != ARM_FIRMWARE_KEY) {
         	if (arm_verbose) printf("Address %x does not equal %x\n", rx_result, ARM_FIRMWARE_KEY);
             if ((retry++ >=10) || (prev_addr == -1)) { 
-            /*if ((address == prev_addr)||(prev_addr == -1)) { */
+            //if ((address == prev_addr)||(prev_addr == -1)) { 
                 // double error or start error
                 usleep(100000);
                 break;
@@ -476,3 +495,12 @@ int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start
     return 0;
 }
 
+
+void upgrade_firmware_copy_struct(arm_handle* arm)
+{
+    int copy_bit = 1007;
+    write_bit(arm, copy_bit, 1, (arm->index) + 1);    // start copy struct while upgrade firmware from 5.x to 6.x
+    idle_op(arm, 255);// Unlock operation
+    usleep(500000);
+}
+*/

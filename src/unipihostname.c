@@ -11,7 +11,6 @@
 
 int main(int argc, char** argv)
 {
-   int res;
    int do_set = 0;
    int i;
    char hostname[256];

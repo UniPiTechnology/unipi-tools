@@ -88,13 +88,13 @@ char* get_unipi_name(void)
 {
 	if (! unipi_loaded) {
 		if (read_unipi1_eprom(&global_unipi_version) == 0) {
-			strncpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
+			memcpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
 			unipi_name[sizeof(global_unipi_version.model)] = '\0';
 			if ((unipi_name[0] == '\0') || ((uint8_t)unipi_name[0] == 0xff)) {
-				strncpy(unipi_name, "UNIPI1", sizeof("UNIPI1"));
+				strcpy(unipi_name, "UNIPI1");
 			}
 		} else if (read_unipi_eprom(&global_unipi_version) == 0) {
-			strncpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
+			memcpy(unipi_name, global_unipi_version.model, sizeof(global_unipi_version.model));
 			unipi_name[sizeof(global_unipi_version.model)] = '\0';
 
 		} else {

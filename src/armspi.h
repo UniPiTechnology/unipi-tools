@@ -82,10 +82,13 @@ int write_bits(arm_handle* arm, uint16_t reg, uint16_t cnt, uint8_t* values);
 int write_char(arm_handle* arm, uint8_t uart, uint8_t c);
 int write_string(arm_handle* arm, uint8_t uart, uint8_t* str, int len);
 int read_string(arm_handle* arm, uint8_t uart, uint8_t* str, int cnt);
+uint32_t firmware_op(arm_handle* arm, uint32_t address, uint8_t* tx_data, int tx_len);
 
 void start_firmware(arm_handle* arm);
-int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
+void confirm_firmware(arm_handle* arm);
+//int send_firmware(arm_handle* arm, uint8_t* data, size_t datalen, uint32_t start_address);
 void finish_firmware(arm_handle* arm);
+//void upgrade_firmware_copy_struct(arm_handle* arm);
 
 extern int arm_verbose;
 extern int nss_pause;

@@ -28,6 +28,8 @@
 #include "armutil.h"
 #include "virtual_regs.h"
 
+#include "fwimage.h"
+
 #include <modbus/modbus-version.h>
 #if LIBMODBUS_VERSION_CHECK(3,1,4) != 1
 //Library_error "YOU NEED libmodbus version min 3.1.4"
@@ -114,7 +116,7 @@ int nb_modbus_reply(nb_modbus_t *nb_ctx, uint8_t *req, int req_length, int broad
     }
     function = req[offset];
     address = (req[offset + 1] << 8) + req[offset + 2];
-    printf("FC: %u Address is %u, slave %u\n", function, address, slave);
+    vvprintf("FC: %u Address is %u, slave %u\n", function, address, slave);
 
     rsp_length = _MODBUS_TCP_PRESET_RSP_LENGTH;
     if (slave == 0) {
@@ -423,7 +425,7 @@ int add_arm(nb_modbus_t*  nb_ctx, uint8_t index, const char *device, int speed)
 }
 
 
-int load_fw(char *path, uint8_t* prog_data, const size_t len)
+/*int load_fw(char *path, uint8_t* prog_data, const size_t len)
 {
     FILE* fd;
     int red;
@@ -439,7 +441,9 @@ int load_fw(char *path, uint8_t* prog_data, const size_t len)
     fclose(fd);
     return red;
 }
+*/
 
+/*
 #define MAX_R2000  64
 int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
 {
@@ -473,10 +477,12 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
         }
     }
     start_firmware(arm);
+    if (arm->bv.sw_version < 0x0600) {
+        //patch_first_page_downgrade(header, prog_data);
+    }
     send_firmware(arm, prog_data, prog_data_len, 0);
-/*
-    vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
-*/
+//    vprintf("Sending nvram file %s length=%d\n", fwname_rw, rw_data_len);
+
     if (overwrite)  {
         vprintf("\n");
         send_firmware(arm, rw_data, rw_data_len, 0xe000);
@@ -486,15 +492,19 @@ int arm_firmware_do(arm_handle* arm, const char* fwdir, int overwrite)
     free(rw_data);
     // Reload version
     uint16_t configregs[5];
-    if (read_regs(arm, 1000, 5, configregs) == 5)
+    if (read_regs(arm, 1000, 5, configregs) == 5) {
         parse_version(&arm->bv, configregs);
-
-    return 0;
+        return 0;
+    }
+    else
+        return -1;
 }
 
+*/
+/*
 int arm_firmware(arm_handle* arm, const char* fwdir)
 {
-    /* Check version */
+    // Check version 
     uint32_t fwver;
 
     if ((fwver=check_new_rw_version(&arm->bv, fwdir))) {
@@ -502,3 +512,4 @@ int arm_firmware(arm_handle* arm, const char* fwdir)
         return arm_firmware_do(arm, fwdir, FALSE);
     }
 }
+*/

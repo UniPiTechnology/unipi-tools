@@ -476,10 +476,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    unipi_model = get_unipi_name();
+    if (unipi_model[0] == '\0')
+	    printf("Running on an unknown platform");
+    else
+	    vvprintf("Running on unipi_model %s\n", unipi_model);
+
     if (nb_ctx->arm[0]) {
 		/* Check UniPi Model */
-		unipi_model = get_unipi_name();
-		vvprintf("Running on unipi_model %s\n", unipi_model);
 		if ((strncmp(unipi_model, "S205",4) == 0) || (strncmp(unipi_model, "S505",4) == 0)) { /* models with N-1001 have 1W reset via GPIO18 */
 			if (verbose) printf("Using virtual coil 1001 on gpio18\n");
 			nb_ctx->arm[0]->has_virtual_coils = VIRTUAL_COILS_NANOPI;

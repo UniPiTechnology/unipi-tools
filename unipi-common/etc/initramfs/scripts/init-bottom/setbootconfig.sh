@@ -14,7 +14,7 @@ if [ "$1" = "--noreboot" -o -n "${DESTDIR}" ]; then
     # Change include using '-' instead of '_'
     sed -i "s/include config-unipi\.inc/include config_unipi.inc/" "${MNTDIR}/config.txt"
     # check if running from "real" Neuron system
-    grep -q '^/dev/mmcblk[[:digit:]]p1 /boot ' /proc/mounts && IS_REAL_SYSTEM=1
+    # grep -q '^/dev/mmcblk[[:digit:]]p1 /boot ' /proc/mounts && IS_REAL_SYSTEM=1
 else
     ## called from initramdisk
     IS_REAL_SYSTEM=1

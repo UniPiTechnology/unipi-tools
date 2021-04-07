@@ -29,14 +29,14 @@ else
 fi
 
 cat <<EOF >${PATHINC}
+[pi4]
+initramfs initrd.img-${VER}-v7l+ followkernel
 [pi1]
 initramfs initrd.img-${VER}+ followkernel
 [pi2]
 initramfs initrd.img-${VER}-v7+ followkernel
 [pi3]
 initramfs initrd.img-${VER}-v7+ followkernel
-[pi4]
-initramfs initrd.img-${VER}-v7l+ followkernel
 [all]
 EOF
 

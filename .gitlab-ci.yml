@@ -3,7 +3,7 @@
 
 include: 
     project: docker/template
-    file: debian-pkg.yaml
+    file: debian-pkg-ng.yaml
 
 ##############################################################
 build-newstable:nano:

@@ -7,7 +7,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifndef OS_WIN32
 #include <sys/mman.h>
+#endif
 
 #include "armspi.h"
 #include "armutil.h"

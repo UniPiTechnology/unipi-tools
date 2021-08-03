@@ -6,6 +6,10 @@
 #include <errno.h>
 #include <unistd.h>
 
+#ifdef OS_WIN32
+#include <sys/stat.h>
+#endif
+
 #include "armutil.h"
 #include "fwimage.h"
 #include "fwconfig.h"
@@ -19,7 +23,6 @@ int load_bin(Tboard_version* bv, T_image_header *header, void* prog_data, void* 
 	T_image_header *header6;
 #ifdef OS_WIN32
     struct stat finfo;
-    int i;
     off_t filesize;
 #endif
 
@@ -31,18 +34,18 @@ int load_bin(Tboard_version* bv, T_image_header *header, void* prog_data, void* 
 	}
 #ifdef OS_WIN32
     fstat(fd->_file, &finfo);
-    off_t filesize = finfo.st_size;
+    filesize = finfo.st_size;
 #endif
     memset(prog_data, 0xff, MAX_FW_SIZE);
     read_n = fread(prog_data, 1, MAX_FW_SIZE, fd);
 #ifdef OS_WIN32
     if (!read_n) {
     	for (int i = 0; i < filesize; i++) {
-    		prog_data[i] = fgetc(fd);
+    		((uint8_t*)prog_data)[i] = fgetc(fd);
     	}
     	read_n = filesize;
     }
-    vprintf_2("READ: %d %x %d\n", read_n, prog_data[0], filesize);
+    vprintf_2("READ: %d %x %lu\n", read_n, ((uint8_t*)prog_data)[0], filesize);
 #endif
 	if (read_n <= 0) {
 		eprintf("Cannot read firmware %s\n", fname);
@@ -60,18 +63,18 @@ int load_bin(Tboard_version* bv, T_image_header *header, void* prog_data, void* 
 	}
 #ifdef OS_WIN32
     fstat(fd->_file, &finfo);
-    off_t filesize = finfo.st_size;
+    filesize = finfo.st_size;
 #endif
     memset(rw_data, 0xff, MAX_RW_SIZE);
     read_n = fread(rw_data, 1, MAX_RW_SIZE, fd);
 #ifdef OS_WIN32
     if (!read_n) {
     	for (int i = 0; i < filesize; i++) {
-    		rw_data[i] = fgetc(fd);
+    		((uint8_t*)prog_data)[i] = fgetc(fd);
     	}
     	read_n = filesize;
     }
-    vprintf_2("READ: %d %x %d\n", read_n, rw_data[0], filesize);
+    vprintf_2("READ: %d %x %lu\n", read_n, ((uint8_t*)rw_data)[0], filesize);
 #endif
 	if (read_n <= 0) {
 		eprintf("Cannot read firmware %s\n", fname);

@@ -24,7 +24,7 @@ struct comopt_struct com_options = {
 };
 
 #ifdef OS_WIN32
-char* firmwaredir = "./fw"
+char* firmwaredir = "./fw";
 #else
 char* firmwaredir = "/opt/unipi/firmware";
 #endif

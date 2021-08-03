@@ -185,7 +185,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 				pd += REG_SIZE;
 			}
 			retval = modbus_write_register(ctx, 0x7707, 1);
-			if (retval != 1) {
+			if (retval == 1) {
 				printf("Page Written OK\n");
 				if (page == last_prog_page) {
 					page = RW_START_PAGE;
@@ -196,7 +196,7 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 			} else {
 				errors++;
 				printf(" Trying again\n");
-				fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
+				fprintf(stderr, "Flashing page failed A: %s\n", modbus_strerror(errno));
 				while (retval != 1) {  // write page to flash
 					retval = modbus_write_register(ctx, 0x7707, 1);
 					if (retval != 1) {
@@ -209,14 +209,14 @@ int flashit(modbus_t *ctx, uint8_t* prog_data, uint8_t* rw_data, int last_prog_p
 
 					} else {
 						errors++;
-						printf(" Trying again\n");
-						fprintf(stderr, "Flashing page failed: %s\n", modbus_strerror(errno));
+						printf(" Trying again A\n");
+						fprintf(stderr, "Flashing page failed B: %s\n", modbus_strerror(errno));
 					}
 				}
 			}
 		} else {
 			errors++;
-			printf(" Trying again\n");
+			printf(" Trying again B\n");
 		}
 		if (errors > 255) {
 			snprintf(output_string, sizeof(output_string), "Flashing not successful!! Power-cycle your target device");
@@ -438,9 +438,12 @@ void test_connection_settings(void) {
     // get FW & HW version
     uint16_t r1000[7];
     Tboard_version bv;
+    printf("Kokot A");
     if (modbus_read_registers(ctx, 1000, 7, r1000) == 7) {
+        printf("Kokot B");
         parse_version(&bv, r1000);
-        snprintf(output_string, sizeof(output_string), "Board:  %s\nE-Board S/N:  (%d)\nBoardset:  %3d %-30s (v%d.%d%s)\nBaseboard:  %3d %-30s (v%d.%d)\nFirmware:  v%d.%d\n",
+        printf("Kokot C");
+        snprintf(output_string, sizeof(output_string), "Product:\t%s\nE-Board S/N:\t(%d)\nBoardset:\t\t\t%3d\t%-35s - (v%d.%d%s)\nBaseboard:\t\t%3d\t%-35s - (v%d.%d)\nFirmware:\t\tv%d.%d\n",
         		get_extension_map(HW_BOARD(bv.hw_version))->product, (r1000[6] << 16) + r1000[5],
         	   HW_BOARD(bv.hw_version),  arm_name(bv.hw_version),
                HW_MAJOR(bv.hw_version), HW_MINOR(bv.hw_version),
@@ -482,6 +485,7 @@ void switch_mode_verify(GtkToggleButton *caller) {
 
 void flash_button_pressed(GtkButton *caller) {
 	if (do_connect) {
+                printf("Chesus");
 		test_connection_settings();
 		return;
 	}
@@ -599,7 +603,7 @@ void setup_gui(int argc, char **argv) {
     main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
     dialog_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    dialog = gtk_dialog_new_with_buttons("PLEASE READ - IMPORTANT INFORMATION", GTK_WINDOW(main_window), GTK_DIALOG_MODAL, "I Understand", GTK_RESPONSE_DELETE_EVENT, NULL);
+    dialog = gtk_dialog_new_with_buttons("PLEASE READ TY VOLE - IMPORTANT INFORMATION", GTK_WINDOW(main_window), GTK_DIALOG_MODAL, "I Understand", GTK_RESPONSE_DELETE_EVENT, NULL);
     dialog_content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
     dialog_label = gtk_label_new("In order to correctly flash an updated firmware to your UniPi extension device, ensure the following:\n\n\t - Have a properly configured (1 stop bit, no parity, 19200/9600 baud) serial adapter device plugged into your computer\n\t - Turn on the termination resistors (pin 1) on your UniPi extension and use a twisted-pair cable to connect it to your PC adapter\n\t - Set your UniPi Serial device to the default address (address 15)\n\n Note also the following:\n\n\t - New firmware is only loaded into the UniPi device upon restart (power cycle)\n\t - Following an unsuccessful flashing session you need to power cycle your UniPi device as well (no new firmware will be written)\n\t - This utility operates in 19200 baud mode by default, to switch to 9600 select \"9600 baud\" in the drop-down menu\n\n!!! To recover from an unfinished flashing session please power-cycle your UniPi extension !!!\n\nUNIPI TECHNOLOGIES ACCEPTS NO LIABILITY ARISING FROM INCORRECT USE OF THIS TOOL\n");
 

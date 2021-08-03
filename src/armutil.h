@@ -58,7 +58,7 @@ typedef struct {
 
 #ifndef __EXTENSION_BOARDS_MAP
 #define __EXTENSION_BOARDS_MAP
-#define EXTENSION_COUNT 8
+#define EXTENSION_COUNT 12
 typedef struct {
 	uint8_t board;
 	uint8_t ext_board;

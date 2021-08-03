@@ -16,7 +16,7 @@ typedef struct {
   const char*   name;
 } Tcompatibility_map;
 
-#define UP_COUNT 9
+#define UP_COUNT 10
 Tboards_map up_boards[] = {
     {0, 0, ""},
     {1, 16, "P-11DiR485-1"},
@@ -26,6 +26,7 @@ Tboards_map up_boards[] = {
     {5, 16, "U-6Di5Ro-1"},
     {6, 16, "P-R485Di4Ro5-1"},
     {7, 16, "U-R485Di4Ro5-1"},
+    {8, 16, "P-R485Di3PDo5ZCD-1"},
     {13,16, "B-485-1"},
 };
 
@@ -40,11 +41,15 @@ Textension_map extension_boards[] = {
 	{12, 12, "xS50"},
 	{16, 16, "X-1Ir"},
 	{17, 17, "MM-8OW"},
-	{21, 21, "MM-8PT"}
+	{18, 18, "xS51"},
+	{20, 20, "xS11"},
+	{21, 21, "MM-8PT"},
+	{22, 22, "xS51-FVMOD"}
 };
 
 Textension_map* get_extension_map(int board) {
     int i;
+
     for (i=0; i<EXTENSION_COUNT; i++) {
             if (extension_boards[i].board == board) {
                 return extension_boards + i;
@@ -64,7 +69,7 @@ Tboards_map* get_umap(int board)
     return NULL;
 }
 
-#define HW_COUNT 22
+#define HW_COUNT 23
 Tcompatibility_map compatibility_map[HW_COUNT] = {
     {0,  0, 0, "B-1000",},
     {1,  1, 0, "E-8Di8Ro",},
@@ -77,17 +82,18 @@ Tcompatibility_map compatibility_map[HW_COUNT] = {
     {8,  3, 2, "E-16Di_U-14Ro",},         //"E-16Di_U-14Ro"
     {9,  2, 3, "E-14Ro_U-14Di",},         //"E-14Ro_U-14Di"
     {10, 3, 3, "E-16Di_U-14Di",},         //"E-16Di_U-14Di"
-    {11, 11,0, "E-4Ai4Ao"},
+    {11, 11,0, "E-4Ai4Ao",},
     {12, 11,4, "E-4Ai4Ao_P-6Di5Ro",},         //"E-4Ai4Ao_P-6Di5Ro"},
-    {13, 0,13, "B-485"},
-    {14, 14,0, "E-4Light"},
-    {15, 11,5, "E-4Ai4Ao_U-6Di5Ro"},
-    {16, 16,0, "X-1Ir"},
-    {17, 17,0, "MM-8OW"},
+    {13, 0,13, "B-485",},
+    {14, 14,0, "E-4Light",},
+    {15, 11,5, "E-4Ai4Ao_U-6Di5Ro",},
+    {16, 16,0, "X-1Ir",},
+    {17, 17,0, "MM-8OW",},
     {18, 11,6, "E-4Ai4Ao_P-R485Di4Ro5",},         //"E-4Ai4Ao_P-4Di5Ro"},
-    {19, 11,7, "E-4Ai4Ao_U-R485Di4Ro5"},
-    {20,  1,6, "E-8Di8Ro_P-R485Di4Ro5", },     
-    {21, 21,0, "MM-8PT"},
+    {19, 11,7, "E-4Ai4Ao_U-R485Di4Ro5",},
+    {20,  1,6, "E-8Di8Ro_P-R485Di4Ro5",},
+    {21, 21,0, "MM-8PT",},
+    {22, 11,8, "E-4Ai4Ao_P-R485Di3PDo5ZCD",},
 };
 
 Tcompatibility_map* get_map(int board)
@@ -134,12 +140,15 @@ char* _firmware_name(Tboard_version* bv, const char* fwdir, const char* ext, int
 
         } else {
             Tcompatibility_map* basemap = get_map(HW_BOARD(bv->base_hw_version));
+
             if (basemap == NULL) return NULL;
             //uint8_t base_version = HW_MAJOR(hw_base);
             if (basemap->board != map->baseboard) {
+
                 // Incorrent parameters
                 return NULL;
             }
+
             const char* basename = basemap->name;
             Tboards_map* umap = get_umap(map->upboard);
             const char* uname = umap->name;

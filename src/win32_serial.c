@@ -438,11 +438,8 @@ void test_connection_settings(void) {
     // get FW & HW version
     uint16_t r1000[7];
     Tboard_version bv;
-    printf("Kokot A");
     if (modbus_read_registers(ctx, 1000, 7, r1000) == 7) {
-        printf("Kokot B");
         parse_version(&bv, r1000);
-        printf("Kokot C");
         snprintf(output_string, sizeof(output_string), "Product:\t%s\nE-Board S/N:\t(%d)\nBoardset:\t\t\t%3d\t%-35s - (v%d.%d%s)\nBaseboard:\t\t%3d\t%-35s - (v%d.%d)\nFirmware:\t\tv%d.%d\n",
         		get_extension_map(HW_BOARD(bv.hw_version))->product, (r1000[6] << 16) + r1000[5],
         	   HW_BOARD(bv.hw_version),  arm_name(bv.hw_version),
@@ -485,7 +482,6 @@ void switch_mode_verify(GtkToggleButton *caller) {
 
 void flash_button_pressed(GtkButton *caller) {
 	if (do_connect) {
-                printf("Chesus");
 		test_connection_settings();
 		return;
 	}

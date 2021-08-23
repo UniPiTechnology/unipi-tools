@@ -280,8 +280,9 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 				"/var/run/unipi_stats/vendor_1",
 				"/var/run/unipi_stats/vendor_2",
 				"/var/run/unipi_stats/vendor_3"};
-		filelist = filelist_a;
-                filelist_size = (sizeof(filelist_a) / sizeof(filelist_a[0]));
+	    filelist = filelist_a;
+        filelist_size = (sizeof(filelist_a) / sizeof(filelist_a[0]));
+        reg = reg - OFFSET_PV_STORSTAT_GROUP;
 	}
 	// LTE address range [OFFSET_PV_LTE_GROUP : OFFSET_PV_SYSSTAT_GROUP)
 	else if (reg < OFFSET_PV_SYSSTAT_GROUP){
@@ -290,8 +291,8 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 				"/var/run/unipi_lte/nettype",
 				"/var/run/unipi_lte/sigqual"};
 		filelist = filelist_b;
-                filelist_size = (sizeof(filelist_b) / sizeof(filelist_b[0]));
-
+        filelist_size = (sizeof(filelist_b) / sizeof(filelist_b[0]));
+        reg = reg - OFFSET_PV_LTE_GROUP;
 	}
 	else{
 		return 0;

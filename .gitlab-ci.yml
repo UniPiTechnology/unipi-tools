@@ -6,47 +6,47 @@ include:
     file: debian-pkg-ng.yaml
 
 ##############################################################
-build-newstable:nano:
+build-newstable:arm64:
     extends: .build_for_newstable
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
-build-newstable:rpi:
+build-newstable:armhf:
     extends: .build_for_newstable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
-build-stable:nano:
+build-stable:arm64:
     extends: .build_for_stable
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
-build-stable:rpi:
+build-stable:armhf:
     extends: .build_for_stable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
-build-oldstable:nano:
+build-oldstable:arm64:
     extends: .build_for_oldstable
     tags: ['arm64']
     before_script: 
         - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
-build-oldstable:rpi:
+build-oldstable:armhf:
     extends: .build_for_oldstable
     tags: ['armhf']
     before_script: 
         - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
+        - apt-get install -y  libmodbus-dev libsystemd-dev
 
 deploy-test:
     extends: .deploy_test

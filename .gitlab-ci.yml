@@ -1,55 +1,7 @@
-#variables:
-#    TEMPLATE_DISABLE: "1"
-
 include: 
     project: docker/template
     file: debian-pkg-ng.yaml
 
-##############################################################
-build-newstable:arm64:
-    extends: .build_for_newstable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-build-newstable:armhf:
-    extends: .build_for_newstable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-build-stable:arm64:
-    extends: .build_for_stable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-build-stable:armhf:
-    extends: .build_for_stable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-build-oldstable:arm64:
-    extends: .build_for_oldstable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-build-oldstable:armhf:
-    extends: .build_for_oldstable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y  libmodbus-dev libsystemd-dev
-
-deploy-test:
-    extends: .deploy_test
-
-deploy-release:
-    extends: .deploy_master
+variables:
+    build_for_architecture: "armhf arm64"
+    build_for_distribution: "all"

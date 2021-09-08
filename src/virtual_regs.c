@@ -217,7 +217,7 @@ int read_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* resu
     int n, r0;
     uint16_t registers[3];
 
-    if (arm && (HW_BOARD(arm->bv.base_hw_version)==0)) { //
+    if (arm && ((HW_BOARD(arm->bv.base_hw_version)==0)||(HW_BOARD(arm->bv.base_hw_version)==0xd))) { //
         if ((reg >= 3000) && (reg+cnt <= 3006)) { // Area of SW computed float values form Brain
             if (! loaded) {
                 load_calibrating_const(arm);
@@ -280,8 +280,9 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 				"/var/run/unipi_stats/vendor_1",
 				"/var/run/unipi_stats/vendor_2",
 				"/var/run/unipi_stats/vendor_3"};
-		filelist = filelist_a;
-                filelist_size = (sizeof(filelist_a) / sizeof(filelist_a[0]));
+	    filelist = filelist_a;
+        filelist_size = (sizeof(filelist_a) / sizeof(filelist_a[0]));
+        reg = reg - OFFSET_PV_STORSTAT_GROUP;
 	}
 	// LTE address range [OFFSET_PV_LTE_GROUP : OFFSET_PV_SYSSTAT_GROUP)
 	else if (reg < OFFSET_PV_SYSSTAT_GROUP){
@@ -290,8 +291,8 @@ int read_pure_virtual_regs(uint16_t reg, uint8_t cnt, uint16_t* result)
 				"/var/run/unipi_lte/nettype",
 				"/var/run/unipi_lte/sigqual"};
 		filelist = filelist_b;
-                filelist_size = (sizeof(filelist_b) / sizeof(filelist_b[0]));
-
+        filelist_size = (sizeof(filelist_b) / sizeof(filelist_b[0]));
+        reg = reg - OFFSET_PV_LTE_GROUP;
 	}
 	else{
 		return 0;
@@ -307,7 +308,7 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
     float fval;
     uint32_t swapped;
     uint16_t regval;
-    if (arm && (HW_BOARD(arm->bv.base_hw_version)==0)) {
+    if (arm && ((HW_BOARD(arm->bv.base_hw_version)==0)||(HW_BOARD(arm->bv.base_hw_version)==0xd))) {
         if ((reg >= 3000) && (reg+cnt <= 3006)) {
             if (! loaded) {
                 load_calibrating_const(arm);
@@ -340,7 +341,7 @@ int write_virtual_regs(arm_handle* arm, uint16_t reg, uint8_t cnt, uint16_t* val
 
 void monitor_virtual_regs(arm_handle* arm, uint16_t reg, uint16_t* result)
 {
-    if ((arm == NULL) || (HW_BOARD(arm->bv.base_hw_version)!=0))
+    if ((arm == NULL) || ((HW_BOARD(arm->bv.base_hw_version)!=0)&&(HW_BOARD(arm->bv.base_hw_version)!=0xd)))
         return;
     // do only for Brain
     if (reg == 1019) {

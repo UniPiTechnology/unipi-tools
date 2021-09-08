@@ -5,3 +5,4 @@ include:
 variables:
     build_for_architecture: "armhf arm64"
     build_for_distribution: "all"
+    mirror_to_github: "yes"

@@ -1,55 +1,7 @@
-#variables:
-#    TEMPLATE_DISABLE: "1"
-
 include: 
     project: docker/template
-    file: debian-pkg.yaml
+    file: debian-pkg-ng.yaml
 
-##############################################################
-build-newstable:nano:
-    extends: .build_for_newstable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
-
-build-newstable:rpi:
-    extends: .build_for_newstable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
-
-build-stable:nano:
-    extends: .build_for_stable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
-
-build-stable:rpi:
-    extends: .build_for_stable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
-
-build-oldstable:nano:
-    extends: .build_for_oldstable
-    tags: ['arm64']
-    before_script: 
-        - apt-get update
-        - apt-get install -y axon-kernel-headers libmodbus-dev libsystemd-dev
-
-build-oldstable:rpi:
-    extends: .build_for_oldstable
-    tags: ['armhf']
-    before_script: 
-        - apt-get update
-        - apt-get install -y raspberrypi-kernel-headers libmodbus-dev libsystemd-dev
-
-deploy-test:
-    extends: .deploy_test
-
-deploy-release:
-    extends: .deploy_master
+variables:
+    build_for_architecture: "armhf arm64"
+    build_for_distribution: "all"

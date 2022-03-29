@@ -32,7 +32,7 @@ libmodbus:
 		  echo "****** Damaged libmodbus directory. Remove it!" >&2; exit 1;\
 		fi; \
 	 else\
-		git clone git://github.com/stephane/libmodbus;\
+		git clone https://github.com/stephane/libmodbus;\
 	 fi
 	@cd libmodbus;\
 	 ./autogen.sh;\
